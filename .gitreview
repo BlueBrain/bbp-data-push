@@ -1,0 +1,6 @@
+[gerrit]
+host=bbpcode.epfl.ch
+port=22
+defaultremote=origin
+project=dke/blue_brain_atlas_nexus_push
+defaultbranch=master
