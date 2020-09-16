@@ -1,0 +1,99 @@
+
+Usage: bba_dataset_pusher.py [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  -config, --forge_config_file PATH
+                                  The configuration file used to instantiate
+                                  the Forge  [required]
+
+  --org TEXT                      The Nexus organization to push into
+                                  [required]
+
+  --proj TEXT                     The Nexus project to push into  [required]
+  --env TEXT                      Nexus environment to use, can be 'dev',
+                                  'staging', 'prod' or the URL of a custom env
+                                  [required]
+
+  --token TEXT                    copy pasted from Nexus fusion  [required]
+  --help                          Show this message and exit.
+
+Commands:
+  push-cellposition
+  push-meshes
+  push-volumetric
+
+
+==================================
+push-volumetric --help:
+Usage: bba_dataset_pusher.py push-volumetric [OPTIONS]
+
+Options:
+  -idspatialref, --id_spatial_ref TEXT
+                                  The @id to the atlas spatial reference
+                                  system used with this dataset  [required]
+
+  -idatlasrelease, --id_atlas_release TEXT
+                                  The @id of the atlas release  [required]
+  -spatialunit, --spatial_unit TEXT
+                                  The spatial unit used for world coordinates
+  -desc, --description TEXT       The description of the volumetric dataset
+                                  being pushed
+
+  --version TEXT                  Human-friendly version name
+  -contrib, --contributor_name TEXT
+                                  Nexus ID of contributing organizations
+  -extrakv, --extra_keys_values <TEXT TEXT>...
+                                  Additionnal property couple key/value to add
+                                  to the metadata
+
+  -f, --nrrd_local_path PATH      The NRRD file to push to Nexus  [required]
+  -brainregion, --brain_region_id TEXT
+                                  Brain region id as defined by Allen. This is
+                                  an integer number (default: 997 --> root,
+                                  whole brain)
+
+  -idfile, --id_file TEXT         The @id to give to the file pushed (default:
+                                  automatically created by Nexus)
+
+  -idvol, --id_vol TEXT           The @id to give to this VolumetricDataLayer
+                                  resource created alongside the file
+                                  (default: automatically created by Nexus)
+
+  -voxeltype, --voxel_type [multispectralIntensity|vector|intensity|mask|label]
+                                  Type of voxel. Can be 'intensity', 'label'
+                                  or 'mask' for single-component voxels and
+                                  'multispectralIntensity' or 'vector' for
+                                  multi-component voxels. (default: intensity
+                                  and vector)  [required]
+
+  -extratypes, --extra_types [CellDensityDataLayer|GliaCellDensity|PHDataLayer|BrainParcellationDataLayer|MorphologyOrientationDataLayer|NISSLImageDataLayer|TwoPhotonImageDataLayer|BrainTemplateDataLayer|GeneExpressionVolumetricDataLayer]
+                                  The volume will be pushed as a
+                                  'VolumetricDataLayer', but it can have
+                                  additionnal types.  [required]
+
+
+==================================
+push-meshes --help
+Usage: bba_dataset_pusher.py push-meshes [OPTIONS]
+
+Options:
+  -idspatialref, --id_spatial_ref TEXT
+                                  The @id to the atlas spatial reference
+                                  system used with this dataset  [required]
+
+  -idatlasrelease, --id_atlas_release TEXT
+                                  The @id of the atlas release  [required]
+  -spatialunit, --spatial_unit TEXT
+                                  The spatial unit used for world coordinates
+  -desc, --description TEXT       The description of the volumetric dataset
+                                  being pushed
+
+  --version TEXT                  Human-friendly version name
+  -contrib, --contributor_name TEXT
+                                  Nexus ID of contributing organizations
+  -extrakv, --extra_keys_values <TEXT TEXT>...
+                                  Additionnal property couple key/value to add
+                                  to the metadata
+
+  -f, --mesh_local_path PATH      The Brain meshes files to push to Nexus
+                                  [required]

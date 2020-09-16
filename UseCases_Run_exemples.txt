@@ -1,0 +1,49 @@
+
+###### Base command script:
+
+python bba_dataset_pusher.py \
+  --forge_config_file "../tests/configuration/forge_config.yml" \
+  --env XXX \
+  --org XXX \
+  --proj XXX \
+  --token XXX \
+
+
+###### Concatenate the Base command with one of these:
+
+### Push a ccfv2 annotation file with a contributor:
+
+  push-volumetric \
+  --nrrd_local_path "../tests/data/annotation_25.nrrd" \
+  -desc "Original Allen ccfv2 annotation volume at 25 microns" \
+  -extratypes "BrainParcellationDataLayer" \
+  -voxeltype label \
+  -idatlasrelease "https://bbp.epfl.ch/neurosciencegraph/data/dd114f81-ba1f-47b1-8900-e497597f06ac" \
+  --id_spatial_ref "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system" \
+  --contributor_name "Jean-Vincent"
+
+
+### Push a astrocytes density volume and add a version tag:
+
+  --nrrd_local_path "../tests/data/astro_density.nrrd" \
+  -desc "Cell density volume for astrocytes at a resolution of 25 microns. Output of the cell density pipeline by Csaba Eroe" \
+  -extratypes "GliaCellDensity" \
+  -extratypes "CellDensityDataLayer" \
+  -voxeltype intensity \
+  -idatlasrelease "https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda" \
+  --id_spatial_ref "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system" \
+  --version 'myversion'
+
+
+
+### Push a batch of 3 meshes with 2 extra informations:
+
+ push-meshes \
+ --mesh_local_path "../tests/data/brain_region_meshes_test/1.obj" \
+  --mesh_local_path "../tests/data/brain_region_meshes_test/2.obj" \
+  --mesh_local_path "../tests/data/brain_region_meshes_test/4.obj" \
+  -desc "Brain region mesh" \
+  -idatlasrelease "https://bbp.epfl.ch/neurosciencegraph/data/831a626a-c0ae-4691-8ce8-cfb7491345d9" \
+  --id_spatial_ref "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system" \
+  --extra_keys_values 'extrakey1' 'extravalue1' \
+  --extra_keys_values 'extrakey2' 'extravalue2'
