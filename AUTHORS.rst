@@ -2,4 +2,4 @@
 Contributors
 ============
 
-* Alejandra Garcia Rojas Martinez <alejandra.garciarojas@epfl.com>
+* nabil Alibou <nabil.alibou@epfl.ch>
