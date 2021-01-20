@@ -53,9 +53,10 @@ def initialize_pusher_cli(ctx, verbose, forge_config_file, nexus_env, nexus_org,
     "prod": "https://bbp.epfl.ch/nexus/v1"
     }
     L.info("Initializing the forge...")
-    try:
+    if nexus_env in default_environments:
         nexus_env = default_environments[nexus_env]
-        bucket = nexus_org + '/' + nexus_proj
+    bucket = nexus_org + '/' + nexus_proj
+    try:
         token = open(nexus_token_file, 'r').read().strip()
         forge = KnowledgeGraphForge(forge_config_file, endpoint = nexus_env, 
                                            bucket = bucket, token = token)

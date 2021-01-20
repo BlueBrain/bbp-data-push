@@ -21,6 +21,7 @@ setup(
         'numpy>=1.19',
         'pynrrd>=0.4.0',
         'PyYAML>=5.3.1',
+        'PyJWT>=2.0.0'
     ],
     packages=find_packages(),
     include_package_data=True,

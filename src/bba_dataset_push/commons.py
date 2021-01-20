@@ -53,7 +53,7 @@ def getHierarchyContent(input_hierarchy, config_content, hierarchy_tag):
     hierarchy_path = None
     try: 
         for hierarchy_file in input_hierarchy:
-            if hierarchy_file == config_content["GgeneratedHierarchyJson"][hierarchy_tag]:
+            if hierarchy_file == config_content["GeneratedHierarchyJson"][hierarchy_tag]:
                 hierarchy_path = hierarchy_file
     except KeyError: 
         raise KeyError(f"The hierarchy files in input do not contain the right one. The correct "\
@@ -118,12 +118,19 @@ def getExtraValues (resource, extra_keys_values):
 # Multiple contributors not handled yet
 def addContribution(forge, resource):
     token_info = jwt.decode(forge._store.token, options={'verify_signature': False})
+    #print(f"TOKEN: {token_info}")
+    agent_email = token_info["email"]
     agent_name = token_info["given_name"]
-    agent_name = "Jean-Vincent"
-    agent_id = forge.resolve(agent_name, target="agents", scope = "agent", type="Person")
+    agent_familyname = token_info["family_name"]
+    #agent_email = "charlotte.lorin@epfl.ch"
+    agent_given_name = "Charlotte"
+    agent_family_name = "Bussard" 
+    #agent_mail
+    agent_id = forge.resolve(agent_family_name, target="agents", scope = "agent", type="Person")
     if not agent_id:
-        raise ValueError(f"Error: The agent identity {agent_name} extracted from the user "\
-                         "token is not an agent registered in the 'agents' project in Nexus.")
+        raise ValueError(f"Error: The agent email {agent_email} extracted from the user "\
+                         "token does not correspond to an agent registered in the 'agents' "\
+                         "project in Nexus.")
 
     contribution = Resource(type = "Contribution", agent = agent_id)
     
