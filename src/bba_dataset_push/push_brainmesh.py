@@ -39,16 +39,16 @@ def createMeshResources(forge, inputpath, config_path, input_hierarchy):
             if filepath == mesh_path["brain_region_meshes_hybrid"]:
                 if not len(files_mesh) == 3:
                     L.error(f"Error: The .obj meshes folder '{filepath}' does not contain the right "\
-                          f"amount of brain regions mesh .obj files ({len(files_mesh)} instead of"\
+                          f"amount of brain regions mesh .obj files ({len(files_mesh)} instead of "\
                           "1327) corresponding to a brain annotation hybrid")
                     exit(1)
                 hierarchy_tag = "hierarchy"
             elif filepath == mesh_path["brain_region_meshes_l23split"]:
                 isMeshSplit = True
-                if not len(files_mesh) == 1036:
+                if not len(files_mesh) == 1122:
                     L.error(f"Error: The .obj meshes folder '{filepath}' does not contain the right "\
-                          f"amount of brain regions mesh .obj files ({len(files_mesh)} instead of"\
-                          "1036) corresponding to a brain annotation hybrid with layer 2-3 split")
+                          f"amount of brain regions mesh .obj files ({len(files_mesh)} instead of "\
+                          "1122) corresponding to a brain annotation hybrid with layer 2-3 split")
                     exit(1)
                 hierarchy_tag = "hierarchy_l23split"
             else:

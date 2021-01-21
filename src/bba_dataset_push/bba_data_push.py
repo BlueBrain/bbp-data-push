@@ -53,8 +53,15 @@ def initialize_pusher_cli(ctx, verbose, forge_config_file, nexus_env, nexus_org,
     "prod": "https://bbp.epfl.ch/nexus/v1"
     }
     L.info("Initializing the forge...")
+    if nexus_env[-1] == '/':
+        nexus_env = nexus_env[:-1]
     if nexus_env in default_environments:
         nexus_env = default_environments[nexus_env]
+    elif nexus_env in default_environments.values():
+        pass
+    else:
+        L.error(f"Error: {nexus_env} do not correspond to one of the 3 possible environment: "
+                "dev, staging, prod")
     bucket = nexus_org + '/' + nexus_proj
     try:
         token = open(nexus_token_file, 'r').read().strip()

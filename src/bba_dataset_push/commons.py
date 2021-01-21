@@ -119,22 +119,25 @@ def getExtraValues (resource, extra_keys_values):
 def addContribution(forge, resource):
     token_info = jwt.decode(forge._store.token, options={'verify_signature': False})
     #print(f"TOKEN: {token_info}")
+    agent_name = token_info["name"]
+    agent_family_name = token_info["family_name"]
+    agent_given_name = token_info["given_name"]
     agent_email = token_info["email"]
-    agent_name = token_info["given_name"]
-    agent_familyname = token_info["family_name"]
-    #agent_email = "charlotte.lorin@epfl.ch"
-    agent_given_name = "Charlotte"
-    agent_family_name = "Bussard" 
-    #agent_mail
     agent_id = forge.resolve(agent_family_name, target="agents", scope = "agent", type="Person")
     if not agent_id:
-        raise ValueError(f"Error: The agent email {agent_email} extracted from the user "\
-                         "token does not correspond to an agent registered in the 'agents' "\
-                         "project in Nexus.")
-
-    contribution = Resource(type = "Contribution", agent = agent_id)
+        print(f"Note: The agent {agent_name} {agent_family_name} extracted from the user token "\
+              "does not correspond to an agent registered in the 'agents' project in Nexus.")
+        contribution = Resource(
+            type = "Person", 
+            name = agent_name,
+            familyName = agent_family_name,
+            givenName = agent_given_name
+            )
+        if agent_email:
+            contribution.email = agent_email
+    else:
+        if isinstance(agent_id, list):
+            pass
+        contribution = Resource(type = "Contribution", agent = agent_id)
     
     return contribution
-
-#    contribution = {}
-#    for c in contributor_name:
