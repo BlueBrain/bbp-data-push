@@ -1,13 +1,15 @@
-''' Create resource payload and push them along with the corresponding dataset files into Nexus.
-
-(definition, lexicon, link to Atlas pipeline confluence)
+''' 
+Create resource payload and push them along with the corresponding dataset files into Nexus.
+To know more about Nexus, see https://bluebrainnexus.io.
+Link to BBP Atlas pipeline confluence documentation: https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 '''
 import logging
 import click
 from kgforge.core import KnowledgeGraphForge
 
-from bba_dataset_push.push_nrrd_volumetricdatalayer import createNrrdResources
+from bba_dataset_push.push_nrrd_volumetricdatalayer import createVolumetricResources
 from bba_dataset_push.push_brainmesh import createMeshResources
+from bba_dataset_push.push_sonata_cellrecordseries import createCellRecordResources
 from bba_dataset_push.logging import log_args, close_handler
 from bba_dataset_push import __version__
 
@@ -18,22 +20,21 @@ def _push_to_Nexus(dataset, forge, schema_id):
 
     print("----------------------- Resource content ----------------------")
     print(dataset[-1])
-    # try:
-    #     print("-------------- Registration & Validation Status ---------------")
-    #     L.info("Registering the constructed payload along the input dataset in  Nexus...")
-    #     forge.register(dataset, schema_id)
-    #     L.info(f"<<Resource synchronization status>>: {str(dataset[-1]._synchronized)}")
-    # except Exception as e:
-    #     L.error(f"Error when registering resource. {e}")
+    try:
+        print("-------------- Registration & Validation Status ---------------")
+        L.info("Registering the constructed payload along the input dataset in Nexus...")
+        forge.register(dataset[-1], schema_id)
+        L.info(f"<<Resource synchronization status>>: {str(dataset[-1]._synchronized)}")
+    except Exception as e:
+        L.error(f"Error when registering resource. {e}")
     print("---------------------------------------------------------------")
             
 
 @click.group()
 @click.version_option(__version__)
 @click.option('-v', '--verbose', count=True)
-@click.option( '--forge_config_file', required = True, type=click.Path(exists=True),
-              help='The configuration file used to instantiate the Forge')
-@click.option("--nexus_env",  default="staging", help="Nexus environment to use, can be 'dev',"\
+@click.option('--forge_config_file', default = "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/notebooks/use-cases/prod-forge-nexus.yml", help='The configuration file used to  instantiate the Forge') #type=click.Path(exists=True)
+@click.option("--nexus_env",  default="prod", help="Nexus environment to use, can be 'dev',"\
               "'staging', 'prod' or the URL of a custom env")
 @click.option("--nexus_org",  default='bbp', help="The Nexus organization to push into")
 @click.option("--nexus_proj", default='atlas', help="The Nexus project to push into")
@@ -49,7 +50,7 @@ def initialize_pusher_cli(ctx, verbose, forge_config_file, nexus_env, nexus_org,
     L.setLevel((logging.WARNING, logging.INFO, logging.DEBUG)[min(verbose, 2)])
     default_environments = {
     "dev": "https://dev.nexus.ocp.bbp.epfl.ch/v1",
-    "staging": 'https://staging.nexus.ocp.bbp.epfl.ch/v1',
+    "staging": "https://staging.nexus.ocp.bbp.epfl.ch/v1",
     "prod": "https://bbp.epfl.ch/nexus/v1"
     }
     L.info("Initializing the forge...")
@@ -62,7 +63,7 @@ def initialize_pusher_cli(ctx, verbose, forge_config_file, nexus_env, nexus_org,
     else:
         L.error(f"Error: {nexus_env} do not correspond to one of the 3 possible environment: "
                 "dev, staging, prod")
-    bucket = nexus_org + '/' + nexus_proj
+    bucket = f"{nexus_org}/{nexus_proj}"
     try:
         token = open(nexus_token_file, 'r').read().strip()
         forge = KnowledgeGraphForge(forge_config_file, endpoint = nexus_env, 
@@ -81,18 +82,9 @@ def base_ressource(f):
     f = click.option('--config', type=click.Path(exists=True), required=True, help="Path to the "\
                      "generated dataset configuration file. This is a yaml file containing the paths "\
                     "to the Atlas pipeline generated dataset")(f)
-    f = click.option('--hierarchy_path', type=click.Path(exists=True), required=True, multiple=True,
-                     help = "Hierarchy file")(f)
-    #f = click.option('--description', required=False, default=None, help="The description of the volumetric dataset being pushed")(f)
+    f = click.option('--provenances', type=str, multiple=True, default=[None], help = "name "\
+                     "and version of the module that generated the dataset")(f)    
     return f
-
-#def extra_arguments(f):
-    # f = click.option('--extra_keys_values', "-extrakv", required=False, multiple=True, default=[], type = (str, str), help="Additionnal property couple key/value to add to the metadata")(f)
-    # f = click.option("--contributor_name", '-contrib', required=False, default=[], type = str, help="Nexus ID of contributing organizations")(f) #multiple = True
-    # f = click.option("--version", required=False, default=None, type = str, help="Human-friendly version name")(f)
-    #f = click.option("--license", required=False, default=None, help="License of the file")(f)
-#    return f
-
 
 @initialize_pusher_cli.command()
 @base_ressource
@@ -100,17 +92,17 @@ def base_ressource(f):
               "voxels resolution in microns")
 @click.pass_context
 @log_args(L)
-def push_volumetric(ctx, dataset_path, voxels_resolution, config, hierarchy_path):
+def push_volumetric(ctx, dataset_path, voxels_resolution, config, provenances):
     """Create a VolumetricDataLayer resource payload and push it along with the corresponding 
     volumetric input dataset files into Nexus.\n
     """
     L.info("Filling the metadata of the volumetric payloads...")
-    dataset = createNrrdResources(
+    dataset = createVolumetricResources(
                             ctx.obj['forge'], 
                             dataset_path, 
                             voxels_resolution,
                             config,
-                            hierarchy_path
+                            provenances
                             )
     if dataset:
         _push_to_Nexus(dataset, 
@@ -119,9 +111,11 @@ def push_volumetric(ctx, dataset_path, voxels_resolution, config, hierarchy_path
 
 @initialize_pusher_cli.command()
 @base_ressource
+@click.option('--hierarchy_path', type=click.Path(exists=True), required=True, multiple=True,
+              help = "Hierarchy file")
 @click.pass_context
 @log_args(L)
-def push_meshes(ctx, dataset_path, config, hierarchy_path):
+def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
     """Create a Mesh resource payload and push it along with the corresponding brain .OBJ mesh 
     folder input dataset files into Nexus.\n
     """
@@ -130,7 +124,8 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path):
                             ctx.obj['forge'], 
                             dataset_path,
                             config,
-                            hierarchy_path
+                            hierarchy_path,
+                            provenances
                             )
     if dataset:    
         _push_to_Nexus(dataset, 
@@ -140,10 +135,26 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path):
 
 @initialize_pusher_cli.command()
 @base_ressource
+@click.option('--voxels_resolution', required=True, default=None, help="The Allen annotation volume "\
+              "voxels resolution in microns")
 @click.pass_context
 @log_args(L)
-def push_cellpositions():
-    pass
+def push_cellrecords(ctx, dataset_path, voxels_resolution, config, provenances):
+    """Create a Mesh resource payload and push it along with the corresponding brain .OBJ mesh 
+    folder input dataset files into Nexus.\n
+    """
+    L.info("Filling the metadata of the CellRecord payloads...")     
+    dataset = createCellRecordResources(
+                            ctx.obj['forge'], 
+                            dataset_path,
+                            voxels_resolution,
+                            config,
+                            provenances
+                            )
+    if dataset:    
+        _push_to_Nexus(dataset, 
+                        ctx.obj['forge'],
+                        "https://neuroshapes.org/dash/cellrecordseries")
 
 
 

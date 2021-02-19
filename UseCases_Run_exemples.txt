@@ -16,7 +16,9 @@ python bba_dataset_pusher.py \
   push-volumetric \
   --dataset_path '/cell_density' \
   --dataset_path '/annotation_hybrid.nrrd' \
+  --hierarchy_path 'hierarchy.json' \
   --config '/push_dataset_config_template.yaml' \
+  --provenance "atlas-building-tools combination combine-annotations:atlas-building-tools, version 0.0.0.dev6," 
   --voxels_resolution '25'
 
 ### Push a batch of 3 meshes with 2 extra informations:
@@ -24,4 +26,6 @@ python bba_dataset_pusher.py \
  push-meshes \
   push-meshes \
   --dataset_path '/brain_region_meshes' \
-  --config '/push_dataset_config.yaml'
+  --hierarchy_path 'hierarchy.json' \
+  --config '/push_dataset_config.yaml' \
+  --provenances "parcellation2mesh:parcellation2mesh version 0.1.0"

@@ -7,7 +7,18 @@ from kgforge.core import Resource
 
 # Simplify it ? resolve automatically the voxel_type ?
 def getVoxelType(voxel_type, component_size):
+    """
+    Check if the voxel_type value is compatible with the component size or return a default 
+    value if voxel_type is None.
     
+    Parameters:
+        voxel_type : voxel type (string).
+        component_size : integer indicating the number of component per voxel.
+    
+    Returns:
+        voxel_type : str value of voxel_type is returned. Equal to the input value if its value 
+                     does not trigger error or else the default hardcoded value is returned.
+    """
     # this could be "multispectralIntensity", "vector"
     default_sample_type_multiple_components = "vector"
 
@@ -35,8 +46,50 @@ def getVoxelType(voxel_type, component_size):
             raise ValueError(f"The type provided ({voxel_type }) is not compatible with the "\
                              "number of component per voxel.")
 
-# For now, brain region names are taken from Allen api
+def AppendProvenancetoDescription(provenances, module_tag):
+    """
+    Check if the input provenance is coherent with the module_tag. If no error is raised, 
+    construct and return a description string displaying the Atlas pipeline module used and the 
+    version found in 'provenances'.
+    
+    Parameters:
+        provenances : input string containing the Atlas pipeline module used and its version.
+        module_tag : string flag indicating which Atlas pipeline module should be used.
+    
+    Returns:
+        prov_description : description string displaying the module and the version 
+    corresponding to the input 'provenances' tag.
+    """
+    module_found = False
+    for provenance in provenances:
+        try:
+            module, module_version = provenance.split(":", 1)
+            app, version = module_version.split("version ", 1)
+            # if version[-1] == ",":
+            #     version = version[:-1]
+            if module_tag in module:
+                prov_description = f"Generated in the Atlas Pipeline by the module '{module}' "\
+                                   f"version {version}."
+                module_found = True
+        except ValueError:
+            raise ValueError
+    if not module_found:
+        raise ValueError(f"Input 'provenance' string '{provenance}' does not contain the right "\
+                         f"module name. The correct module should contain {module_tag} in his name.")
+    return prov_description
+
+
 def getBrainRegionNameAllen(region_id):
+    """
+    Get from the Allen Mouse Brain Atlas API (from the Allen Institute for Brain Science, AIBS) 
+    the region name corresponding to a region ID.
+    
+    Parameters:
+        region_id : input mouse brain region identifier (integer).
+    
+    Returns:
+        brain_region_info["name"] : name of the region with region_id as identifier (string).
+    """
     url_base = "http://api.brain-map.org/api/v2/data/Structure/"
     response = requests.get(f"{url_base}{str(region_id)}")
     response_parsed = json.loads(response.text)
@@ -49,20 +102,51 @@ def getBrainRegionNameAllen(region_id):
 
 
 def getHierarchyContent(input_hierarchy, config_content, hierarchy_tag):
+    """
+    If present, return the right hierarchy json file corresponding to the hierarchy_tag. If not, 
+    raises an error.
     
+    Parameters:
+        input_hierarchy : path to the hierarchy json file containing brain regions hierarchy.
+        config_content : content of the configuration yaml file containing the names and paths 
+                         of the atlas-pipeline generated datasets.
+        hierarchy_tag : string flag indicating the hierarchy json file used.
+    
+    Returns:
+        hierarchy_path : path to the right hierarchy json file contained in config_content.
+    """
     hierarchy_path = None
     try: 
         for hierarchy_file in input_hierarchy:
             if hierarchy_file == config_content["GeneratedHierarchyJson"][hierarchy_tag]:
                 hierarchy_path = hierarchy_file
     except KeyError: 
+        raise KeyError 
+    if not hierarchy_path:
         raise KeyError(f"The hierarchy files in input do not contain the right one. The correct "\
                        f"hierarchy {config_content['GeneratedHierarchyJson'][hierarchy_tag]} "\
                        "is missing.")
 
     return hierarchy_path
 
-def getBrainRegionName(region_id, hierarchy_path, flat_tree: dict):
+def getBrainRegionName(region_id, hierarchy_path, flat_tree: dict = None):
+    """
+    Search and return the region name corresponding to the input region identifier in the input 
+    hierarchy file. In order to do this, an array tree structure will be indexed as a tree 
+    structure from the brain region hierarchy file nested structure. This hierarchy tree is 
+    return as well to be reused the next time this function is called.
+    
+    Parameters:
+        region_id : input mouse brain region identifier (integer).
+        hierarchy_path : path to the hierarchy json file containing brain regions hierarchy.
+        flat_tree : the eventual hierarchy tree array indexed from the hierarchy file nested 
+                    content.
+    
+    Returns:
+        region_name : List of one or multiple Resource object composed of attached input file and 
+        their set of properties.
+        hierarchy: hierarchy tree array indexed from the hierarchy file nested content.
+    """
     region_name = None
     region_id = int(region_id)
     if not flat_tree:
@@ -100,44 +184,73 @@ def getBrainRegionName(region_id, hierarchy_path, flat_tree: dict):
     except KeyError:
         raise KeyError(f"Region name corresponding to id '{region_id}' is not found in the "\
                        f"hierarchy json file ({hierarchy_path}).")
-        region_name = getBrainRegionNameAllen(region_id)
+        #region_name = getBrainRegionNameAllen(region_id) #if no resultat in the hierarchy file
 
     return region_name, hierarchy
 
 
-# Only used by push-nrrd
-def getExtraValues (resource, extra_keys_values):
+# # Not used
+# def getExtraValues (resource, extra_keys_values):
+#     """
     
-    extra_informations = {}
-    for t in extra_keys_values:
-        extra_informations[t[0]] = t[1]
-    resource.extra_informations = extra_informations
+#     Parameters:
+#         resource : Resource object defined by a properties payload linked to a file.
+#         extra_keys_values : 
     
-    return resource
+#     Returns:
+#         resource : 
+#     """
+#     extra_informations = {}
+#     for t in extra_keys_values:
+#         extra_informations[t[0]] = t[1]
+#     resource.extra_informations = extra_informations
+    
+#     return resource
 
-# Multiple contributors not handled yet
 def addContribution(forge, resource):
+    """
+    Create and return a Contribution Resource from the user informations extracted from its token. 
+    To do this, the user Person Resource identifier is retrieved from Nexus if it exists 
+    otherwise create a Person Resource with the user informations.
+    Parameters:
+        forge : instantiated and configured forge object.
+        resource : Resource object defined by a properties payload linked to a file.
+    
+    Returns:
+        contribution : Resource object of Contribution type. Constructed from the user 
+        informations.
+    """
     token_info = jwt.decode(forge._store.token, options={'verify_signature': False})
     #print(f"TOKEN: {token_info}")
-    agent_name = token_info["name"]
-    agent_family_name = token_info["family_name"]
-    agent_given_name = token_info["given_name"]
-    agent_email = token_info["email"]
-    agent_id = forge.resolve(agent_family_name, target="agents", scope = "agent", type="Person")
-    if not agent_id:
-        print(f"Note: The agent {agent_name} {agent_family_name} extracted from the user token "\
-              "does not correspond to an agent registered in the 'agents' project in Nexus.")
-        contribution = Resource(
-            type = "Person", 
-            name = agent_name,
-            familyName = agent_family_name,
-            givenName = agent_given_name
+    user_name = token_info["name"]
+    user_family_name = token_info["family_name"]
+    user_given_name = token_info["given_name"]
+    user_email = token_info["email"]
+    user_id = forge.resolve(user_family_name, target="agents", scope = "agent", type="Person")
+    if not user_id:
+        print(f"Note: The user {user_name} {user_family_name} extracted from the user token "\
+              "does not correspond to an agent registered in the 'agents' project in Nexus.\n"\
+              "Thus, a Person-type resource will be created with user's information and added "\
+              "as contributor in the dataset payload")
+        contributor = Resource(
+            type = ["Person"], #"Agent"
+            name = user_name,
+            familyName = user_family_name,
+            givenName = user_given_name
             )
-        if agent_email:
-            contribution.email = agent_email
+        if user_email:
+            contributor.user_email = user_email
+        try:
+            print("Registering the user in Nexus as a Person-type resource...")
+            forge.register(contributor, "https://neuroshapes.org/dash/person")
+            user_id = contributor.id
+        except Exception as e:
+            raise Exception(f"Error when registering the resource. {e}")    
     else:
-        if isinstance(agent_id, list):
+        #If multiple agents have the same family_name
+        if isinstance(user_id, list):
+            #TO DO, or wait for future resolver update
             pass
-        contribution = Resource(type = "Contribution", agent = agent_id)
+    contribution = Resource(type = "Contribution", agent = contributor)
     
     return contribution
