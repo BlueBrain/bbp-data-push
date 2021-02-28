@@ -210,7 +210,7 @@ def getBrainRegionName(region_id, hierarchy_path, flat_tree: dict = None):
 def addContribution(forge, resource):
     """
     Create and return a Contribution Resource from the user informations extracted from its token. 
-    To do this, the user Person Resource identifier is retrieved from Nexus if it exists 
+    To do this, the user Person Resource identifier is retrieved from Nexus if it exists, 
     otherwise create a Person Resource with the user informations.
     Parameters:
         forge : instantiated and configured forge object.
@@ -230,27 +230,41 @@ def addContribution(forge, resource):
     if not user_id:
         print(f"Note: The user {user_name} {user_family_name} extracted from the user token "\
               "does not correspond to an agent registered in the 'agents' project in Nexus.\n"\
-              "Thus, a Person-type resource will be created with user's information and added "\
-              "as contributor in the dataset payload")
-        contributor = Resource(
-            type = ["Person"], #"Agent"
-            name = user_name,
-            familyName = user_family_name,
-            givenName = user_given_name
-            )
-        if user_email:
-            contributor.user_email = user_email
+              f"Searching if the user is registered in '{forge._store.bucket}'...")
         try:
-            print("Registering the user in Nexus as a Person-type resource...")
-            forge.register(contributor, "https://neuroshapes.org/dash/person")
-            user_id = contributor.id
+            p = forge.paths("Dataset")
+            user_resource = forge.search(p.name == user_name, limit=1)
         except Exception as e:
-            raise Exception(f"Error when registering the resource. {e}")    
+            raise Exception(f"Error when searching the user Person Resource. {e}")
+        
+        if user_resource:
+            print("A Person Resource with this user name has been found in the project. It "\
+                  "will be used for the contribution section")
+            contributor = user_resource[0]
+        else:
+            print("No Person Resources with this user name have been found in the project. "\
+                  "Thus, a Person-type resource will be created with user's information and "\
+                  "added as contributor in the dataset payload")
+            contributor = Resource(
+                type = ["Person"], #"Agent"
+                name = user_name,
+                familyName = user_family_name,
+                givenName = user_given_name
+                )
+            if user_email:
+                contributor.user_email = user_email
+            try:
+                print("Registering the user in Nexus as a Person-type resource...")
+                forge.register(contributor, "https://neuroshapes.org/dash/person")
+                user_id = contributor.id
+            except Exception as e:
+                raise Exception(f"Error when registering the resource. {e}")    
     else:
         #If multiple agents have the same family_name
         if isinstance(user_id, list):
             #TO DO, or wait for future resolver update
             pass
+        contributor = user_id
     contribution = Resource(type = "Contribution", agent = contributor)
     
     return contribution

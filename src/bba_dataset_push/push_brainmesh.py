@@ -43,6 +43,17 @@ def createMeshResources(forge, inputpath, config_path, input_hierarchy, provenan
         L.error(f'KeyError: {error}. The key ["GeneratedDatasetPath"]["MeshFile"] is not found in the'\
                 'push_dataset_config file')
         exit(1)
+        
+    #Constants
+    spatial_unit = 'µm'
+    atlas_reference_system_id = 'https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system'
+    id_atlas_release = 'https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda'
+    # Link to the spatial ref system
+    isRegisteredIn = {
+        "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
+        "@id": atlas_reference_system_id
+    }
+    
     # Constructs the Resource properties payloads accordingly to the input atlas Mesh datasets
     for filepath in inputpath:
         flat_tree = {}
@@ -99,12 +110,21 @@ def createMeshResources(forge, inputpath, config_path, input_hierarchy, provenan
             L.error("❌ ", meshpath, " Name not matching a region.")
             exit(1)
         else:
-            #Constants
-            spatial_unit = 'µm'
-            atlas_reference_system_id = 'https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system'        
             # We create a 1st payload that will be recycled in case of multiple files to push
             content_type = f"application/{extension}"
             distribution_file = forge.attach(meshpath, content_type)
+            
+            brainLocation = {
+                "brainRegion": {
+                    "@id": f"mba:{region_id}",
+                    "label": region_name
+                },
+            
+                "atlasSpatialReferenceSystem": {
+                    "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
+                    "@id": atlas_reference_system_id
+                }
+            }
             if isMeshSplit:
                 mesh_description = f"Brain region mesh - {region_name.title()} (ID: {region_id}). "\
                     "It is based in the parcellation volume resulting of the hybridation between CCFv2 "\
@@ -121,26 +141,7 @@ def createMeshResources(forge, inputpath, config_path, input_hierarchy, provenan
                 except ValueError as e:
                     L.error(f"Value Error in provenance content. {e}")
                     exit(1)
-            
-            id_atlas_release = 'https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda'
-            # Add the link to the spatial ref system
-            isRegisteredIn = {
-                "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
-                "@id": atlas_reference_system_id
-            }
-                
-            brainLocation = {
-                "brainRegion": {
-                    "@id": f"mba:{region_id}",
-                    "label": region_name
-                },
-        
-                "atlasSpatialReferenceSystem": {
-                    "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
-                    "@id": atlas_reference_system_id
-                }
-            }
-                
+                            
             mesh_resource = Resource(
                 type = "BrainParcellationMesh", #["Mesh", ]
                 name = f"{region_name.title()} Mesh",

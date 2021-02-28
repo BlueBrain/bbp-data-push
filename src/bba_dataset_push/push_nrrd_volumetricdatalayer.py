@@ -46,19 +46,48 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
                 'found in the push_dataset_config file.')
         exit(1)
     
+    resource_type = 'VolumetricDataLayer'
+        
     # Dictionary of properties corresponding to the different possible Atlas volumetric dataset
     description_hybrid = f"Hybrid annotation volume from ccfv2 and ccfv3 at {voxels_resolution} "\
                          "microns"
     description_split = f"{description_hybrid} with the isocortex layer 2 and 3 split. The "\
                         f"resolution is {voxels_resolution} microns."
+    derivation_hybrid = [
+            {
+            "@type": "Derivation",
+            "description": "The ccfv3 (2017) has smoother region borders, without jaggies. "\
+                           "The enveloppe or most regions was used in this volume",
+            "entity": {
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/025eef5f-2a9a-4119-b53f-338452c72f2a"
+                }
+            },
+            {
+            "@type": "Derivation",
+            "description": "The ccfv2 (2011) has a finer granularity than ccfv3 in term of "\
+                           "leaf nodes, these were imported in this volume",
+            "entity": {
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/7b4b36ad-911c-4758-8686-2bf7943e10fb"
+                }
+            }
+        ],
+    derivation_split = {
+        "@type": "Derivation",
+        "description": "The separation between layer 2 and layer 3 was performed on the source "\
+                       "volume.",
+        "entity": {
+        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/7b2f498d-a20f-4992-8410-d8b44ec72c9a"
+        }
+    },
     volumetric_data = {
                         "parcellations":{
                             f"{volumetric_path['annotation_hybrid']}": 
                                 ['combine-annotations', f"{description_hybrid}. The version "\
                                  "replaces the leaf regions in ccfv3 with the leaf region of "\
-                                 "ccfv2, which have additional levels of hierarchy."],
+                                 "ccfv2, which have additional levels of hierarchy.",
+                                 derivation_hybrid],
                             f"{volumetric_path['annotation_l23split']}": 
-                                ['split-isocortex-layer-23', description_split]
+                                ['split-isocortex-layer-23', description_split, derivation_split]
                             },
                         "cell_densities":{
                             f"{volumetric_path['cell_densities']}":
@@ -67,10 +96,37 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
                                 ['inhibitory-neuron-densities', description_hybrid]
                             }
                         }
+    atlas_reference_system_id = "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system"
+    #Link to Atlas Release: Allen Mouse CCF v2-v3 hybrid
+    id_atlas_release = 'https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda'
+    region_id = 997 #default: 997 --> root, whole brain
+    region_name = "root"
+
+    # Link to the spatial ref system
+    isRegisteredIn = {
+        "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
+        "@id": atlas_reference_system_id
+    }
+    brainLocation = {
+        "brainRegion": {
+            "@id": f"mba:{region_id}",
+            "label": region_name
+        },
+    
+        "atlasSpatialReferenceSystem": {
+            "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
+            "@id": atlas_reference_system_id
+        }
+    }
+    #Config constants
+    default_sampling_period = 30
+    default_sampling_time_unit = 'ms'
+    spatial_unit = 'µm'
+
     # Constructs the Resource properties payloads with the dictionary of properties
-    resource_type = 'VolumetricDataLayer'
     for filepath in inputpath:
         isFolder = False
+        derivation = False
         if os.path.isdir(filepath) and filepath in volumetric_data["cell_densities"].keys():
             isFolder = True
             directory = filepath
@@ -98,6 +154,7 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
                 resource_types = [resource_type, 'BrainParcellationDataLayer']
                 description = f"{volumetric_data['parcellations'][filepath][1]}"
                 module_tag = volumetric_data["parcellations"][filepath][0]
+                derivation = volumetric_data["parcellations"][filepath][2]
                 
                 # this is going ot be the "name" of the resource
                 filename_noext = os.path.splitext(os.path.basename(filepath))[0]
@@ -117,29 +174,6 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
                 L.error(f"ValueError in provenance content. {e}")
                 exit(1)
         
-        atlas_reference_system_id = "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system"
-        id_atlas_release = 'https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda'
-        region_id = 997 #default: 997 --> root, whole brain
-        region_name = "root"
-    
-        # Add the link to the spatial ref system
-        isRegisteredIn = {
-            "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
-            "@id": atlas_reference_system_id
-        }
-            
-        brainLocation = {
-            "brainRegion": {
-                "@id": f"mba:{region_id}",
-                "label": region_name
-            },
-    
-            "atlasSpatialReferenceSystem": {
-                "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
-                "@id": atlas_reference_system_id
-            }
-        }
-        
         # Parsing the header of the NRRD file
         header = None
         try:
@@ -148,12 +182,7 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
             L.error(f"NrrdError: {e}")
             L.info("Aborting pushing process.") #setLevel(logging.INFO)
             exit(1)
-        
-        #Constants
-        default_sampling_period = 30
-        default_sampling_time_unit = 'ms'
-        spatial_unit = 'µm'
-        
+
         config = {
             "file_extension": file_extension,
             "sampling_space_unit": spatial_unit,
@@ -175,6 +204,9 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
         
         nrrd_resource = addNrrdProps(nrrd_resource, header, config, voxel_type)
         
+        if derivation:
+            nrrd_resource.derivation = derivation
+        
         try:
             nrrd_resource.contribution = addContribution(forge, nrrd_resource)
         except Exception as e:
@@ -182,7 +214,7 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
             exit(1)
         
         dataset = [nrrd_resource]
-        
+                
         # If the input is a folder containing the cell density file to push
         if isFolder:
             for f in range(1,len(files_nrrd)): #start at the 2nd file

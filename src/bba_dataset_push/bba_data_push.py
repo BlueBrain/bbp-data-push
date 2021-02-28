@@ -23,7 +23,7 @@ def _push_to_Nexus(dataset, forge, schema_id):
     try:
         print("-------------- Registration & Validation Status ---------------")
         L.info("Registering the constructed payload along the input dataset in Nexus...")
-        forge.register(dataset[-1], schema_id)
+        forge.register(dataset, schema_id)
         L.info(f"<<Resource synchronization status>>: {str(dataset[-1]._synchronized)}")
     except Exception as e:
         L.error(f"Error when registering resource. {e}")
@@ -33,7 +33,8 @@ def _push_to_Nexus(dataset, forge, schema_id):
 @click.group()
 @click.version_option(__version__)
 @click.option('-v', '--verbose', count=True)
-@click.option('--forge_config_file', default = "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/notebooks/use-cases/prod-forge-nexus.yml", help='The configuration file used to  instantiate the Forge') #type=click.Path(exists=True)
+@click.option('--forge_config_file', default = "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/notebooks/use-cases/prod-forge-nexus.yml", help="Path to the configuration file "\
+              "used to  instantiate the Forge") #type=click.Path(exists=True)
 @click.option("--nexus_env",  default="prod", help="Nexus environment to use, can be 'dev',"\
               "'staging', 'prod' or the URL of a custom env")
 @click.option("--nexus_org",  default='bbp', help="The Nexus organization to push into")

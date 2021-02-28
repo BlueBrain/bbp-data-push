@@ -16,8 +16,8 @@ L = createLogHandler(__name__, "./push_cellrecord.log")
 
 def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, provenances):
     """
-    Construct the input sonata hdf5 dataset property payloads that will be push with the c
-    orresponding files into Nexus as a resource.
+    Construct the input sonata hdf5 dataset property payloads that will be push with the 
+    corresponding files into Nexus as a resource.
     
     Parameters:
         forge : instantiated and configured forge object.
@@ -55,6 +55,30 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
         "cell_type": "Label of the cell type",
         "region_id": "Region identifiers (AIBS Structure IDs)"
         }
+
+    # Constants
+    spatial_unit = 'µm'
+    atlas_reference_system_id = 'https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system'
+    id_atlas_release = 'https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda'
+    region_id = 997  # default: 997 --> root, whole brain
+    region_name = "root"
+    # Link to the spatial ref system
+    isRegisteredIn = {
+        "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
+        "@id": atlas_reference_system_id
+    }
+        
+    brainLocation = {
+        "brainRegion": {
+            "@id": f"mba:{region_id}",
+            "label": region_name
+        },
+
+        "atlasSpatialReferenceSystem": {
+            "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
+            "@id": atlas_reference_system_id
+        }
+    }
     for filepath in inputpath:
         if filepath == sonata_path["cell_positions_hybrid"]:
             atlas_description = "ccfv2-ccfv3 Hybrid annotation volume"
@@ -68,23 +92,17 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
                   "dataset defined in the CellPositionFile section of the 'generated dataset' "\
                   "configuration file")
             exit(1)
-        
+
         # We create a 1st payload which will serve as template for the others
         filename_noext = os.path.splitext(os.path.basename(filepath))[0]
         #file_extension = os.path.splitext(os.path.basename(filepath))[1][1:] if needed
         
-        #Constants
-        spatial_unit = 'µm'
-        atlas_reference_system_id = 'https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system' 
-        id_atlas_release = 'https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda'
-        region_id = 997 #default: 997 --> root, whole brain
-        region_name = "root"
         # We create a 1st payload that will be recycled in case of multiple files to push
         
         description = f"Sonata .h5 file storing the 3D cell positions and orientations of the "\
                       f"{atlas_description} (spatial resolution of {voxels_resolution} "\
                       f"{spatial_unit})."
-        
+
         if provenances[0]:
             try:
                 prov_description = AppendProvenancetoDescription(provenances, 
@@ -93,31 +111,13 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
             except ValueError as e:
                 L.error(f"Value Error in provenance content. {e}")
                 exit(1)
-        
-        # Add the link to the spatial ref system
-        isRegisteredIn = {
-            "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
-            "@id": atlas_reference_system_id
-        }
-            
-        brainLocation = {
-            "brainRegion": {
-                "@id": f"mba:{region_id}",
-                "label": region_name
-            },
-    
-            "atlasSpatialReferenceSystem": {
-                "@type": ["BrainAtlasSpatialReferenceSystem","AtlasSpatialReferenceSystem"],
-                "@id": atlas_reference_system_id
-            }
-        }
         try:
             cell_collections = h5py.File(filepath, 'r')
         except OSError as e:
             L.error(f"OSError when trying to open the input file {filepath}. {e}")
             L.info("Aborting pushing process.") #setLevel(logging.INFO)
             exit(1)
-        
+
         recordMeasure = []
         try:
             Datasets = cell_collections['nodes']["atlas_cells"]['0']
@@ -138,10 +138,19 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
             L.error(f"KeyError during the information extraction of the dataset in the input "\
                     f"file {filepath}. {e}")
             exit(1)
-        
-        #content_type = "application/" + extension
-        distribution_file = forge.attach(filepath) #content_type
-        
+
+        try:
+            numberOfRecords = {
+                "@type": "xsd:long", 
+                "@value": cell_collections.get('/nodes/atlas_cells/0/x').shape[0]
+                }
+        except KeyError as e:
+            L.error(f"KeyError during the information extraction of the dataset in the input "\
+                    f"file {filepath}. {e}")
+            exit(1)
+
+        # add personalised content_type = "application/" + extension (according to mime convention)
+        distribution_file = forge.attach(filepath)
         cellrecord_resource = Resource(
             type = "CellRecordSeries",
             name = filename_noext.replace("_", " ").title(),
@@ -150,9 +159,10 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
             isRegisteredIn = isRegisteredIn,
             brainLocation = brainLocation,
             distribution = distribution_file,
-            recordMeasure = recordMeasure
+            recordMeasure = recordMeasure,
+            numberOfRecords = numberOfRecords,
+            bufferEncoding = "binary"
             )
-        
         #name = f"Sonata cell positions orientations {atlas_alias} {voxels_resolution} f"{spatial_unit}"
         #resource.fileExtension = config["file_extension"]
         try:
@@ -160,7 +170,7 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
         except Exception as e:
             L.error(f"Error: {e}")
             exit(1)
-            
+
         dataset.append(cellrecord_resource)
-    
+
     return dataset
