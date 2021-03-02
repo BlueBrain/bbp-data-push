@@ -131,7 +131,6 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
                               }
                     if Dataset == "cell_type":
                         cell_types = Datasets["@library"]["cell_type"]
-                        print(cell_types)
                         if all(isinstance(x, bytes) for x in cell_types):
                             cell_types = [s.decode("UTF-8") for s in cell_types]
                         elif any(isinstance(x, bytes) for x in cell_types):
