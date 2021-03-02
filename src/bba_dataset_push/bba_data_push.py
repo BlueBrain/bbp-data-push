@@ -6,7 +6,9 @@ Link to BBP Atlas pipeline confluence documentation: https://bbpteam.epfl.ch/pro
 import logging
 import click
 from kgforge.core import KnowledgeGraphForge
+from kgforge.version import __version__
 
+print(__version__)
 from bba_dataset_push.push_nrrd_volumetricdatalayer import createVolumetricResources
 from bba_dataset_push.push_brainmesh import createMeshResources
 from bba_dataset_push.push_sonata_cellrecordseries import createCellRecordResources
@@ -18,17 +20,15 @@ logging.basicConfig(level=logging.INFO)
 
 def _push_to_Nexus(dataset, forge, schema_id):
 
-    print("----------------------- Resource content ----------------------")
-    print(dataset[-1])
+    L.info("\n----------------------- Resource content ----------------------" \
+           f"\n{dataset[-1]}")
     try:
-        print("-------------- Registration & Validation Status ---------------")
-        L.info("Registering the constructed payload along the input dataset in Nexus...")
+        L.info("\n-------------- Registration & Validation Status ---------------" \
+               "\nRegistering the constructed payload along the input dataset in Nexus...")
         forge.register(dataset, schema_id)
         L.info(f"<<Resource synchronization status>>: {str(dataset[-1]._synchronized)}")
     except Exception as e:
-        L.error(f"Error when registering resource. {e}")
-    print("---------------------------------------------------------------")
-            
+        L.error(f"Error when registering resource. {e}")            
 
 @click.group()
 @click.version_option(__version__)
@@ -67,7 +67,7 @@ def initialize_pusher_cli(ctx, verbose, forge_config_file, nexus_env, nexus_org,
     bucket = f"{nexus_org}/{nexus_proj}"
     try:
         token = open(nexus_token_file, 'r').read().strip()
-        forge = KnowledgeGraphForge(forge_config_file, endpoint = nexus_env, 
+        forge = KnowledgeGraphForge(forge_config_file, endpoint = nexus_env,
                                            bucket = bucket, token = token)
     except Exception as e:
         L.error(f"Error when initializing the forge. {e}")
@@ -99,16 +99,16 @@ def push_volumetric(ctx, dataset_path, voxels_resolution, config, provenances):
     """
     L.info("Filling the metadata of the volumetric payloads...")
     dataset = createVolumetricResources(
-                            ctx.obj['forge'], 
+                            ctx.obj['forge'],
                             dataset_path, 
                             voxels_resolution,
                             config,
                             provenances
                             )
     if dataset:
-        _push_to_Nexus(dataset, 
-                        ctx.obj['forge'],
-                        "https://neuroshapes.org/dash/volumetricdatalayer")
+        _push_to_Nexus(dataset,
+                       ctx.obj['forge'],
+                       "https://neuroshapes.org/dash/volumetricdatalayer")
 
 @initialize_pusher_cli.command()
 @base_ressource
@@ -122,16 +122,16 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
     """
     L.info("Filling the metadata of the mesh payloads...")     
     dataset = createMeshResources(
-                            ctx.obj['forge'], 
+                            ctx.obj['forge'],
                             dataset_path,
                             config,
                             hierarchy_path,
                             provenances
                             )
     if dataset:    
-        _push_to_Nexus(dataset, 
-                        ctx.obj['forge'],
-                        "https://neuroshapes.org/dash/brainparcellationmesh")
+        _push_to_Nexus(dataset,
+                       ctx.obj['forge'],
+                       "https://neuroshapes.org/dash/brainparcellationmesh")
 
 
 @initialize_pusher_cli.command()
@@ -141,21 +141,21 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
 @click.pass_context
 @log_args(L)
 def push_cellrecords(ctx, dataset_path, voxels_resolution, config, provenances):
-    """Create a Mesh resource payload and push it along with the corresponding brain .OBJ mesh 
-    folder input dataset files into Nexus.\n
+    """Create a CellRecordSerie resource payload and push it along with the corresponding 
+    Sonata hdf5 file input dataset files into Nexus.\n
     """
     L.info("Filling the metadata of the CellRecord payloads...")     
     dataset = createCellRecordResources(
-                            ctx.obj['forge'], 
+                            ctx.obj['forge'],
                             dataset_path,
                             voxels_resolution,
                             config,
                             provenances
                             )
     if dataset:    
-        _push_to_Nexus(dataset, 
-                        ctx.obj['forge'],
-                        "https://neuroshapes.org/dash/cellrecordseries")
+        _push_to_Nexus(dataset,
+                       ctx.obj['forge'],
+                       "https://neuroshapes.org/dash/cellrecordseries")
 
 
 

@@ -72,7 +72,8 @@ def AppendProvenancetoDescription(provenances, module_tag):
                                    f"version {version}."
                 module_found = True
         except ValueError:
-            raise ValueError
+            raise ValueError("the provided provenance string argument does not have the form "\
+                             "'<module_name>:<anything> <version>'")
     if not module_found:
         raise ValueError(f"Input 'provenance' string '{provenance}' does not contain the right "\
                          f"module name. The correct module should contain {module_tag} in his name.")
@@ -221,30 +222,36 @@ def addContribution(forge, resource):
         informations.
     """
     token_info = jwt.decode(forge._store.token, options={'verify_signature': False})
-    #print(f"TOKEN: {token_info}")
     user_name = token_info["name"]
     user_family_name = token_info["family_name"]
     user_given_name = token_info["given_name"]
     user_email = token_info["email"]
-    user_id = forge.resolve(user_family_name, target="agents", scope = "agent", type="Person")
+    log_info = []
+    try:
+        user_id = forge.resolve(user_family_name, target="agents", scope = "agent", type="Person")
+    except Exception as e:
+        raise Exception("Error when resolving the Person Resource in the agent bucket project. "\
+                        f"{e}")
     if not user_id:
-        print(f"Note: The user {user_name} {user_family_name} extracted from the user token "\
-              "does not correspond to an agent registered in the 'agents' project in Nexus.\n"\
-              f"Searching if the user is registered in '{forge._store.bucket}'...")
+        log_info.append(f"\nThe user {user_name} extracted from the user token did not "\
+                        "correspond to an agent registered in the 'agents' project in Nexus.")
         try:
             p = forge.paths("Dataset")
             user_resource = forge.search(p.name == user_name, limit=1)
         except Exception as e:
-            raise Exception(f"Error when searching the user Person Resource. {e}")
+            raise Exception("Error when searching the user Person Resource in the destination "\
+                            f"project '{forge._store.bucket}'. {e}")
         
         if user_resource:
-            print("A Person Resource with this user name has been found in the project. It "\
-                  "will be used for the contribution section")
+            log_info.append("A Person Resource with this user name has been found in the "\
+                            f"project '{forge._store.bucket}'. It will be used for the "\
+                            "contribution section.")
             contributor = user_resource[0]
         else:
-            print("No Person Resources with this user name have been found in the project. "\
-                  "Thus, a Person-type resource will be created with user's information and "\
-                  "added as contributor in the dataset payload")
+            log_info.append("No Person Resources with this user name have been found in the "\
+                            f"'{forge._store.bucket}' project either. Thus, a Person-type "\
+                            "resource will be created with user's information and added as "\
+                            "contributor in the dataset payload.")
             contributor = Resource(
                 type = ["Person"], #"Agent"
                 name = user_name,
@@ -254,11 +261,11 @@ def addContribution(forge, resource):
             if user_email:
                 contributor.user_email = user_email
             try:
-                print("Registering the user in Nexus as a Person-type resource...")
                 forge.register(contributor, "https://neuroshapes.org/dash/person")
                 user_id = contributor.id
             except Exception as e:
-                raise Exception(f"Error when registering the resource. {e}")    
+                raise Exception("Error when registering the user Person-type resource into "\
+                                f"Nexus. {e}")    
     else:
         #If multiple agents have the same family_name
         if isinstance(user_id, list):
@@ -267,4 +274,4 @@ def addContribution(forge, resource):
         contributor = user_id
     contribution = Resource(type = "Contribution", agent = contributor)
     
-    return contribution
+    return contribution, log_info

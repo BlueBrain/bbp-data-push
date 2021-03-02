@@ -40,7 +40,7 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
         sonata_path = config_content["GeneratedDatasetPath"]["CellPositionFile"]
     except KeyError as error:
         L.error(f'KeyError: {error}. The key ["GeneratedDatasetPath"]["CellPositionFile"] is "\
-                "not found in the push_dataset_config file')
+                "not found in the input datasets configuration file')
         exit(1)
     # Constructs the Resource properties payloads accordingly to the input atlas Mesh datasets
     dataset = []
@@ -89,7 +89,7 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
             #atlas_alias = "Hybrid ccfv2v3 l23split" #for the name
         else:
             L.error(f"Error: The '{filepath}' folder do not correspond to a Sonata .h5 file "\
-                  "dataset defined in the CellPositionFile section of the 'generated dataset' "\
+                  "dataset defined in the CellPositionFile section of the input datasets "\
                   "configuration file")
             exit(1)
 
@@ -130,9 +130,18 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
                               "name": f"{Dataset}"
                               }
                     if Dataset == "cell_type":
+                        cell_types = Datasets["@library"]["cell_type"]
+                        print(cell_types)
+                        if all(isinstance(x, bytes) for x in cell_types):
+                            cell_types = [s.decode("UTF-8") for s in cell_types]
+                        elif any(isinstance(x, bytes) for x in cell_types):
+                            L.error("ValueError: @library/cell_type contains string and bytes "\
+                                    "(literal string). The content need to be uniform.")
+                            exit(1)
                         Measure_payload["label"] = {
-                            f"{i}" : Datasets["@library"]["cell_type"][i] 
-                            for i in range(0, len(Datasets["@library"]["cell_type"]))}
+                            f"{i}" : cell_types[i] 
+                            for i in range(0, len(cell_types))
+                            }
                     recordMeasure.append(Measure_payload)
         except KeyError as e:
             L.error(f"KeyError during the information extraction of the dataset in the input "\
@@ -166,7 +175,8 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
         #name = f"Sonata cell positions orientations {atlas_alias} {voxels_resolution} f"{spatial_unit}"
         #resource.fileExtension = config["file_extension"]
         try:
-            cellrecord_resource.contribution = addContribution(forge, cellrecord_resource)
+            cellrecord_resource.contribution, log_info = addContribution(forge, cellrecord_resource)
+            L.info('\n'.join(log_info))
         except Exception as e:
             L.error(f"Error: {e}")
             exit(1)

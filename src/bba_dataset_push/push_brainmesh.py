@@ -40,8 +40,8 @@ def createMeshResources(forge, inputpath, config_path, input_hierarchy, provenan
     try:
         mesh_path = config_content["GeneratedDatasetPath"]["MeshFile"]
     except KeyError as error:
-        L.error(f'KeyError: {error}. The key ["GeneratedDatasetPath"]["MeshFile"] is not found in the'\
-                'push_dataset_config file')
+        L.error(f"KeyError: {error}. The key ['GeneratedDatasetPath']['MeshFile'] is not found "\
+                "in the input datasets configuration file")
         exit(1)
         
     #Constants
@@ -154,7 +154,8 @@ def createMeshResources(forge, inputpath, config_path, input_hierarchy, provenan
                 )
 
             try:
-                mesh_resource.contribution = addContribution(forge, mesh_resource)
+                mesh_resource.contribution, log_info = addContribution(forge, mesh_resource)
+                L.info('\n'.join(log_info))
             except Exception as e:
                 L.error(f"Error: {e}")
                 exit(1)

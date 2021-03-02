@@ -7,7 +7,7 @@ def createLogHandler(logger_name, log_file:str):
     logger = logging.getLogger(logger_name)
     handler = logging.FileHandler(log_file)
     formatter = logging.Formatter("[%(asctime)s] - %(name)s - {%(filename)s:%(lineno)d} "\
-                                          "- %(levelname)s: %(message)s")  
+                                  "- %(levelname)s: %(message)s")  
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     
@@ -30,11 +30,9 @@ def log_args(logger, handler_path=None):
         def wrapper(*args, **kw):
             file_handler = logging.FileHandler(logger_path)
             logger.setLevel(logging.INFO)
-            formatter = logging.Formatter("[%(asctime)s] - %(name)s: %(message)s")
             logger.addHandler(file_handler)
-            logger.info("\n=====================================================================")
-            file_handler.setFormatter(formatter)
-            logger.info(f"({file_.__name__}) args: {kw}")
+            logger.info(f"\n================= {file_.__name__} =================" \
+                        f"\nArguments: {kw}\n")
             formatter = logging.Formatter("[%(asctime)s] - %(name)s - {%(filename)s:%(lineno)d} "\
                                           "- %(levelname)s: %(message)s")  
             file_handler.setFormatter(formatter)

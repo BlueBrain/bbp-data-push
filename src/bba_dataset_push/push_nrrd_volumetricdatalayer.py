@@ -42,8 +42,8 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
     try:
         volumetric_path = config_content["GeneratedDatasetPath"]["VolumetricFile"]
     except KeyError as error:
-        L.error(f'KeyError: {error}. The key ["GeneratedDatasetPath"]["VolumetricFile"] is not '\
-                'found in the push_dataset_config file.')
+        L.error(f"KeyError: {error}. The key ['GeneratedDatasetPath']['VolumetricFile'] is not "\
+                "found in the input datasets configuration file.")
         exit(1)
     
     resource_type = 'VolumetricDataLayer'
@@ -208,7 +208,8 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
             nrrd_resource.derivation = derivation
         
         try:
-            nrrd_resource.contribution = addContribution(forge, nrrd_resource)
+            nrrd_resource.contribution, log_info = addContribution(forge, nrrd_resource)
+            L.info('\n'.join(log_info))
         except Exception as e:
             L.error(f"Error: {e}")
             exit(1)
