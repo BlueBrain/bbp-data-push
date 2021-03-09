@@ -169,7 +169,7 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
         if provenances[0]:
             try:
                 prov_description = AppendProvenancetoDescription(provenances, module_tag)
-                description = f"{description}. {prov_description}"
+                description = f"{description} {prov_description}"
             except ValueError as e:
                 L.error(f"ValueError in provenance content. {e}")
                 exit(1)

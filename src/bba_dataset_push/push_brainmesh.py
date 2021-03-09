@@ -137,7 +137,7 @@ def createMeshResources(forge, inputpath, config_path, input_hierarchy, provenan
             if provenances[0]:
                 try:
                     prov_description = AppendProvenancetoDescription(provenances, "parcellation2mesh")
-                    mesh_description = f"{mesh_description}. {prov_description}"
+                    mesh_description = f"{mesh_description} {prov_description}"
                 except ValueError as e:
                     L.error(f"Value Error in provenance content. {e}")
                     exit(1)

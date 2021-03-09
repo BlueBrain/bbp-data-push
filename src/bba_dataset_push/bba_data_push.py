@@ -6,9 +6,7 @@ Link to BBP Atlas pipeline confluence documentation: https://bbpteam.epfl.ch/pro
 import logging
 import click
 from kgforge.core import KnowledgeGraphForge
-from kgforge.version import __version__
 
-print(__version__)
 from bba_dataset_push.push_nrrd_volumetricdatalayer import createVolumetricResources
 from bba_dataset_push.push_brainmesh import createMeshResources
 from bba_dataset_push.push_sonata_cellrecordseries import createCellRecordResources
@@ -49,12 +47,13 @@ def initialize_pusher_cli(ctx, verbose, forge_config_file, nexus_env, nexus_org,
     The Forge will enable to build and push into Nexus the metadata payload along with the input dataset.
     """
     L.setLevel((logging.WARNING, logging.INFO, logging.DEBUG)[min(verbose, 2)])
+    
     default_environments = {
     "dev": "https://dev.nexus.ocp.bbp.epfl.ch/v1",
     "staging": "https://staging.nexus.ocp.bbp.epfl.ch/v1",
     "prod": "https://bbp.epfl.ch/nexus/v1"
     }
-    L.info("Initializing the forge...")
+
     if nexus_env[-1] == '/':
         nexus_env = nexus_env[:-1]
     if nexus_env in default_environments:
@@ -64,16 +63,20 @@ def initialize_pusher_cli(ctx, verbose, forge_config_file, nexus_env, nexus_org,
     else:
         L.error(f"Error: {nexus_env} do not correspond to one of the 3 possible environment: "
                 "dev, staging, prod")
+        exit(1)
+
     bucket = f"{nexus_org}/{nexus_proj}"
     try:
         token = open(nexus_token_file, 'r').read().strip()
+        L.info("Initializing the forge...")
         forge = KnowledgeGraphForge(forge_config_file, endpoint = nexus_env,
                                            bucket = bucket, token = token)
     except Exception as e:
         L.error(f"Error when initializing the forge. {e}")
         exit(1)
+
     ctx.obj['forge'] = forge
-    
+
     close_handler(L)
 
 

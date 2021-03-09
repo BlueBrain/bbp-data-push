@@ -79,14 +79,10 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
             "@id": atlas_reference_system_id
         }
     }
+    # If multiple files and multiple Atlas
     for filepath in inputpath:
-        if filepath == sonata_path["cell_positions_hybrid"]:
-            atlas_description = "ccfv2-ccfv3 Hybrid annotation volume"
-            #atlas_alias = "Hybrid ccfv2v3" #for the name
-        elif filepath == sonata_path["cell_positions_l23split"]:
-            atlas_description = "ccfv2-ccfv3 Hybrid annotation volume with the isocortex layer "\
-                                "2 and 3 split"
-            #atlas_alias = "Hybrid ccfv2v3 l23split" #for the name
+        if filepath == sonata_path["cell_records_sonata"]:
+            atlas_description = "Mouse ccfv2-ccfv3 Hybrid annotation volume"
         else:
             L.error(f"Error: The '{filepath}' folder do not correspond to a Sonata .h5 file "\
                   "dataset defined in the CellPositionFile section of the input datasets "\
@@ -107,7 +103,7 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
             try:
                 prov_description = AppendProvenancetoDescription(provenances, 
                                                                  "positions-and-orientations")
-                description = f"{description}. {prov_description}"
+                description = f"{description} {prov_description}"
             except ValueError as e:
                 L.error(f"Value Error in provenance content. {e}")
                 exit(1)
@@ -171,8 +167,8 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
             numberOfRecords = numberOfRecords,
             bufferEncoding = "binary"
             )
-        #name = f"Sonata cell positions orientations {atlas_alias} {voxels_resolution} f"{spatial_unit}"
         #resource.fileExtension = config["file_extension"]
+
         try:
             cellrecord_resource.contribution, log_info = addContribution(forge, cellrecord_resource)
             L.info('\n'.join(log_info))

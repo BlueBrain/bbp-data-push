@@ -76,7 +76,7 @@ def AppendProvenancetoDescription(provenances, module_tag):
                              "'<module_name>:<anything> <version>'")
     if not module_found:
         raise ValueError(f"Input 'provenance' string '{provenance}' does not contain the right "\
-                         f"module name. The correct module should contain {module_tag} in his name.")
+                         f"module name. The correct module should contain {module_tag} in his name")
     return prov_description
 
 
