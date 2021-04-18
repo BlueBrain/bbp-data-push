@@ -7,14 +7,14 @@ import logging
 import click
 from kgforge.core import KnowledgeGraphForge
 
-from bba_dataset_push.push_nrrd_volumetricdatalayer import createVolumetricResources
-from bba_dataset_push.push_brainmesh import createMeshResources
-from bba_dataset_push.push_sonata_cellrecordseries import createCellRecordResources
+from bba_dataset_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
+from bba_dataset_push.push_brainmesh import create_mesh_resources
+from bba_dataset_push.push_sonata_cellrecordseries import create_cell_record_resources
 from bba_dataset_push.logging import log_args, close_handler
 from bba_dataset_push import __version__
 
-L = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+L = logging.getLogger(__name__)
 
 def _push_to_Nexus(dataset, forge, schema_id):
 
@@ -76,6 +76,7 @@ def initialize_pusher_cli(ctx, verbose, forge_config_file, nexus_env, nexus_org,
         exit(1)
 
     ctx.obj['forge'] = forge
+    ctx.obj['verbose'] = L.level
 
     close_handler(L)
 
@@ -92,21 +93,23 @@ def base_ressource(f):
 
 @initialize_pusher_cli.command()
 @base_ressource
-@click.option('--voxels_resolution', required=True, default=None, help="The Allen annotation volume "\
-              "voxels resolution in microns")
+@click.option('--voxels_resolution', required=True, help="The Allen annotation volume voxels "\
+              "resolution in microns")
 @click.pass_context
 @log_args(L)
 def push_volumetric(ctx, dataset_path, voxels_resolution, config, provenances):
     """Create a VolumetricDataLayer resource payload and push it along with the corresponding 
     volumetric input dataset files into Nexus.\n
     """
+    L.setLevel(ctx.obj['verbose'])
     L.info("Filling the metadata of the volumetric payloads...")
-    dataset = createVolumetricResources(
+    dataset = create_volumetric_resources(
                             ctx.obj['forge'],
-                            dataset_path, 
+                            dataset_path,
                             voxels_resolution,
                             config,
-                            provenances
+                            provenances,
+                            ctx.obj['verbose']
                             )
     if dataset:
         _push_to_Nexus(dataset,
@@ -123,13 +126,15 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
     """Create a Mesh resource payload and push it along with the corresponding brain .OBJ mesh 
     folder input dataset files into Nexus.\n
     """
+    L.setLevel(ctx.obj['verbose'])
     L.info("Filling the metadata of the mesh payloads...")     
-    dataset = createMeshResources(
+    dataset = create_mesh_resources(
                             ctx.obj['forge'],
                             dataset_path,
                             config,
                             hierarchy_path,
-                            provenances
+                            provenances,
+                            ctx.obj['verbose']
                             )
     if dataset:    
         _push_to_Nexus(dataset,
@@ -147,13 +152,15 @@ def push_cellrecords(ctx, dataset_path, voxels_resolution, config, provenances):
     """Create a CellRecordSerie resource payload and push it along with the corresponding 
     Sonata hdf5 file input dataset files into Nexus.\n
     """
-    L.info("Filling the metadata of the CellRecord payloads...")     
-    dataset = createCellRecordResources(
+    L.setLevel(ctx.obj['verbose'])
+    L.info("Filling the metadata of the CellRecord payloads...")
+    dataset = create_cell_record_resources(
                             ctx.obj['forge'],
                             dataset_path,
                             voxels_resolution,
                             config,
-                            provenances
+                            provenances,
+                            ctx.obj['verbose']
                             )
     if dataset:    
         _push_to_Nexus(dataset,

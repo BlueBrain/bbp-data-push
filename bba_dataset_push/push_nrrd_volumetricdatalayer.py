@@ -11,13 +11,16 @@ import numpy as np
 import nrrd
 import fnmatch
 from kgforge.core import Resource 
+from kgforge.specializations.stores.demo_store import DemoStore
 
-from bba_dataset_push.commons import getVoxelType, addContribution, AppendProvenancetoDescription
-from bba_dataset_push.logging import createLogHandler
+from bba_dataset_push.commons import (get_voxel_type, add_contribution,
+                                      append_provenance_to_description)
+from bba_dataset_push.logging import create_log_handler
 
-L = createLogHandler(__name__, "./push_volumetric.log")
+L = create_log_handler(__name__, "./push_volumetric.log")
 
-def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, provenances):
+def create_volumetric_resources(forge, inputpath: list, voxels_resolution: int, config_path,
+                              provenances: list, verbose) -> list:
     """
     Construct the input volumetric dataset property payloads that will be push with the c
     orresponding files into Nexus as a resource.
@@ -35,6 +38,8 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
         dataset : list containing as much Resource object as input datasets. Each Resource is 
         defined by an attached input file and its properties described in a payload.
     """
+    L.setLevel(verbose)
+    
     config_file = open(config_path)
     config_content = yaml.safe_load(config_file.read().strip())
     config_file.close()
@@ -45,7 +50,7 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
         L.error(f"KeyError: {error}. The key ['GeneratedDatasetPath']['VolumetricFile'] is not "\
                 "found in the input datasets configuration file.")
         exit(1)
-    
+
     resource_type = 'VolumetricDataLayer'
         
     # Dictionary of properties corresponding to the different possible Atlas volumetric dataset
@@ -70,7 +75,7 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
                 "@id": "https://bbp.epfl.ch/neurosciencegraph/data/7b4b36ad-911c-4758-8686-2bf7943e10fb"
                 }
             }
-        ],
+        ]
     derivation_split = {
         "@type": "Derivation",
         "description": "The separation between layer 2 and layer 3 was performed on the source "\
@@ -78,7 +83,9 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
         "entity": {
         "@id": "https://bbp.epfl.ch/neurosciencegraph/data/7b2f498d-a20f-4992-8410-d8b44ec72c9a"
         }
-    },
+    }
+    
+    # List of the possible volumetric data input
     volumetric_data = {
                         "parcellations":{
                             f"{volumetric_path['annotation_hybrid']}": 
@@ -125,50 +132,75 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
 
     # Constructs the Resource properties payloads with the dictionary of properties
     for filepath in inputpath:
+        file_found = False
         isFolder = False
         derivation = False
-        if os.path.isdir(filepath) and filepath in volumetric_data["cell_densities"].keys():
-            isFolder = True
-            directory = filepath
-            files = os.listdir(directory)
-            pattern = '*_density.nrrd'
-            files_nrrd = fnmatch.filter(files, pattern)
-            if not files_nrrd:
-                L.error(f"Error: '{filepath}' do not contain any cell density volumetric files.")
-                exit(1)
+        for dataset in volumetric_data["cell_densities"]:
+            try:
+                if os.path.samefile(filepath, dataset):
+                    file_found = True
+                    if os.path.isdir(filepath):
+                        isFolder = True
+                        directory = filepath
+                        files = os.listdir(directory)
+                        pattern = '*_density.nrrd'
+                        files_nrrd = fnmatch.filter(files, pattern)
+                        if not files_nrrd:
+                            L.error(f"Error: '{filepath}' do not contain any cell density "\
+                                    "volumetric files.")
+                            exit(1)
             
-            # this is going ot be the "name" of the resource
-            filepath = os.path.join(directory, files_nrrd[0])
-            filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-            file_extension = os.path.splitext(os.path.basename(filepath))[1][1:]
-            cell_density_file = filename_noext.replace('_', ' ')
-            cell_density_name = f"{cell_density_file[0].upper()}{cell_density_file[1:]}"
-            voxel_type = 'intensity'
-            resource_types = [resource_type, 'GliaCellDensity', 'CellDensityDataLayer']
-            description = f"{cell_density_name} volume for the "\
-                          f"{volumetric_data['cell_densities'][directory][1]}."
-            module_tag = volumetric_data["cell_densities"][directory][0]
-
-        elif filepath in volumetric_data["parcellations"].keys():
-                voxel_type = 'label'
-                resource_types = [resource_type, 'BrainParcellationDataLayer']
-                description = f"{volumetric_data['parcellations'][filepath][1]}"
-                module_tag = volumetric_data["parcellations"][filepath][0]
-                derivation = volumetric_data["parcellations"][filepath][2]
-                
-                # this is going ot be the "name" of the resource
-                filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-                file_extension = os.path.splitext(os.path.basename(filepath))[1][1:]
-        else:
-            L.error(f"Error: '{filepath}' corresponds neither to one of the cell "\
-                    "density folder dataset nor to one of the annotation file dataset. \n"\
-                    "These are defined in the VolumetricFile section of the 'generated "\
-                    "dataset' configuration file.")
+                        # this is going ot be the "name" of the resource
+                        filepath = os.path.join(directory, files_nrrd[0])
+                        filename_noext = os.path.splitext(os.path.basename(filepath))[0]
+                        file_extension = os.path.splitext(os.path.basename(filepath))[1][1:]
+                        cell_density_file = filename_noext.replace('_', ' ')
+                        cell_density_name = f"{cell_density_file[0].upper()}"\
+                                            f"{cell_density_file[1:]}"
+                        voxel_type = 'intensity'
+                        resource_types = [resource_type, 'GliaCellDensity', 'CellDensityDataLayer']
+                        description = f"{cell_density_name} volume for the "\
+                                      f"{volumetric_data['cell_densities'][dataset][1]}."
+                        module_tag = volumetric_data["cell_densities"][dataset][0]
+                        break
+                    else:
+                        L.error(f"Error: cell density dataset '{filepath}' is not a folder "\
+                                "containing cell densities .nrrd files")
+                        exit(1)
+            except FileNotFoundError as e:
+                L.error(f"FileNotFoundError: {e}")
+                exit(1)
+        for dataset in volumetric_data["parcellations"]:
+            try:
+                if os.path.samefile(filepath, dataset):
+                    if filepath.endswith('.nrrd'):
+                        file_found = True
+                        voxel_type = 'label'
+                        resource_types = [resource_type, 'BrainParcellationDataLayer']
+                        description = f"{volumetric_data['parcellations'][dataset][1]}"
+                        module_tag = volumetric_data["parcellations"][dataset][0]
+                        derivation = volumetric_data["parcellations"][dataset][2]
+                        
+                        # this is going ot be the "name" of the resource
+                        filename_noext = os.path.splitext(os.path.basename(filepath))[0]
+                        file_extension = os.path.splitext(os.path.basename(filepath))[1][1:]
+                        break
+                    else:
+                        L.error(f"Error: parcellation dataset '{filepath}' is not a volumetric "\
+                                ".nrrd file")
+                        exit(1)
+            except FileNotFoundError as e:
+                L.error(f"FileNotFoundError: {e}")
+                exit(1)
+        if not file_found:
+            L.error(f"Error: '{filepath}' does not correspond to one of the datasets defined "\
+                    "in the VolumetricFile section of the 'generated dataset' configuration "\
+                    "file")
             exit(1)
-        
+
         if provenances[0]:
             try:
-                prov_description = AppendProvenancetoDescription(provenances, module_tag)
+                prov_description = append_provenance_to_description(provenances, module_tag)
                 description = f"{description} {prov_description}"
             except ValueError as e:
                 L.error(f"ValueError in provenance content. {e}")
@@ -178,6 +210,7 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
         header = None
         try:
             header = nrrd.read_header(filepath)
+            print(header)
         except nrrd.errors.NRRDError as e:
             L.error(f"NrrdError: {e}")
             L.info("Aborting pushing process.") #setLevel(logging.INFO)
@@ -191,7 +224,8 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
         }
         
         # We create a 1st payload that will be recycled in case of multiple files to push
-        distribution_file = forge.attach(filepath) 
+        content_type = f"application/{file_extension}"
+        distribution_file = forge.attach(filepath, content_type) 
         nrrd_resource = Resource(
             type = resource_types, 
             name = filename_noext.replace("_", " ").title(), 
@@ -202,17 +236,20 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
             atlasRelease = {"@id": id_atlas_release}
             )
         
-        nrrd_resource = addNrrdProps(nrrd_resource, header, config, voxel_type)
+        nrrd_resource = add_nrrd_props(nrrd_resource, header, config, voxel_type)
         
         if derivation:
             nrrd_resource.derivation = derivation
-        
-        try:
-            nrrd_resource.contribution, log_info = addContribution(forge, nrrd_resource)
-            L.info('\n'.join(log_info))
-        except Exception as e:
-            L.error(f"Error: {e}")
-            exit(1)
+
+        if isinstance(forge._store, DemoStore):
+            nrrd_resource.contribution = []
+        else:
+            try:
+                nrrd_resource.contribution, log_info = add_contribution(forge, nrrd_resource)
+                L.info('\n'.join(log_info))
+            except Exception as e:
+                L.error(f"Error: {e}")
+                exit(1)
         
         dataset = [nrrd_resource]
                 
@@ -223,7 +260,7 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
                 dataset = [nrrd_resource]
                 filepath = os.path.join(directory, files_nrrd[f])
                 filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-                distribution_file = forge.attach(filepath) 
+                distribution_file = forge.attach(filepath, content_type) 
                 #Use forge.reshape instead ?
                 nrrd_resources = Resource(
                     type = nrrd_resource.type, 
@@ -243,11 +280,11 @@ def createVolumetricResources(forge, inputpath, voxels_resolution, config_path, 
                     )
                 
                 dataset.append(nrrd_resources)
-                
+
     return dataset
 
 
-def addNrrdProps(resource, nrrd_header, config, voxel_type):
+def add_nrrd_props(resource, nrrd_header, config, voxel_type):
     """
     Add to the resource all the fields expected for a VolumetricDataLayer/NdRasterthat that can 
     be found in the NRRD header. A resource dictionary must exist and be provided (even if empty).
@@ -304,7 +341,7 @@ def addNrrdProps(resource, nrrd_header, config, voxel_type):
     "float": "float32",
     "double": "float64"
     }
-    
+
     space_origin = None
     if "space origin" in nrrd_header:
         space_origin = nrrd_header["space origin"].tolist()
@@ -377,10 +414,13 @@ def addNrrdProps(resource, nrrd_header, config, voxel_type):
                 current_dim["@type"] = "ComponentDimension"
                 # current_dim["name"] = default_sample_type_multiple_components if current_dim["size"] > 1 else default_sample_type_single_component
                 try:
-                    current_dim["name"] = getVoxelType(current_dim["size"])
+                    current_dim["name"] = get_voxel_type(current_dim["size"])
                 except ValueError as e:
                     L.error(f"ValueError: {e}")
-                    exit(1)      
+                    exit(1)     
+                except KeyError as e:
+                    L.error(f"KeyError: {e}")
+                    exit(1)
 
         resource.dimension.append(current_dim)
 
@@ -392,7 +432,7 @@ def addNrrdProps(resource, nrrd_header, config, voxel_type):
     else:
         # prepend a dimension component
         try:
-            name = getVoxelType(voxel_type, 1)
+            name = get_voxel_type(voxel_type, 1)
         except ValueError as e:
             L.error(f"ValueError: {e}")
             exit(1)     

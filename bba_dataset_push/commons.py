@@ -1,4 +1,5 @@
 '''push modules common functions'''
+import os
 import json
 import copy
 import requests
@@ -6,7 +7,7 @@ import jwt
 from kgforge.core import Resource
 
 # Simplify it ? resolve automatically the voxel_type ?
-def getVoxelType(voxel_type, component_size):
+def get_voxel_type(voxel_type, component_size : int):
     """
     Check if the voxel_type value is compatible with the component size or return a default 
     value if voxel_type is None.
@@ -14,7 +15,7 @@ def getVoxelType(voxel_type, component_size):
     Parameters:
         voxel_type : voxel type (string).
         component_size : integer indicating the number of component per voxel.
-    
+
     Returns:
         voxel_type : str value of voxel_type is returned. Equal to the input value if its value 
                      does not trigger error or else the default hardcoded value is returned.
@@ -38,15 +39,19 @@ def getVoxelType(voxel_type, component_size):
     elif not voxel_type and component_size > 1:
         return default_sample_type_multiple_components
     elif voxel_type:
-        if component_size > 1 and allow_multiple_components[voxel_type]:
-            return voxel_type
-        elif component_size == 1 and not allow_multiple_components[voxel_type]:
-            return voxel_type
-        else:
-            raise ValueError(f"The type provided ({voxel_type }) is not compatible with the "\
-                             "number of component per voxel.")
+        try:
+            if component_size > 1 and allow_multiple_components[voxel_type]:
+                return voxel_type
+            elif component_size == 1 and not allow_multiple_components[voxel_type]:
+                return voxel_type
+            else:
+                raise ValueError(f"There is an incompatibility between the provided type "\
+                                 f"({voxel_type }) and the component size ({component_size}) "\
+                                 "number of component per voxel.")
+        except KeyError as e:
+            raise KeyError(f"{e}. The voxel type {voxel_type} is not correct.")
 
-def AppendProvenancetoDescription(provenances, module_tag):
+def append_provenance_to_description(provenances: list, module_tag: str) -> str:
     """
     Check if the input provenance is coherent with the module_tag. If no error is raised, 
     construct and return a description string displaying the Atlas pipeline module used and the 
@@ -71,16 +76,16 @@ def AppendProvenancetoDescription(provenances, module_tag):
                 prov_description = f"Generated in the Atlas Pipeline by the module '{module}' "\
                                    f"version {version}."
                 module_found = True
-        except ValueError:
-            raise ValueError("the provided provenance string argument does not have the form "\
-                             "'<module_name>:<anything> <version>'")
+        except ValueError as e:
+            raise ValueError(f"{e}. The provided provenance string argument must be of the "\
+                             "form '<module_name>:<anything> <version>'.")
     if not module_found:
         raise ValueError(f"Input 'provenance' string '{provenance}' does not contain the right "\
-                         f"module name. The correct module should contain {module_tag} in his name")
+                         f"module name. The correct module should contain {module_tag} in its name")
     return prov_description
 
 
-def getBrainRegionNameAllen(region_id):
+def get_brain_region_name_allen(region_id):
     """
     Get from the Allen Mouse Brain Atlas API (from the Allen Institute for Brain Science, AIBS) 
     the region name corresponding to a region ID.
@@ -102,7 +107,7 @@ def getBrainRegionNameAllen(region_id):
     return brain_region_info["name"]
 
 
-def getHierarchyContent(input_hierarchy, config_content, hierarchy_tag):
+def get_hierarchy_file(input_hierarchy : list, config_content : dict, hierarchy_tag : str):
     """
     If present, return the right hierarchy json file corresponding to the hierarchy_tag. If not, 
     raises an error.
@@ -117,20 +122,23 @@ def getHierarchyContent(input_hierarchy, config_content, hierarchy_tag):
         hierarchy_path : path to the right hierarchy json file contained in config_content.
     """
     hierarchy_path = None
-    try: 
+    try:
         for hierarchy_file in input_hierarchy:
-            if hierarchy_file == config_content["GeneratedHierarchyJson"][hierarchy_tag]:
+            if os.path.samefile(hierarchy_file, 
+                                config_content["GeneratedHierarchyJson"][hierarchy_tag]):
                 hierarchy_path = hierarchy_file
-    except KeyError: 
-        raise KeyError 
+    except KeyError as e:
+        raise KeyError(f"KeyError: {e}")
     if not hierarchy_path:
-        raise KeyError(f"The hierarchy files in input do not contain the right one. The correct "\
-                       f"hierarchy {config_content['GeneratedHierarchyJson'][hierarchy_tag]} "\
-                       "is missing.")
+        raise KeyError(f"The right hierarchy file is not among those given as input. "\
+                       "According to the configuration file and the hierarchy tag associated "\
+                       "with the dataset, the hierarchy file path : "\
+                       f"'{config_content['GeneratedHierarchyJson'][hierarchy_tag]}' should "\
+                       "be provided as input")
 
     return hierarchy_path
 
-def getBrainRegionName(region_id, hierarchy_path, flat_tree: dict = None):
+def get_brain_region_name(region_id : int, hierarchy_path, flat_tree: dict = None):
     """
     Search and return the region name corresponding to the input region identifier in the input 
     hierarchy file. In order to do this, an array tree structure will be indexed as a tree 
@@ -149,15 +157,22 @@ def getBrainRegionName(region_id, hierarchy_path, flat_tree: dict = None):
         hierarchy: hierarchy tree array indexed from the hierarchy file nested content.
     """
     region_name = None
-    region_id = int(region_id)
+    try:
+        region_id = int(region_id)
+    except ValueError as e:
+        raise ValueError(f"ValueError: {e}")
     if not flat_tree:
         with open(hierarchy_path, 'r') as hierarchy_file:
-            hierarchy = json.load(hierarchy_file)
+            try:
+                hierarchy = json.load(hierarchy_file)
+            except ValueError as e:
+                raise ValueError(f"Error when decoding the hierarchy json file "\
+                                 f"'hierarchy_file'. {e}")
             try:
                 hierarchy = hierarchy['msg'][0]
             except KeyError:
-                raise KeyError("Wrong input. The AIBS hierarchy json file dict-structure is "\
-                               "expected.")
+                raise KeyError("Wrong input hierarchy file content. The AIBS hierarchy json "\
+                               "file dict-structure is expected.")
             tree_copy = copy.deepcopy(hierarchy)
             root_node = tree_copy
             flat_tree = {}
@@ -185,12 +200,12 @@ def getBrainRegionName(region_id, hierarchy_path, flat_tree: dict = None):
     except KeyError:
         raise KeyError(f"Region name corresponding to id '{region_id}' is not found in the "\
                        f"hierarchy json file ({hierarchy_path}).")
-        #region_name = getBrainRegionNameAllen(region_id) #if no resultat in the hierarchy file
+        #region_name = get_brain_region_name_allen(region_id) #if no resultat in the hierarchy file
 
     return region_name, hierarchy
 
 
-# # Not used
+# # No more used
 # def getExtraValues (resource, extra_keys_values):
 #     """
     
@@ -208,7 +223,7 @@ def getBrainRegionName(region_id, hierarchy_path, flat_tree: dict = None):
     
 #     return resource
 
-def addContribution(forge, resource):
+def add_contribution(forge, resource):
     """
     Create and return a Contribution Resource from the user informations extracted from its token. 
     To do this, the user Person Resource identifier is retrieved from Nexus if it exists, 
@@ -221,7 +236,10 @@ def addContribution(forge, resource):
         contribution : Resource object of Contribution type. Constructed from the user 
         informations.
     """
-    token_info = jwt.decode(forge._store.token, options={'verify_signature': False})
+    try:
+        token_info = jwt.decode(forge._store.token, options={'verify_signature': False})
+    except Exception as e:
+        raise Exception(f"Error when decoding the token. {e}")
     user_name = token_info["name"]
     user_family_name = token_info["family_name"]
     user_given_name = token_info["given_name"]

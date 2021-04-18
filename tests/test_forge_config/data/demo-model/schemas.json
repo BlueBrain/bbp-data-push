@@ -1,0 +1,13 @@
+{
+  "schema:Person": {
+    "rdf:type": "schema:Person",
+    "schema:name": "hasattr"
+  },
+  "prov:Association": {
+    "rdf:type": "prov:Association",
+    "prov:agent": {
+      "rdf:type": "schema:Person",
+      "schema:name": "hasattr"
+    }
+  }
+}

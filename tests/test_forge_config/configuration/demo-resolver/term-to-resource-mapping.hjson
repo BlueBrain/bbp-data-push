@@ -1,0 +1,4 @@
+{
+    id: x.id
+    label: x.label
+}

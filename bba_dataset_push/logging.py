@@ -3,7 +3,7 @@ import os
 import logging
 from functools import wraps
 
-def createLogHandler(logger_name, log_file:str):
+def create_log_handler(logger_name, log_file:str):
     logger = logging.getLogger(logger_name)
     handler = logging.FileHandler(log_file)
     formatter = logging.Formatter("[%(asctime)s] - %(name)s - {%(filename)s:%(lineno)d} "\
@@ -29,10 +29,10 @@ def log_args(logger, handler_path=None):
         @wraps(file_)
         def wrapper(*args, **kw):
             file_handler = logging.FileHandler(logger_path)
-            logger.setLevel(logging.INFO)
+            #logger.setLevel(logging.ERROR)
             logger.addHandler(file_handler)
-            logger.info(f"\n================= {file_.__name__} =================" \
-                        f"\nArguments: {kw}\n")
+            # logger.info(f"\n================= {file_.__name__} =================" \
+            #             f"\nArguments: {kw}\n")
             formatter = logging.Formatter("[%(asctime)s] - %(name)s - {%(filename)s:%(lineno)d} "\
                                           "- %(levelname)s: %(message)s")  
             file_handler.setFormatter(formatter)

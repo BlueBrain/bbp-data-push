@@ -1,0 +1,29 @@
+generatedHierarchyJson:
+- hierarchy
+- hierarchy_l23split
+generatedDatasetType:
+- VolumetricFile
+- MeshFile
+- CellPositionFile
+generatedDataset:
+- wrong_key
+- wrong_key
+- wrong_key
+- wrong_key
+- wrong_key
+- wrong_key
+- wrong_key
+GeneratedHierarchyJson:
+  hierarchy: tests/tests_data/hierarchy.json
+  hierarchy_l23split: tests/tests_data/hierarchy_l23split.json
+GeneratedDatasetPath:
+  VolumetricFile:
+    wrong_key: tests/tests_data/annotation_hybrid.nrrd
+    wrong_key: tests/tests_data/annotation_l23split.nrrd
+    wrong_key: tests/tests_data/test_cell_density
+    wrong_key: tests/tests_data/neuron_density
+  MeshFile:
+    wrong_key: /Users/alibou/Documents/BBP/Atlas/blue_brain_atlas_modules/blue_brain_atlas_nexus_push/tests/tests_data/brain_region_meshes_hybrid
+    wrong_key: tests/tests_data/brain_region_meshes_l23split
+  CellPositionFile:
+    wrong_key: tests/tests_data/cell_positions_hybrid.h5

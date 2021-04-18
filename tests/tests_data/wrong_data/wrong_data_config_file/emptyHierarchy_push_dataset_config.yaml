@@ -1,0 +1,29 @@
+generatedHierarchyJson:
+- hierarchy
+- hierarchy_l23split
+generatedDatasetType:
+- VolumetricFile
+- MeshFile
+- CellPositionFile
+generatedDataset:
+- annotation_hybrid
+- annotation_l23split
+- cell_densities
+- neuron_densities
+- brain_region_meshes_hybrid
+- brain_region_meshes_l23split
+- cell_records_sonata
+GeneratedHierarchyJson:
+  hierarchy: tests/tests_data/wrong_data/empty_hierarchy.json
+  hierarchy_l23split: tests/tests_data/hierarchy_l23split.json
+GeneratedDatasetPath:
+  VolumetricFile:
+    annotation_hybrid: tests/tests_data/annotation_hybrid.nrrd
+    annotation_l23split: tests/tests_data/annotation_l23split.nrrd
+    cell_densities: tests/tests_data/test_cell_density
+    neuron_densities: tests/tests_data/neuron_density
+  MeshFile:
+    brain_region_meshes_hybrid: tests/tests_data/brain_region_meshes_hybrid
+    brain_region_meshes_l23split: tests/tests_data/brain_region_meshes_l23split
+  CellPositionFile:
+    cell_records_sonata: tests/tests_data/cell_positions_hybrid.h5

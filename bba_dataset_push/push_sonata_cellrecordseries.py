@@ -8,13 +8,16 @@ Link to BBP Atlas pipeline confluence documentation: https://bbpteam.epfl.ch/pro
 import os
 import yaml
 import h5py 
-from kgforge.core import Resource 
-from bba_dataset_push.commons import addContribution, AppendProvenancetoDescription
-from bba_dataset_push.logging import createLogHandler
+from kgforge.core import Resource
+from kgforge.specializations.stores.demo_store import DemoStore
 
-L = createLogHandler(__name__, "./push_cellrecord.log")
+from bba_dataset_push.commons import add_contribution, append_provenance_to_description
+from bba_dataset_push.logging import create_log_handler
 
-def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, provenances):
+L = create_log_handler(__name__, "./push_cellrecord.log")
+
+def create_cell_record_resources(forge, inputpath: list, voxels_resolution: int, config_path,
+                                 provenances: list, verbose) -> list:
     """
     Construct the input sonata hdf5 dataset property payloads that will be push with the 
     corresponding files into Nexus as a resource.
@@ -32,6 +35,8 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
         dataset : list containing as much Resource object as input datasets. Each Resource is 
         defined by an attached input file and its properties described in a payload.
     """
+    L.setLevel(verbose)
+    
     ## Constructs the payloads schema according to the 2 different possible mesh dataset to be pushed
     config_file = open(config_path)
     config_content = yaml.safe_load(config_file.read().strip())
@@ -57,6 +62,7 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
         }
 
     # Constants
+    module_prov = "positions-and-orientations"
     spatial_unit = 'µm'
     atlas_reference_system_id = 'https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system'
     id_atlas_release = 'https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda'
@@ -81,12 +87,21 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
     }
     # If multiple files and multiple Atlas
     for filepath in inputpath:
-        if filepath == sonata_path["cell_records_sonata"]:
-            atlas_description = "Mouse ccfv2-ccfv3 Hybrid annotation volume"
-        else:
-            L.error(f"Error: The '{filepath}' folder do not correspond to a Sonata .h5 file "\
-                  "dataset defined in the CellPositionFile section of the input datasets "\
-                  "configuration file")
+        try:
+            if os.path.samefile(filepath, sonata_path["cell_records_sonata"]):
+                if filepath.endswith('.h5'):
+                    atlas_description = "Mouse ccfv2-ccfv3 Hybrid annotation volume"
+                else:
+                    L.error(f"Error: cell-record sonata dataset '{filepath}' is not a sonata "\
+                            ".h5 file")
+                    exit(1)
+            else:
+                L.error(f"Error: The '{filepath}' folder do not correspond to a Sonata .h5 file "\
+                      "dataset defined in the CellPositionFile section of the input datasets "\
+                      "configuration file")
+                exit(1)
+        except FileNotFoundError as e:
+            L.error(f"FileNotFoundError: {e}")
             exit(1)
 
         # We create a 1st payload which will serve as template for the others
@@ -101,8 +116,8 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
 
         if provenances[0]:
             try:
-                prov_description = AppendProvenancetoDescription(provenances, 
-                                                                 "positions-and-orientations")
+                prov_description = append_provenance_to_description(provenances, 
+                                                                 module_prov)
                 description = f"{description} {prov_description}"
             except ValueError as e:
                 L.error(f"Value Error in provenance content. {e}")
@@ -168,13 +183,16 @@ def createCellRecordResources(forge, inputpath, voxels_resolution, config_path, 
             bufferEncoding = "binary"
             )
         #resource.fileExtension = config["file_extension"]
-
-        try:
-            cellrecord_resource.contribution, log_info = addContribution(forge, cellrecord_resource)
-            L.info('\n'.join(log_info))
-        except Exception as e:
-            L.error(f"Error: {e}")
-            exit(1)
+        
+        if isinstance(forge._store, DemoStore):
+            cellrecord_resource.contribution = []
+        else:
+            try:
+                cellrecord_resource.contribution, log_info = add_contribution(forge, cellrecord_resource)
+                L.info('\n'.join(log_info))
+            except Exception as e:
+                L.error(f"Error: {e}")
+                exit(1)
 
         dataset.append(cellrecord_resource)
 
