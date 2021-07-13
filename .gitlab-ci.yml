@@ -1,0 +1,25 @@
+include:
+  - project: dke/apps/templates/job-templates
+    ref: develop
+    file: job-templates.yml
+
+
+image: "python:3.6"
+
+stages:
+  - unit-test
+  - lint-check
+
+before_script:
+  - pip install .[dev]
+
+unit_test:
+  stage: unit-test
+  extends: .unit-tests
+  variables:
+   SRC_PROJECT: '$CI_PROJECT_PATH'
+   TEST_FOLDER: 'tests'
+
+lint_check:
+  stage: lint-check
+  extends: .flake8
