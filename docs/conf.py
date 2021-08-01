@@ -82,7 +82,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'blue_brain_atlas_nexus_push'
-copyright = u'2020, Alejandra García Rojas Martínez'
+#copyright = u
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
