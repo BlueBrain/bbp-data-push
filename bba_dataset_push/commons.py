@@ -6,6 +6,7 @@ import requests
 import jwt
 from kgforge.core import Resource
 
+
 # Simplify it ? resolve automatically the voxel_type ?
 def get_voxel_type(voxel_type, component_size: int):
     """

@@ -6,7 +6,7 @@ from bba_dataset_push.commons import (
     append_provenance_to_description,
     get_hierarchy_file,
     get_brain_region_name,
-    add_contribution,
+    #add_contribution,
 )
 
 TEST_PATH = Path(Path(__file__).parent.parent)

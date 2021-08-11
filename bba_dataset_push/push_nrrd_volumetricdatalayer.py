@@ -134,7 +134,10 @@ def create_volumetric_resources(
             ],
         },
     }
-    atlas_reference_system_id = "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system"
+    atlas_reference_system_id = (
+        "https://bbp.epfl.ch/neurosciencegraph/data/"
+        "allen_ccfv3_spatial_reference_system"
+    )
     # Link to Atlas Release: Allen Mouse CCF v2-v3 hybrid
     id_atlas_release = (
         "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -509,7 +512,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
     r = []  # rotation mat
     o = space_origin
     for col in space_directions:
-        if col != None:
+        if col is not None:
             r.append(col)
 
     # if 3D, we create a 4x4 homogeneous transformation matrix

@@ -4,7 +4,7 @@ from pathlib import Path
 from kgforge.core import KnowledgeGraphForge
 from kgforge.core import Resource
 
-from bba_dataset_push.bba_data_push import push_volumetric
+#from bba_dataset_push.bba_data_push import push_volumetric
 from bba_dataset_push.push_nrrd_volumetricdatalayer import (
     create_volumetric_resources,
     add_nrrd_props,
@@ -48,7 +48,8 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "description": "The ccfv2 (2011) has a finer granularity than ccfv3 in "
                 "term of leaf nodes, these were imported in this volume",
                 "entity": {
-                    "@id": "https://bbp.epfl.ch/neurosciencegraph/data/7b4b36ad-911c-4758-8686-2bf7943e10fb"
+                    "@id": "https://bbp.epfl.ch/neurosciencegraph/data"
+                    "7b4b36ad-911c-4758-8686-2bf7943e10fb"
                 },
             },
         ],

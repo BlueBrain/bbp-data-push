@@ -51,8 +51,8 @@ def create_mesh_resources(
     """
     L.setLevel(verbose)
 
-    ## Constructs the payloads schema according to the 2 different possible mesh
-    ## dataset to be pushed
+    # Constructs the payloads schema according to the 2 different possible mesh
+    # dataset to be pushed
     config_file = open(config_path)
     config_content = yaml.safe_load(config_file.read().strip())
     config_file.close()
@@ -69,7 +69,10 @@ def create_mesh_resources(
     datasets = []
     module_prov = "parcellation2mesh"
     spatial_unit = "µm"
-    atlas_reference_system_id = "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system"
+    atlas_reference_system_id = (
+        "https://bbp.epfl.ch/neurosciencegraph/data/"
+        "allen_ccfv3_spatial_reference_system"
+    )
     id_atlas_release = (
         "https://bbp.epfl.ch/neurosciencegraph/data/"
         "e2e500ec-fe7e-4888-88b9-b72425315dda"

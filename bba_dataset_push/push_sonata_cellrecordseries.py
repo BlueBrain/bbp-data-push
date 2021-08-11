@@ -77,7 +77,10 @@ def create_cell_record_resources(
     # Constants
     module_prov = "positions-and-orientations"
     spatial_unit = "µm"
-    atlas_reference_system_id = "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system"
+    atlas_reference_system_id = (
+        "https://bbp.epfl.ch/neurosciencegraph/data/"
+        "allen_ccfv3_spatial_reference_system"
+    )
     id_atlas_release = (
         "https://bbp.epfl.ch/neurosciencegraph/data/"
         "e2e500ec-fe7e-4888-88b9-b72425315dda"
@@ -101,13 +104,13 @@ def create_cell_record_resources(
         },
     }
 
-    subject = {
-        "@type": "Subject",  # Entity
-        "species": {
-            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
-            "label": "Mus musculus",
-        },
-    }
+    # subject = {
+    #     "@type": "Subject",  # Entity
+    #     "species": {
+    #         "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
+    #         "label": "Mus musculus",
+    #     },
+    # }
 
     # If multiple files and multiple Atlas
     for filepath in inputpath:
