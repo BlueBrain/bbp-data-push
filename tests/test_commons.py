@@ -86,8 +86,8 @@ def test_append_provenance_to_description():
     with pytest.raises(ValueError) as e:
         append_provenance_to_description(provenance, module_tag)
     assert (
-        "Input 'provenance' string 'module:version 1' does not contain the right module "
-        "name." in str(e.value)
+        "Input 'provenance' string 'module:version 1' does not contain the right "
+        "module name." in str(e.value)
     )
 
 
@@ -124,7 +124,9 @@ def test_get_hierarchy_file():
         Path(TEST_PATH, "tests/tests_data/hierarchy_l23split.json")
     )
 
-    input_hierarchy = [str(Path(TEST_PATH, "tests/tests_data/wrong_data/empty_hierarchy.json"))]
+    input_hierarchy = [
+        str(Path(TEST_PATH, "tests/tests_data/wrong_data/empty_hierarchy.json"))
+    ]
     config_content = {
         "generatedHierarchyJson": ["hierarchy", "hierarchy_l23split"],
         "GeneratedHierarchyJson": {
@@ -186,7 +188,12 @@ def test_get_brain_region_name():
     assert region_name == "region_1"
     assert hierarchy == {
         1: {"acronym": "end", "children": [], "id": 1, "name": "region_1"},
-        8: {"acronym": "grey", "children": [1], "id": 8, "name": "Basic cell groups and regions"},
+        8: {
+            "acronym": "grey",
+            "children": [1],
+            "id": 8,
+            "name": "Basic cell groups and regions",
+        },
         998: {"children": [8], "id": 998, "name": "root"},
     }
 
@@ -216,7 +223,9 @@ def test_get_brain_region_name():
     assert "Region name corresponding to id '0' is not found" in str(e.value)
 
     region_id = 1
-    hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/wrong_data/empty_hierarchy.json"))
+    hierarchy_path = str(
+        Path(TEST_PATH, "tests/tests_data/wrong_data/empty_hierarchy.json")
+    )
     flat_tree = None
 
     with pytest.raises(ValueError) as e:
@@ -224,7 +233,9 @@ def test_get_brain_region_name():
     assert "Error when decoding the hierarchy json file" in str(e.value)
 
     region_id = 1
-    hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/wrong_data/wrongkey_hierarchy.json"))
+    hierarchy_path = str(
+        Path(TEST_PATH, "tests/tests_data/wrong_data/wrongkey_hierarchy.json")
+    )
     flat_tree = None
 
     with pytest.raises(KeyError) as e:

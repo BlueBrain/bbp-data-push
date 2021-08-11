@@ -9,16 +9,17 @@ from kgforge.core import Resource
 # Simplify it ? resolve automatically the voxel_type ?
 def get_voxel_type(voxel_type, component_size: int):
     """
-    Check if the voxel_type value is compatible with the component size or return a default
-    value if voxel_type is None.
+    Check if the voxel_type value is compatible with the component size or return a
+    default value if voxel_type is None.
 
     Parameters:
         voxel_type : voxel type (string).
         component_size : integer indicating the number of component per voxel.
 
     Returns:
-        voxel_type : str value of voxel_type is returned. Equal to the input value if its value
-                     does not trigger error or else the default hardcoded value is returned.
+        voxel_type : str value of voxel_type is returned. Equal to the input value if
+                     its value does not trigger error or else the default hardcoded
+                     value is returned.
     """
     # this could be "multispectralIntensity", "vector"
     default_sample_type_multiple_components = "vector"
@@ -56,12 +57,13 @@ def get_voxel_type(voxel_type, component_size: int):
 
 def append_provenance_to_description(provenances: list, module_tag: str) -> str:
     """
-    Check if the input provenance is coherent with the module_tag. If no error is raised,
-    construct and return a description string displaying the Atlas pipeline module used and the
-    version found in 'provenances'.
+    Check if the input provenance is coherent with the module_tag. If no error is
+    raised, construct and return a description string displaying the Atlas pipeline
+    module used and the version found in 'provenances'.
 
     Parameters:
-        provenances : input string containing the Atlas pipeline module used and its version.
+        provenances : input string containing the Atlas pipeline module used and its
+                      version.
         module_tag : string flag indicating which Atlas pipeline module should be used.
 
     Returns:
@@ -96,14 +98,15 @@ def append_provenance_to_description(provenances: list, module_tag: str) -> str:
 
 def get_brain_region_name_allen(region_id):
     """
-    Get from the Allen Mouse Brain Atlas API (from the Allen Institute for Brain Science, AIBS)
-    the region name corresponding to a region ID.
+    Get from the Allen Mouse Brain Atlas API (from the Allen Institute for Brain
+    Science, AIBS) the region name corresponding to a region ID.
 
     Parameters:
         region_id : input mouse brain region identifier (integer).
 
     Returns:
-        brain_region_info["name"] : name of the region with region_id as identifier (string).
+        brain_region_info["name"] : name of the region with region_id as identifier
+                                    (string).
     """
     url_base = "http://api.brain-map.org/api/v2/data/Structure/"
     response = requests.get(f"{url_base}{str(region_id)}")
@@ -122,23 +125,25 @@ def get_brain_region_name_allen(region_id):
 
 def get_hierarchy_file(input_hierarchy: list, config_content: dict, hierarchy_tag: str):
     """
-    If present, return the right hierarchy json file corresponding to the hierarchy_tag. If not,
-    raises an error.
+    If present, return the right hierarchy json file corresponding to the hierarchy_tag.
+    If not, raises an error.
 
     Parameters:
-        input_hierarchy : path to the hierarchy json file containing brain regions hierarchy.
-        config_content : content of the configuration yaml file containing the names and paths
-                         of the atlas-pipeline generated datasets.
+        input_hierarchy : path to the hierarchy json file containing brain regions
+                          hierarchy.
+        config_content : content of the configuration yaml file containing the names
+                         and paths of the atlas-pipeline generated datasets.
         hierarchy_tag : string flag indicating the hierarchy json file used.
 
     Returns:
-        hierarchy_path : path to the right hierarchy json file contained in config_content.
+        hierarchy_path : path to the right hierarchy json file contained in
+                         config_content.
     """
     hierarchy_path = None
     try:
         for hierarchy_file in input_hierarchy:
             if os.path.samefile(
-                hierarchy_file, config_content["GeneratedHierarchyJson"][hierarchy_tag]
+                hierarchy_file, config_content["HierarchyJson"][hierarchy_tag]
             ):
                 hierarchy_path = hierarchy_file
     except KeyError as e:
@@ -148,7 +153,7 @@ def get_hierarchy_file(input_hierarchy: list, config_content: dict, hierarchy_ta
             f"The right hierarchy file is not among those given as input. "
             "According to the configuration file and the hierarchy tag associated "
             "with the dataset, the hierarchy file path : "
-            f"'{config_content['GeneratedHierarchyJson'][hierarchy_tag]}' should "
+            f"'{config_content['HierarchyJson'][hierarchy_tag]}' should "
             "be provided as input"
         )
 
@@ -157,20 +162,22 @@ def get_hierarchy_file(input_hierarchy: list, config_content: dict, hierarchy_ta
 
 def get_brain_region_name(region_id: int, hierarchy_path, flat_tree: dict = None):
     """
-    Search and return the region name corresponding to the input region identifier in the input
-    hierarchy file. In order to do this, an array tree structure will be indexed as a tree
-    structure from the brain region hierarchy file nested structure. This hierarchy tree is
-    return as well to be reused the next time this function is called.
+    Search and return the region name corresponding to the input region identifier in
+    the input hierarchy file. In order to do this, an array tree structure will be
+    indexed as a tree structure from the brain region hierarchy file nested structure.
+    This hierarchy tree is return as well to be reused the next time this function is
+    called.
 
     Parameters:
         region_id : input mouse brain region identifier (integer).
-        hierarchy_path : path to the hierarchy json file containing brain regions hierarchy.
-        flat_tree : the eventual hierarchy tree array indexed from the hierarchy file nested
-                    content.
+        hierarchy_path : path to the hierarchy json file containing brain regions
+                         hierarchy.
+        flat_tree : the eventual hierarchy tree array indexed from the hierarchy file
+                    nested content.
 
     Returns:
-        region_name : List of one or multiple Resource object composed of attached input file and
-        their set of properties.
+        region_name : List of one or multiple Resource object composed of attached
+                      input file and their set of properties.
         hierarchy: hierarchy tree array indexed from the hierarchy file nested content.
     """
     region_name = None
@@ -184,7 +191,8 @@ def get_brain_region_name(region_id: int, hierarchy_path, flat_tree: dict = None
                 hierarchy = json.load(hierarchy_file)
             except ValueError as e:
                 raise ValueError(
-                    f"Error when decoding the hierarchy json file " f"'hierarchy_file'. {e}"
+                    f"Error when decoding the hierarchy json file "
+                    f"'hierarchy_file'. {e}"
                 )
             try:
                 hierarchy = hierarchy["msg"][0]
@@ -222,7 +230,8 @@ def get_brain_region_name(region_id: int, hierarchy_path, flat_tree: dict = None
             f"Region name corresponding to id '{region_id}' is not found in the "
             f"hierarchy json file ({hierarchy_path})."
         )
-        # region_name = get_brain_region_name_allen(region_id) #if no resultat in the hierarchy file
+        # region_name = get_brain_region_name_allen(region_id) #if no resultat in the
+        # hierarchy file
 
     return region_name, hierarchy
 
@@ -246,11 +255,12 @@ def get_brain_region_name(region_id: int, hierarchy_path, flat_tree: dict = None
 #     return resource
 
 
-def add_contribution(forge, resource):
+def add_contribution(forge):
     """
-    Create and return a Contribution Resource from the user informations extracted from its token.
-    To do this, the user Person Resource identifier is retrieved from Nexus if it exists,
-    otherwise create a Person Resource with the user informations.
+    Create and return a Contribution Resource from the user informations extracted
+    from its token.
+    To do this, the user Person Resource identifier is retrieved from Nexus if it
+    exists, otherwise create a Person Resource with the user informations.
     Parameters:
         forge : instantiated and configured forge object.
         resource : Resource object defined by a properties payload linked to a file.
@@ -269,10 +279,14 @@ def add_contribution(forge, resource):
     user_email = token_info["email"]
     log_info = []
     try:
-        user_id = forge.resolve(user_family_name, target="agents", scope="agent", type="Person")
+        user_id = forge.resolve(
+            user_family_name, target="agents", scope="agent", type="Person"
+        )
+        contributor = user_id
     except Exception as e:
         raise Exception(
-            "Error when resolving the Person Resource in the agent bucket project. " f"{e}"
+            "Error when resolving the Person Resource in the agent bucket project. "
+            f"{e}"
         )
     if not user_id:
         log_info.append(
@@ -315,14 +329,15 @@ def add_contribution(forge, resource):
                 user_id = contributor.id
             except Exception as e:
                 raise Exception(
-                    "Error when registering the user Person-type resource into " f"Nexus. {e}"
+                    "Error when registering the user Person-type resource into "
+                    f"Nexus. {e}"
                 )
     else:
         # If multiple agents have the same family_name
         if isinstance(user_id, list):
             # TO DO, or wait for future resolver update
             pass
-        contributor = user_id
-    contribution = Resource(type="Contribution", agent=contributor)
 
-    return contribution, log_info
+    # contribution = Resource(type="Contribution", agent=contributor)
+
+    return contributor, log_info

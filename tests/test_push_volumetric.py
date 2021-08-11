@@ -18,12 +18,17 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
     volumetric_dict = {
         "type": ["VolumetricDataLayer", "BrainParcellationDataLayer"],
         "atlasRelease": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda"
+            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+            "e2e500ec-fe7e-4888-88b9-b72425315dda"
         },
         "brainLocation": {
             "atlasSpatialReferenceSystem": {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system",
-                "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+                "allen_ccfv3_spatial_reference_system",
+                "@type": [
+                    "BrainAtlasSpatialReferenceSystem",
+                    "AtlasSpatialReferenceSystem",
+                ],
             },
             "brainRegion": {"label": "root", "@id": "mba:997"},
         },
@@ -31,23 +36,32 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
         "derivation": [
             {
                 "@type": "Derivation",
-                "description": "The ccfv3 (2017) has smoother region borders, without jaggies. The enveloppe or most regions was used in this volume",
+                "description": "The ccfv3 (2017) has smoother region borders, without "
+                "jaggies. The enveloppe or most regions was used in this volume",
                 "entity": {
-                    "@id": "https://bbp.epfl.ch/neurosciencegraph/data/025eef5f-2a9a-4119-b53f-338452c72f2a"
+                    "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+                    "025eef5f-2a9a-4119-b53f-338452c72f2a"
                 },
             },
             {
                 "@type": "Derivation",
-                "description": "The ccfv2 (2011) has a finer granularity than ccfv3 in term of leaf nodes, these were imported in this volume",
+                "description": "The ccfv2 (2011) has a finer granularity than ccfv3 in "
+                "term of leaf nodes, these were imported in this volume",
                 "entity": {
                     "@id": "https://bbp.epfl.ch/neurosciencegraph/data/7b4b36ad-911c-4758-8686-2bf7943e10fb"
                 },
             },
         ],
-        "description": "Hybrid annotation volume from ccfv2 and ccfv3 at 25 microns. The version replaces the leaf regions in ccfv3 with the leaf region of ccfv2, which have additional levels of hierarchy.",
+        "description": "Hybrid annotation volume from ccfv2 and ccfv3 at 25 microns. "
+        "The version replaces the leaf regions in ccfv3 with the leaf region of ccfv2, "
+        "which have additional levels of hierarchy.",
         "isRegisteredIn": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system",
-            "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
+            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+            "allen_ccfv3_spatial_reference_system",
+            "@type": [
+                "BrainAtlasSpatialReferenceSystem",
+                "AtlasSpatialReferenceSystem",
+            ],
         },
         "name": "Annotation Hybrid",
         "componentEncoding": "float64",
@@ -106,7 +120,9 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
 def test_create_volumetric_resources():
 
     # Arguments
-    forge_config_file = str(Path(TEST_PATH, "tests/test_forge_config/test_forge_config_demo.yaml"))
+    forge_config_file = str(
+        Path(TEST_PATH, "tests/test_forge_config/test_forge_config_demo.yaml")
+    )
     nexus_token_file = str(Path(TEST_PATH, "tests/test_forge_config/empty_token.txt"))
 
     forge = KnowledgeGraphForge(forge_config_file, token=nexus_token_file)
@@ -119,24 +135,34 @@ def test_create_volumetric_resources():
     ]
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
     provenance = [
-        "atlas-building-tools combination combine-annotations:atlas-building-tools, version 1.0.0,",
-        "atlas-building-tools region-splitter split-isocortex-layer-23:atlas-building-tools, version 1.0.0",
-        "atlas-building-tools cell-densities glia-cell-densities:atlas-building-tools, version 1.0.0",
-        "atlas-building-tools cell-densities inhibitory-neuron-densities:atlas-building-tools, version 1.0.0",
+        "atlas-building-tools combination combine-annotations:atlas-building-tools, "
+        "version 1.0.0,",
+        "atlas-building-tools region-splitter split-isocortex-layer-23:"
+        "atlas-building-tools, version 1.0.0",
+        "atlas-building-tools cell-densities glia-cell-densities:atlas-building-tools, "
+        "version 1.0.0",
+        "atlas-building-tools cell-densities inhibitory-neuron-densities:"
+        "atlas-building-tools, version 1.0.0",
     ]
 
     voxel_resolution = "25"
 
     # Arguments wrong
-    empty_folder = str(Path(TEST_PATH, "tests/tests_data/wrong_data/empty_cell_density"))
-    wrong_dataset_name = str(Path(TEST_PATH, "tests/tests_data/wrong_data/wrong_name.nrrd"))
+    empty_folder = str(
+        Path(TEST_PATH, "tests/tests_data/wrong_data/empty_cell_density")
+    )
+    wrong_dataset_name = str(
+        Path(TEST_PATH, "tests/tests_data/wrong_data/wrong_name.nrrd")
+    )
     corrupted_data_header = str(
         Path(TEST_PATH, "tests/tests_data/wrong_data/corrupted_header.nrrd")
     )
     wrong_config_key = str(
         Path(TEST_PATH, "tests/tests_data/wrong_data/wrongkey_push_dataset_config.yaml")
     )
-    folder_annotation = str(Path(TEST_PATH, "tests/tests_data/wrong_data/folder_annotation"))
+    folder_annotation = str(
+        Path(TEST_PATH, "tests/tests_data/wrong_data/folder_annotation")
+    )
     neuron_density_file = str(
         Path(TEST_PATH, "tests/tests_data/wrong_data/neuron_density_file.nrrd")
     )
@@ -144,25 +170,29 @@ def test_create_volumetric_resources():
     config_wrongdatatype = str(
         Path(
             TEST_PATH,
-            "tests/tests_data/wrong_data/wrong_data_config_file/wrongdatatype_push_dataset_config.yaml",
+            "tests/tests_data/wrong_data/wrong_data_config_file/"
+            "wrongdatatype_push_dataset_config.yaml",
         )
     )
     config_data_emptydata = str(
         Path(
             TEST_PATH,
-            "tests/tests_data/wrong_data/wrong_data_config_file/emptydata_push_dataset_config.yaml",
+            "tests/tests_data/wrong_data/wrong_data_config_file/"
+            "emptydata_push_dataset_config.yaml",
         )
     )
     config_data_notfound = str(
         Path(
             TEST_PATH,
-            "tests/tests_data/wrong_data/wrong_data_config_file/dataNotfound_push_dataset_config.yaml",
+            "tests/tests_data/wrong_data/wrong_data_config_file/"
+            "dataNotfound_push_dataset_config.yaml",
         )
     )
     config_corruptedData = str(
         Path(
             TEST_PATH,
-            "tests/tests_data/wrong_data/wrong_data_config_file/corruptedData_push_dataset_config.yaml",
+            "tests/tests_data/wrong_data/wrong_data_config_file/"
+            "corruptedData_push_dataset_config.yaml",
         )
     )
 
@@ -172,7 +202,12 @@ def test_create_volumetric_resources():
 
     result = vars(
         create_volumetric_resources(
-            forge, [dataset_path[0]], voxel_resolution, config_path, provenances=[None], verbose=0
+            forge,
+            [dataset_path[0]],
+            voxel_resolution,
+            config_path,
+            provenances=[None],
+            verbose=0,
         )[-1]
     )
     for key in volumetric_dict_simple:
@@ -183,11 +218,18 @@ def test_create_volumetric_resources():
 
     cell_density_dict_fulloptions[
         "description"
-    ] = "Inhibitory neuron density volume for the Hybrid annotation volume from ccfv2 and ccfv3 at 25 microns. Generated in the Atlas Pipeline by the module 'atlas-building-tools cell-densities inhibitory-neuron-densities' version 1.0.0."
+    ] = "Inhibitory neuron density volume for the Hybrid annotation volume from ccfv2 "
+    "and ccfv3 at 25 microns. Generated in the Atlas Pipeline by the module "
+    "'atlas-building-tools cell-densities inhibitory-neuron-densities' version 1.0.0."
 
     result = vars(
         create_volumetric_resources(
-            forge, dataset_path, voxel_resolution, config_path, provenances=provenance, verbose=1
+            forge,
+            dataset_path,
+            voxel_resolution,
+            config_path,
+            provenances=provenance,
+            verbose=1,
         )[-1]
     )
     for key in cell_density_dict_fulloptions:
@@ -319,7 +361,9 @@ def test_add_nrrd_props():
         "dimension": 3,
         "space": "left-posterior-superior",
         "sizes": np.array([1, 2, 3]),
-        "space directions": np.array([[25.0, 0.0, 0.0], [0.0, 25.0, 0.0], [0.0, 0.0, 25.0]]),
+        "space directions": np.array(
+            [[25.0, 0.0, 0.0], [0.0, 25.0, 0.0], [0.0, 0.0, 25.0]]
+        ),
         "kinds": ["domain", "domain", "domain"],
         "endian": "little",
         "encoding": "gzip",
@@ -328,7 +372,9 @@ def test_add_nrrd_props():
     correct_voxel_type = "label"
     wrong_voxel_type = "wrong_voxel_type"
 
-    result = vars(add_nrrd_props(volumetric_resource, nrrd_header, config, correct_voxel_type))
+    result = vars(
+        add_nrrd_props(volumetric_resource, nrrd_header, config, correct_voxel_type)
+    )
 
     volumetric_dict_fulloptions = volumetric_dict(cell_density=False, nrrd_props=True)
     for key in volumetric_dict_fulloptions:

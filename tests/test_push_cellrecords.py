@@ -12,21 +12,33 @@ TEST_PATH = Path(Path(__file__).parent.parent)
 def test_create_cell_record_resources():
 
     # Arguments
-    forge_config_file = str(Path(TEST_PATH, "tests/test_forge_config/test_forge_config_demo.yaml"))
+    forge_config_file = str(
+        Path(TEST_PATH, "tests/test_forge_config/test_forge_config_demo.yaml")
+    )
     nexus_token_file = str(Path(TEST_PATH, "tests/test_forge_config/empty_token.txt"))
 
     forge = KnowledgeGraphForge(forge_config_file, token=nexus_token_file)
 
     dataset_path = str(Path(TEST_PATH, "tests/tests_data/cell_records_sonata.h5"))
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
-    provenance = "brainbuilder cells positions-and-orientations:brainbuilder, version 0.15.0"
+    provenance = (
+        "brainbuilder cells positions-and-orientations:brainbuilder, version 0.15.0"
+    )
     voxel_resolution = "25"
 
     # Arguments wrong
-    empty_folder = str(Path(TEST_PATH, "tests/tests_data/wrong_data/cell_records_sonata"))
-    corrupted_dataset = str(Path(TEST_PATH, "tests/tests_data/wrong_data/corrupted_cellrecords.h5"))
-    wrong_dataset = str(Path(TEST_PATH, "tests/tests_data/wrong_data/wrong_dataset_cellrecords.h5"))
-    nocelltype_data = str(Path(TEST_PATH, "tests/tests_data/wrong_data/no_celltype_cellrecords.h5"))
+    empty_folder = str(
+        Path(TEST_PATH, "tests/tests_data/wrong_data/cell_records_sonata")
+    )
+    corrupted_dataset = str(
+        Path(TEST_PATH, "tests/tests_data/wrong_data/corrupted_cellrecords.h5")
+    )
+    wrong_dataset = str(
+        Path(TEST_PATH, "tests/tests_data/wrong_data/wrong_dataset_cellrecords.h5")
+    )
+    nocelltype_data = str(
+        Path(TEST_PATH, "tests/tests_data/wrong_data/no_celltype_cellrecords.h5")
+    )
     wrong_config_key = str(
         Path(TEST_PATH, "tests/tests_data/wrong_data/wrongkey_push_dataset_config.yaml")
     )
@@ -34,31 +46,36 @@ def test_create_cell_record_resources():
     config_wrongdatatype = str(
         Path(
             TEST_PATH,
-            "tests/tests_data/wrong_data/wrong_data_config_file/wrongdatatype_push_dataset_config.yaml",
+            "tests/tests_data/wrong_data/wrong_data_config_file/"
+            "wrongdatatype_push_dataset_config.yaml",
         )
     )
     config_data_emptydata = str(
         Path(
             TEST_PATH,
-            "tests/tests_data/wrong_data/wrong_data_config_file/emptydata_push_dataset_config.yaml",
+            "tests/tests_data/wrong_data/wrong_data_config_file/"
+            "emptydata_push_dataset_config.yaml",
         )
     )
     config_data_notfound = str(
         Path(
             TEST_PATH,
-            "tests/tests_data/wrong_data/wrong_data_config_file/dataNotfound_push_dataset_config.yaml",
+            "tests/tests_data/wrong_data/wrong_data_config_file/"
+            "dataNotfound_push_dataset_config.yaml",
         )
     )
     config_data_corrupted = str(
         Path(
             TEST_PATH,
-            "tests/tests_data/wrong_data/wrong_data_config_file/corruptedData_push_dataset_config.yaml",
+            "tests/tests_data/wrong_data/wrong_data_config_file/"
+            "corruptedData_push_dataset_config.yaml",
         )
     )
     config_data_wrongdataset = str(
         Path(
             TEST_PATH,
-            "tests/tests_data/wrong_data/wrong_data_config_file/wrongdataset_push_dataset_config.yaml",
+            "tests/tests_data/wrong_data/wrong_data_config_file/"
+            "wrongdataset_push_dataset_config.yaml",
         )
     )
 
@@ -67,21 +84,32 @@ def test_create_cell_record_resources():
     cellrecords_resource_simple = {
         "type": "CellRecordSeries",
         "atlasRelease": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda"
+            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+            "e2e500ec-fe7e-4888-88b9-b72425315dda"
         },
         "brainLocation": {
             "atlasSpatialReferenceSystem": {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system",
-                "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+                "allen_ccfv3_spatial_reference_system",
+                "@type": [
+                    "BrainAtlasSpatialReferenceSystem",
+                    "AtlasSpatialReferenceSystem",
+                ],
             },
             "brainRegion": {"label": "root", "@id": "mba:997"},
         },
         "bufferEncoding": "binary",
         "contribution": [],
-        "description": "Sonata .h5 file storing the 3D cell positions and orientations of the Mouse ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 µm).",
+        "description": "Sonata .h5 file storing the 3D cell positions and orientations "
+        "of the Mouse ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 "
+        "µm).",
         "isRegisteredIn": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system",
-            "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
+            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+            "allen_ccfv3_spatial_reference_system",
+            "@type": [
+                "BrainAtlasSpatialReferenceSystem",
+                "AtlasSpatialReferenceSystem",
+            ],
         },
         "name": "Cell Records Sonata",
         "numberOfRecords": {"@type": "xsd:long", "@value": 11},
@@ -152,7 +180,12 @@ def test_create_cell_record_resources():
 
     result = vars(
         create_cell_record_resources(
-            forge, [dataset_path], voxel_resolution, config_path, provenances=[None], verbose=0
+            forge,
+            [dataset_path],
+            voxel_resolution,
+            config_path,
+            provenances=[None],
+            verbose=0,
         )[-1]
     )
 
@@ -164,7 +197,10 @@ def test_create_cell_record_resources():
     cellrecords_resource_fulloptions = copy.deepcopy(cellrecords_resource_simple)
     cellrecords_resource_fulloptions[
         "description"
-    ] = "Sonata .h5 file storing the 3D cell positions and orientations of the Mouse ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 µm). Generated in the Atlas Pipeline by the module 'brainbuilder cells positions-and-orientations' version 0.15.0."
+    ] = "Sonata .h5 file storing the 3D cell positions and orientations of the Mouse "
+    "ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 µm). Generated in "
+    "the Atlas Pipeline by the module 'brainbuilder cells positions-and-orientations' "
+    "version 0.15.0."
 
     result = vars(
         create_cell_record_resources(

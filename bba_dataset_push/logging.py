@@ -8,7 +8,8 @@ def create_log_handler(logger_name, log_file: str):
     logger = logging.getLogger(logger_name)
     handler = logging.FileHandler(log_file)
     formatter = logging.Formatter(
-        "[%(asctime)s] - %(name)s - {%(filename)s:%(lineno)d} " "- %(levelname)s: %(message)s"
+        "[%(asctime)s] - %(name)s - {%(filename)s:%(lineno)d} "
+        "- %(levelname)s: %(message)s"
     )
     handler.setFormatter(formatter)
     logger.addHandler(handler)

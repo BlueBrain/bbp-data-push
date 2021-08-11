@@ -10,21 +10,32 @@ TEST_PATH = Path(Path(__file__).parent.parent)
 def test_initialize_pusher_cli():
 
     # initialize-pusher-cli argument data
-    forge_config_file = str(Path(TEST_PATH, "tests/test_forge_config/test_forge_config_demo.yaml"))
+    forge_config_file = str(
+        Path(TEST_PATH, "tests/test_forge_config/test_forge_config_demo.yaml")
+    )
     nexus_org = "some_org"
     nexus_proj = "some_proj"
     nexus_token_file = str(Path(TEST_PATH, "tests/test_forge_config/empty_token.txt"))
 
     # push-meshes argument data
-    dataset_path = str(Path(TEST_PATH, "tests/tests_data/test_brain_region_meshes_hybrid"))
-    config = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config_template.yaml"))
+    dataset_path = str(
+        Path(TEST_PATH, "tests/tests_data/test_brain_region_meshes_hybrid")
+    )
+    config = str(
+        Path(TEST_PATH, "tests/tests_data/test_push_dataset_config_template.yaml")
+    )
     hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/test_hierarchy.json"))
 
     #
     wrong_forge_config_file = str(
-        Path(TEST_PATH, "tests/test_forge_config/wrong_config/test_forge_config_demo.yaml")
+        Path(
+            TEST_PATH,
+            "tests/test_forge_config/wrong_config/test_forge_config_demo.yaml",
+        )
     )
-    wrong_token_file = str(Path(TEST_PATH, "tests/test_forge_config/wrong_config/wrong_token/"))
+    wrong_token_file = str(
+        Path(TEST_PATH, "tests/test_forge_config/wrong_config/wrong_token/")
+    )
 
     # environment exception
     runner = CliRunner()
@@ -32,22 +43,22 @@ def test_initialize_pusher_cli():
         result = runner.invoke(
             initialize_pusher_cli,
             [
-                "--forge_config_file",
+                "--forge-config-file",
                 forge_config_file,
-                "--nexus_env",
-                "wrong_env",
-                "--nexus_org",
+                "--nexus-env",
+                "wrong-env",
+                "--nexus-org",
                 nexus_org,
-                "--nexus_proj",
+                "--nexus-proj",
                 nexus_proj,
-                "--nexus_token_file",
+                "--nexus-token-file",
                 nexus_token_file,
                 "push-meshes",
-                "--dataset_path",
+                "--dataset-path",
                 dataset_path,
                 "--config",
                 config,
-                "--hierarchy_path",
+                "--hierarchy-path",
                 hierarchy_path,
             ],
         )
@@ -59,22 +70,22 @@ def test_initialize_pusher_cli():
         result = runner.invoke(
             initialize_pusher_cli,
             [
-                "--forge_config_file",
+                "--forge-config-file",
                 wrong_forge_config_file,
-                "--nexus_env",
+                "--nexus-env",
                 "staging",
-                "--nexus_org",
+                "--nexus-org",
                 nexus_org,
-                "--nexus_proj",
+                "--nexus-proj",
                 nexus_proj,
-                "--nexus_token_file",
+                "--nexus-token-file",
                 nexus_token_file,
                 "push-meshes",
-                "--dataset_path",
+                "--dataset-path",
                 dataset_path,
                 "--config",
                 config,
-                "--hierarchy_path",
+                "--hierarchy-path",
                 hierarchy_path,
             ],
         )
@@ -86,22 +97,22 @@ def test_initialize_pusher_cli():
         result = runner.invoke(
             initialize_pusher_cli,
             [
-                "--forge_config_file",
+                "--forge-config-file",
                 forge_config_file,
-                "--nexus_env",
+                "--nexus-env",
                 "staging",
-                "--nexus_org",
+                "--nexus-org",
                 nexus_org,
-                "--nexus_proj",
+                "--nexus-proj",
                 nexus_proj,
-                "--nexus_token_file",
+                "--nexus-token-file",
                 wrong_token_file,
                 "push-meshes",
-                "--dataset_path",
+                "--dataset-path",
                 dataset_path,
                 "--config",
                 config,
-                "--hierarchy_path",
+                "--hierarchy-path",
                 hierarchy_path,
             ],
         )
