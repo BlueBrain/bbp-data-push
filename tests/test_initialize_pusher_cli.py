@@ -14,7 +14,7 @@ def test_initialize_pusher_cli():
     )
     nexus_org = "some_org"
     nexus_proj = "some_proj"
-    nexus_token_file = str(Path(TEST_PATH, "tests/test_forge_config/empty_token.txt"))
+    nexus_token = "nexus token"
 
     # push-meshes argument data
     dataset_path = str(
@@ -32,9 +32,7 @@ def test_initialize_pusher_cli():
             "tests/test_forge_config/wrong_config/test_forge_config_demo.yaml",
         )
     )
-    wrong_token_file = str(
-        Path(TEST_PATH, "tests/test_forge_config/wrong_config/wrong_token/")
-    )
+    wrong_token = "wrong token"
 
     # environment exception
     runner = CliRunner()
@@ -50,8 +48,8 @@ def test_initialize_pusher_cli():
                 nexus_org,
                 "--nexus-proj",
                 nexus_proj,
-                "--nexus-token-file",
-                nexus_token_file,
+                "--nexus-token",
+                nexus_token,
                 "push-meshes",
                 "--dataset-path",
                 dataset_path,
@@ -77,8 +75,8 @@ def test_initialize_pusher_cli():
                 nexus_org,
                 "--nexus-proj",
                 nexus_proj,
-                "--nexus-token-file",
-                nexus_token_file,
+                "--nexus-token",
+                nexus_token,
                 "push-meshes",
                 "--dataset-path",
                 dataset_path,
@@ -90,7 +88,7 @@ def test_initialize_pusher_cli():
         )
         assert result.exit_code == 1
 
-    # wrong token file
+    # wrong token
     runner = CliRunner()
     with runner.isolated_filesystem():
         result = runner.invoke(
@@ -104,8 +102,8 @@ def test_initialize_pusher_cli():
                 nexus_org,
                 "--nexus-proj",
                 nexus_proj,
-                "--nexus-token-file",
-                wrong_token_file,
+                "--nexus-token",
+                wrong_token,
                 "push-meshes",
                 "--dataset-path",
                 dataset_path,

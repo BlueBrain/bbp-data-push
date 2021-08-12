@@ -95,8 +95,8 @@ def test_get_hierarchy_file():
 
     input_hierarchy = [str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))]
     config_content = {
-        "generatedHierarchyJson": ["hierarchy", "hierarchy_l23split"],
-        "GeneratedHierarchyJson": {
+        "hierarchyJson": ["hierarchy", "hierarchy_l23split"],
+        "HierarchyJson": {
             "hierarchy": "tests/tests_data/hierarchy.json",
             "hierarchy_l23split": "tests/tests_data/hierarchy_l23split.json",
         },
@@ -112,8 +112,8 @@ def test_get_hierarchy_file():
         str(Path(TEST_PATH, "tests/tests_data/hierarchy_l23split.json")),
     ]
     config_content = {
-        "generatedHierarchyJson": ["hierarchy", "hierarchy_l23split"],
-        "GeneratedHierarchyJson": {
+        "hierarchyJson": ["hierarchy", "hierarchy_l23split"],
+        "HierarchyJson": {
             "hierarchy": "tests/tests_data/hierarchy.json",
             "hierarchy_l23split": "tests/tests_data/hierarchy_l23split.json",
         },
@@ -128,8 +128,8 @@ def test_get_hierarchy_file():
         str(Path(TEST_PATH, "tests/tests_data/wrong_data/empty_hierarchy.json"))
     ]
     config_content = {
-        "generatedHierarchyJson": ["hierarchy", "hierarchy_l23split"],
-        "GeneratedHierarchyJson": {
+        "hierarchyJson": ["hierarchy", "hierarchy_l23split"],
+        "HierarchyJson": {
             "hierarchy": "tests/tests_data/hierarchy.json",
             "hierarchy_l23split": "tests/tests_data/hierarchy_l23split.json",
         },
@@ -142,8 +142,8 @@ def test_get_hierarchy_file():
 
     input_hierarchy = [str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))]
     config_content = {
-        "generatedHierarchyJson": ["hierarchy", "hierarchy_l23split"],
-        "GeneratedHierarchyJson": {
+        "hierarchyJson": ["hierarchy", "hierarchy_l23split"],
+        "HierarchyJson": {
             "hierarchy": "tests/tests_data/hierarchy.json",
             "hierarchy_l23split": "tests/tests_data/hierarchy_l23split.json",
         },
@@ -160,12 +160,12 @@ def test_get_hierarchy_file():
 
     with pytest.raises(KeyError) as e:
         get_hierarchy_file(input_hierarchy, config_content, hierarchy_tag)
-    assert "GeneratedHierarchyJson" in str(e.value)
+    assert "HierarchyJson" in str(e.value)
 
     input_hierarchy = [str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))]
     config_content = {
-        "generatedHierarchyJson": ["hierarchy", "hierarchy_l23split"],
-        "GeneratedHierarchyJson": {
+        "hierarchyJson": ["hierarchy", "hierarchy_l23split"],
+        "HierarchyJson": {
             "hierarchy": "tests/tests_data/hierarchy.json",
             "hierarchy_l23split": "tests/tests_data/hierarchy_l23split.json",
         },

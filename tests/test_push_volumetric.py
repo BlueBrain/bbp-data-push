@@ -48,7 +48,7 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "description": "The ccfv2 (2011) has a finer granularity than ccfv3 in "
                 "term of leaf nodes, these were imported in this volume",
                 "entity": {
-                    "@id": "https://bbp.epfl.ch/neurosciencegraph/data"
+                    "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
                     "7b4b36ad-911c-4758-8686-2bf7943e10fb"
                 },
             },
@@ -142,7 +142,7 @@ def test_create_volumetric_resources():
         "atlas-building-tools, version 1.0.0",
         "atlas-building-tools cell-densities glia-cell-densities:atlas-building-tools, "
         "version 1.0.0",
-        "atlas-building-tools cell-densities inhibitory-neuron-densities:"
+        "atlas-building-tools cell-densities inhibitory-and-excitatory-neuron-densities:"
         "atlas-building-tools, version 1.0.0",
     ]
 
@@ -217,11 +217,12 @@ def test_create_volumetric_resources():
     # test with every arguments
     cell_density_dict_fulloptions = volumetric_dict(cell_density=True, nrrd_props=True)
 
-    cell_density_dict_fulloptions[
-        "description"
-    ] = "Inhibitory neuron density volume for the Hybrid annotation volume from ccfv2 "
-    "and ccfv3 at 25 microns. Generated in the Atlas Pipeline by the module "
-    "'atlas-building-tools cell-densities inhibitory-neuron-densities' version 1.0.0."
+    cell_density_dict_fulloptions["description"] = (
+        "Inhibitory neuron density volume for the Hybrid annotation volume from ccfv2 "
+        "and ccfv3 at 25 microns. Generated in the Atlas Pipeline by the module "
+        "'atlas-building-tools cell-densities inhibitory-and-excitatory-neuron-"
+        "densities' version 1.0.0."
+    )
 
     result = vars(
         create_volumetric_resources(

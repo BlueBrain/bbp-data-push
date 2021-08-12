@@ -43,9 +43,10 @@ def _push_to_Nexus(datasets, forge, schema_id):
 @click.option("-v", "--verbose", count=True)
 @click.option(
     "--forge-config-file",
+    type=click.Path(exists=True),
     default=(
         "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/"
-        "notebooks/use-cases/prod-forge-nexus.yml",
+        "notebooks/use-cases/prod-forge-nexus.yml"
     ),
     help="Path to the configuration file " "used to  instantiate the Forge",
 )  # type=click.Path(exists=True)

@@ -1,4 +1,4 @@
-generatedHierarchyJson:
+hierarchyJson:
 - hierarchy
 - hierarchy_l23split
 generatedDatasetType:
@@ -13,7 +13,7 @@ generatedDataset:
 - brain_region_meshes_hybrid
 - brain_region_meshes_l23split
 - cell_records_sonata
-GeneratedHierarchyJson:
+HierarchyJson:
   hierarchy: tests/tests_data/wrong_data/wrongkey_hierarchy.json
   hierarchy_l23split: tests/tests_data/hierarchy_l23split.json
 GeneratedDatasetPath:
@@ -25,5 +25,5 @@ GeneratedDatasetPath:
   MeshFile:
     brain_region_meshes_hybrid: tests/tests_data/brain_region_meshes_hybrid
     brain_region_meshes_l23split: tests/tests_data/brain_region_meshes_l23split
-  CellPositionFile:
+  CellRecordsFile:
     cell_records_sonata: tests/tests_data/cell_positions_hybrid.h5

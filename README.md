@@ -53,7 +53,7 @@ Note: the --verbosity argument allows you to print in the console the last resou
 
 
 ## Source
-You can find the source of this module here: https://bbpcode.epfl.ch/code/#/admin/projects/dke/blue_brain_atlas_nexus_push
+You can find the source of this module here: https://bbpgitlab.epfl.ch/dke/apps/blue_brain_nexus_push
 
 
 ## Arguments for initialize-pusher-cli
@@ -104,7 +104,7 @@ Construct and push into Nexus as a resource a 'CellRecordSeries' property payloa
 ## Installation
 Clone the repository:
 
-git clone https://<YOUR_USERNAME>/code/a/dke/blue_brain_atlas_nexus_push
+git clone https://bbpgitlab.epfl.ch/dke/apps/blue_brain_nexus_push.git
 
 and install it with pip:
 

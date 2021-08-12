@@ -82,7 +82,7 @@ def test_create_cell_record_resources():
     wrong_provenance = "wrong_provenance"
 
     cellrecords_resource_simple = {
-        "type": "CellRecordSeries",
+        "type": ['CellRecordSeries', 'Dataset'],
         "atlasRelease": {
             "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
             "e2e500ec-fe7e-4888-88b9-b72425315dda"
@@ -100,9 +100,10 @@ def test_create_cell_record_resources():
         },
         "bufferEncoding": "binary",
         "contribution": [],
-        "description": "Sonata .h5 file storing the 3D cell positions and orientations "
-        "of the Mouse ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 "
-        "µm).",
+        "description": (
+            "Sonata .h5 file storing the 3D cell positions and orientations of the "
+            "Mouse ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 µm)."
+        ),
         "isRegisteredIn": {
             "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
             "allen_ccfv3_spatial_reference_system",
@@ -195,12 +196,12 @@ def test_create_cell_record_resources():
 
     # test with every arguments
     cellrecords_resource_fulloptions = copy.deepcopy(cellrecords_resource_simple)
-    cellrecords_resource_fulloptions[
-        "description"
-    ] = "Sonata .h5 file storing the 3D cell positions and orientations of the Mouse "
-    "ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 µm). Generated in "
-    "the Atlas Pipeline by the module 'brainbuilder cells positions-and-orientations' "
-    "version 0.15.0."
+    cellrecords_resource_fulloptions["description"] = (
+        "Sonata .h5 file storing the 3D cell positions and orientations of the Mouse "
+        "ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 µm). Generated "
+        "in the Atlas Pipeline by the module 'brainbuilder cells "
+        "positions-and-orientations' version 0.15.0."
+    )
 
     result = vars(
         create_cell_record_resources(

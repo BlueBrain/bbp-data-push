@@ -89,7 +89,7 @@ def test_create_mesh_resources():
     wrong_provenance = "wrong_provenance"
 
     mesh_resource_simple = {
-        "type": "BrainParcellationMesh",
+        "type": ["Dataset", "BrainParcellationMesh"],
         "atlasRelease": {
             "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
             "e2e500ec-fe7e-4888-88b9-b72425315dda"
@@ -106,8 +106,10 @@ def test_create_mesh_resources():
             "brainRegion": {"label": "region_1", "@id": "mba:1"},
         },
         "contribution": [],
-        "description": "Brain region mesh - Region_1 (ID: 1). It is based in the "
-        "parcellation volume resulting of the hybridation between CCFv2 and CCFv3.",
+        "description": (
+            "Brain region mesh - Region_1 (ID: 1). It is based in the parcellation "
+            "volume resulting of the hybridation between CCFv2 and CCFv3."
+        ),
         "distribution": "",
         "isRegisteredIn": {
             "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -138,18 +140,18 @@ def test_create_mesh_resources():
 
     # test with every arguments
     mesh_resource_fulloptions = copy.deepcopy(mesh_resource_simple)
-    mesh_resource_fulloptions[
-        "description"
-    ] = "Brain region mesh - Region_1 (ID: 1). It is based in the parcellation volume "
-    "resulting of the hybridation between CCFv2 and CCFv3. Generated in the Atlas "
-    "Pipeline by the module 'parcellation2mesh' version 0.0.1."
+    mesh_resource_fulloptions["description"] = (
+        "Brain region mesh - Region_1 (ID: 1). It is based in the parcellation volume "
+        "resulting of the hybridation between CCFv2 and CCFv3. Generated in the Atlas "
+        "Pipeline by the module 'parcellation2mesh' version 0.0.1."
+    )
 
     result = vars(
         create_mesh_resources(
             forge,
             dataset_path,
             config_path,
-            [hierarchy_path[0]],
+            hierarchy_path,
             provenances=[provenance],
             verbose=1,
         )[-1]
