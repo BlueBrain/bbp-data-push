@@ -61,7 +61,6 @@ def create_cell_record_resources(
 
     # Constructs the Resource properties payloads accordingly to the input atlas cell
     # record datasets
-    datasets = []
     Measures_table = {
         "x": "Cell position along the X axis",
         "y": "Cell position along the Y axis",
@@ -104,13 +103,24 @@ def create_cell_record_resources(
         },
     }
 
-    # subject = {
-    #     "@type": "Subject",  # Entity
-    #     "species": {
-    #         "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
-    #         "label": "Mus musculus",
-    #     },
-    # }
+    subject = {
+        "@type": "Subject",
+        "species": {
+            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
+            "label": "Mus musculus"
+        }
+    }
+    
+    #Create contribution
+    if isinstance(forge._store, DemoStore):
+        contribution = []
+    else:
+        try:
+            contribution, log_info = add_contribution(forge)
+            L.info("\n".join(log_info))
+        except Exception as e:
+            L.error(f"Error: {e}")
+            exit(1)
 
     # If multiple files and multiple Atlas
     for filepath in inputpath:
@@ -212,6 +222,7 @@ def create_cell_record_resources(
         cellrecord_resource = Resource(
             type=["CellRecordSeries", "Dataset"],  # Dataset
             name=filename_noext.replace("_", " ").title(),
+            distribution_file=distribution_file,
             description=description,  #
             atlasRelease={"@id": id_atlas_release},  #
             isRegisteredIn=isRegisteredIn,  #
@@ -219,29 +230,16 @@ def create_cell_record_resources(
             recordMeasure=recordMeasure,
             numberOfRecords=numberOfRecords,
             bufferEncoding="binary",
-            distribution_file=distribution_file,
+            subject = subject,
+            contribution = contribution
         )
         # resource.fileExtension = config["file_extension"]
         # dataset = Dataset.from_resource(forge, cellrecord_resource,
         # store_metadata=True) #several dataset = datasets
 
-        # subject=subject,
         # dataSampleModality=["parcellationId", "cellTypeId", "position3D",
         # "eulerAngle"],
 
-        if isinstance(forge._store, DemoStore):
-            cellrecord_resource.contribution = []
-        else:
-            try:
-                contributor, log_info = add_contribution(forge)
-                cellrecord_resource.contribution = Resource(
-                    type="Contribution", agent=contributor
-                )
-                L.info("\n".join(log_info))
-            except Exception as e:
-                L.error(f"Error: {e}")
-                exit(1)
-
-        datasets.append(cellrecord_resource)
+        datasets = [cellrecord_resource]
 
     return datasets

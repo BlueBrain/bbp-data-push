@@ -106,11 +106,17 @@ def test_create_mesh_resources():
             "brainRegion": {"label": "region_1", "@id": "mba:1"},
         },
         "contribution": [],
+        "subject" : {
+            "@type": "Subject",
+            "species": {
+                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
+                "label": "Mus musculus"
+            }
+        },
         "description": (
             "Brain region mesh - Region_1 (ID: 1). It is based in the parcellation "
             "volume resulting of the hybridation between CCFv2 and CCFv3."
         ),
-        "distribution": "",
         "isRegisteredIn": {
             "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
             "allen_ccfv3_spatial_reference_system",
@@ -135,8 +141,7 @@ def test_create_mesh_resources():
     )
 
     for key in mesh_resource_simple:
-        if key != "distribution":
-            assert result[key] == mesh_resource_simple[key]
+        assert result[key] == mesh_resource_simple[key]
 
     # test with every arguments
     mesh_resource_fulloptions = copy.deepcopy(mesh_resource_simple)
@@ -158,8 +163,7 @@ def test_create_mesh_resources():
     )
 
     for key in mesh_resource_fulloptions:
-        if key != "distribution":
-            assert result[key] == mesh_resource_fulloptions[key]
+        assert result[key] == mesh_resource_fulloptions[key]
 
     # Check every exceptions :
 

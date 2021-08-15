@@ -33,6 +33,13 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
             "brainRegion": {"label": "root", "@id": "mba:997"},
         },
         "contribution": [],
+        "subject" : {
+            "@type": "Subject",
+            "species": {
+                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
+                "label": "Mus musculus"
+            }
+        },
         "derivation": [
             {
                 "@type": "Derivation",
@@ -351,6 +358,7 @@ def test_add_nrrd_props():
         isRegisteredIn=volumetric_dict_simple["isRegisteredIn"],
         name=volumetric_dict_simple["name"],
         componentEncoding=volumetric_dict_simple["componentEncoding"],
+        subject = volumetric_dict_simple["subject"]
     )
     config = {
         "file_extension": "nrrd",

@@ -323,15 +323,14 @@ def create_volumetric_resources(
             isRegisteredIn=isRegisteredIn,
             brainLocation=brainLocation,
             atlasRelease={"@id": id_atlas_release},
-            subject = subject
+            subject = subject,
+            contribution = contribution
         )
 
         nrrd_resource = add_nrrd_props(nrrd_resource, header, config, voxel_type)
 
         if derivation:
             nrrd_resource.derivation = derivation
-            
-        nrrd_resource.contribution = contribution
 
         datasets = [nrrd_resource]
 

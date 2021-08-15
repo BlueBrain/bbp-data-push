@@ -215,11 +215,10 @@ def create_mesh_resources(
             distribution=distribution_file,
             isRegisteredIn=isRegisteredIn,
             spatialUnit=spatial_unit,
-            subject = subject
+            subject = subject,
+            contribution = contribution
         )
         # dataset = Dataset.from_resource(forge, mesh_resource, store_metadata=True)
-
-        mesh_resource.contribution = contribution
 
         datasets = [mesh_resource]
 

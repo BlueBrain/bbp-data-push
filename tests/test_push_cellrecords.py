@@ -100,6 +100,13 @@ def test_create_cell_record_resources():
         },
         "bufferEncoding": "binary",
         "contribution": [],
+        "subject" : {
+            "@type": "Subject",
+            "species": {
+                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
+                "label": "Mus musculus"
+            }
+        },
         "description": (
             "Sonata .h5 file storing the 3D cell positions and orientations of the "
             "Mouse ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 µm)."
@@ -189,10 +196,9 @@ def test_create_cell_record_resources():
             verbose=0,
         )[-1]
     )
-
+    print(result)
     for key in cellrecords_resource_simple:
-        if key != "distribution":
-            assert result[key] == cellrecords_resource_simple[key]
+        assert result[key] == cellrecords_resource_simple[key]
 
     # test with every arguments
     cellrecords_resource_fulloptions = copy.deepcopy(cellrecords_resource_simple)
@@ -215,8 +221,7 @@ def test_create_cell_record_resources():
     )
 
     for key in cellrecords_resource_fulloptions:
-        if key != "distribution":
-            assert result[key] == cellrecords_resource_fulloptions[key]
+        assert result[key] == cellrecords_resource_fulloptions[key]
 
     # Check every exceptions :
 
