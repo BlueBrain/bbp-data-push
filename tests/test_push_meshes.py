@@ -106,12 +106,12 @@ def test_create_mesh_resources():
             "brainRegion": {"label": "region_1", "@id": "mba:1"},
         },
         "contribution": [],
-        "subject" : {
+        "subject": {
             "@type": "Subject",
             "species": {
-                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
-                "label": "Mus musculus"
-            }
+                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
+                "label": "Mus musculus",
+            },
         },
         "description": (
             "Brain region mesh - Region_1 (ID: 1). It is based in the parcellation "
@@ -151,19 +151,23 @@ def test_create_mesh_resources():
         "Pipeline by the module 'parcellation2mesh' version 0.0.1."
     )
 
-    result = vars(
-        create_mesh_resources(
-            forge,
-            dataset_path,
-            config_path,
-            hierarchy_path,
-            provenances=[provenance],
-            verbose=1,
-        )[-1]
+    result = create_mesh_resources(
+        forge,
+        dataset_path,
+        config_path,
+        hierarchy_path,
+        provenances=[provenance],
+        verbose=1,
     )
 
+    # Search for the hybrid mesh dataset to compare with (if multiple results returned)
+    hybrid_v2v3_dataset = None
+    for dataset in result:
+        if vars(dataset)["name"] == "Region_1 Mesh":
+            hybrid_v2v3_dataset = vars(dataset)
+
     for key in mesh_resource_fulloptions:
-        assert result[key] == mesh_resource_fulloptions[key]
+        assert hybrid_v2v3_dataset[key] == mesh_resource_fulloptions[key]
 
     # Check every exceptions :
 

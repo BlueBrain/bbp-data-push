@@ -106,12 +106,12 @@ def create_cell_record_resources(
     subject = {
         "@type": "Subject",
         "species": {
-            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
-            "label": "Mus musculus"
-        }
+            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
+            "label": "Mus musculus",
+        },
     }
-    
-    #Create contribution
+
+    # Create contribution
     if isinstance(forge._store, DemoStore):
         contribution = []
     else:
@@ -230,8 +230,8 @@ def create_cell_record_resources(
             recordMeasure=recordMeasure,
             numberOfRecords=numberOfRecords,
             bufferEncoding="binary",
-            subject = subject,
-            contribution = contribution
+            subject=subject,
+            contribution=contribution,
         )
         # resource.fileExtension = config["file_extension"]
         # dataset = Dataset.from_resource(forge, cellrecord_resource,

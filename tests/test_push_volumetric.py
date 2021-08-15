@@ -33,12 +33,12 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
             "brainRegion": {"label": "root", "@id": "mba:997"},
         },
         "contribution": [],
-        "subject" : {
+        "subject": {
             "@type": "Subject",
             "species": {
-                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
-                "label": "Mus musculus"
-            }
+                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
+                "label": "Mus musculus",
+            },
         },
         "derivation": [
             {
@@ -119,9 +119,9 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
         volumetric_dict["sampleType"] = "intensity"
         volumetric_dict["dimension"][0]["name"] = "intensity"
         volumetric_dict.pop("derivation", None)
-    
+
     volumetric_dict["type"].append("Dataset")
-    
+
     return volumetric_dict
 
 
@@ -149,8 +149,8 @@ def test_create_volumetric_resources():
         "atlas-building-tools, version 1.0.0",
         "atlas-building-tools cell-densities glia-cell-densities:atlas-building-tools, "
         "version 1.0.0",
-        "atlas-building-tools cell-densities inhibitory-and-excitatory-neuron-densities:"
-        "atlas-building-tools, version 1.0.0",
+        "atlas-building-tools cell-densities inhibitory-and-excitatory-neuron-densities"
+        ":atlas-building-tools, version 1.0.0",
     ]
 
     voxel_resolution = "25"
@@ -231,19 +231,25 @@ def test_create_volumetric_resources():
         "densities' version 1.0.0."
     )
 
-    result = vars(
-        create_volumetric_resources(
-            forge,
-            dataset_path,
-            voxel_resolution,
-            config_path,
-            provenances=provenance,
-            verbose=1,
-        )[-1]
+    result = create_volumetric_resources(
+        forge,
+        dataset_path,
+        voxel_resolution,
+        config_path,
+        provenances=provenance,
+        verbose=1,
     )
+
+    # Search for the excitatory neuron dataset to compare with (if multiple results
+    # returned)
+    excitatory_neuron_dataset = None
+    for dataset in result:
+        if vars(dataset)["name"] == "Excitatory Neuron Density":
+            excitatory_neuron_dataset = vars(dataset)
+
     # result return the payload from only the last dataset processed
     for key in cell_density_dict_fulloptions:
-        assert result[key] == cell_density_dict_fulloptions[key]
+        assert excitatory_neuron_dataset[key] == cell_density_dict_fulloptions[key]
 
     # Check every exceptions :
 
@@ -358,7 +364,7 @@ def test_add_nrrd_props():
         isRegisteredIn=volumetric_dict_simple["isRegisteredIn"],
         name=volumetric_dict_simple["name"],
         componentEncoding=volumetric_dict_simple["componentEncoding"],
-        subject = volumetric_dict_simple["subject"]
+        subject=volumetric_dict_simple["subject"],
     )
     config = {
         "file_extension": "nrrd",

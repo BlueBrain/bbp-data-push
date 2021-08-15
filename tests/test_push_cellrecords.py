@@ -100,12 +100,12 @@ def test_create_cell_record_resources():
         },
         "bufferEncoding": "binary",
         "contribution": [],
-        "subject" : {
+        "subject": {
             "@type": "Subject",
             "species": {
-                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
-                "label": "Mus musculus"
-            }
+                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
+                "label": "Mus musculus",
+            },
         },
         "description": (
             "Sonata .h5 file storing the 3D cell positions and orientations of the "
@@ -196,7 +196,7 @@ def test_create_cell_record_resources():
             verbose=0,
         )[-1]
     )
-    print(result)
+
     for key in cellrecords_resource_simple:
         assert result[key] == cellrecords_resource_simple[key]
 
@@ -209,19 +209,23 @@ def test_create_cell_record_resources():
         "positions-and-orientations' version 0.15.0."
     )
 
-    result = vars(
-        create_cell_record_resources(
-            forge,
-            [dataset_path],
-            voxel_resolution,
-            config_path,
-            provenances=[provenance],
-            verbose=0,
-        )[-1]
+    result = create_cell_record_resources(
+        forge,
+        [dataset_path],
+        voxel_resolution,
+        config_path,
+        provenances=[provenance],
+        verbose=0,
     )
 
+    # Search for the cell_record_dataset to compare with (if multiple results returned)
+    cell_record_dataset = None
+    for dataset in result:
+        if vars(dataset)["name"] == "Cell Records Sonata":
+            cell_record_dataset = vars(dataset)
+
     for key in cellrecords_resource_fulloptions:
-        assert result[key] == cellrecords_resource_fulloptions[key]
+        assert cell_record_dataset[key] == cellrecords_resource_fulloptions[key]
 
     # Check every exceptions :
 

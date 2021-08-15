@@ -82,16 +82,16 @@ def create_mesh_resources(
         "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
         "@id": atlas_reference_system_id,
     }
-    
+
     subject = {
         "@type": "Subject",
         "species": {
-            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
-            "label": "Mus musculus"
-        }
+            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
+            "label": "Mus musculus",
+        },
     }
 
-    #Create contribution
+    # Create contribution
     if isinstance(forge._store, DemoStore):
         contribution = []
     else:
@@ -215,8 +215,8 @@ def create_mesh_resources(
             distribution=distribution_file,
             isRegisteredIn=isRegisteredIn,
             spatialUnit=spatial_unit,
-            subject = subject,
-            contribution = contribution
+            subject=subject,
+            contribution=contribution,
         )
         # dataset = Dataset.from_resource(forge, mesh_resource, store_metadata=True)
 
@@ -278,7 +278,7 @@ def create_mesh_resources(
                 spatialUnit=mesh_resource.spatialUnit,
                 distribution=distribution_file,
                 contribution=mesh_resource.contribution,
-                subject = mesh_resource.subject
+                subject=mesh_resource.subject,
             )
             # dataset = Dataset.from_resource(forge, mesh_resources,
             # store_metadata=True)

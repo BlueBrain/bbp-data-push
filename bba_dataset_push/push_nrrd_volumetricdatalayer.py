@@ -154,7 +154,7 @@ def create_volumetric_resources(
     # isRegisteredIn = {
     #     "@id": atlas_reference_system_id,
     # }
-    #"@type": "BrainAtlasSpatialReferenceSystem"
+    # "@type": "BrainAtlasSpatialReferenceSystem"
     brainLocation = {
         "brainRegion": {"@id": f"mba:{region_id}", "label": region_name},
         "atlasSpatialReferenceSystem": {
@@ -165,16 +165,16 @@ def create_volumetric_resources(
             "@id": atlas_reference_system_id,
         },
     }
-    
+
     subject = {
         "@type": "Subject",
         "species": {
-            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
-            "label": "Mus musculus"
-        }
+            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
+            "label": "Mus musculus",
+        },
     }
-    
-    #Create contribution
+
+    # Create contribution
     if isinstance(forge._store, DemoStore):
         contribution = []
     else:
@@ -216,9 +216,9 @@ def create_volumetric_resources(
                         # this is going ot be the "name" of the resource
                         filepath = os.path.join(directory, files_nrrd[0])
                         filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-                        file_extension = (
-                            os.path.splitext(os.path.basename(filepath))[1][1:]
-                        )
+                        file_extension = os.path.splitext(os.path.basename(filepath))[
+                            1
+                        ][1:]
                         cell_density_file = filename_noext.replace("_", " ")
                         cell_density_name = (
                             f"{cell_density_file[0].upper()}" f"{cell_density_file[1:]}"
@@ -244,7 +244,7 @@ def create_volumetric_resources(
             except FileNotFoundError as e:
                 L.error(f"FileNotFoundError: {e}")
                 exit(1)
-        
+
         # Jump it if a file has been recognized
         if not file_found:
             for dataset in volumetric_data["parcellations"]:
@@ -253,16 +253,23 @@ def create_volumetric_resources(
                         if filepath.endswith(".nrrd"):
                             file_found = True
                             voxel_type = "label"
-                            resource_types = [resource_type, "BrainParcellationDataLayer"]
-                            description = f"{volumetric_data['parcellations'][dataset][1]}"
+                            resource_types = [
+                                resource_type,
+                                "BrainParcellationDataLayer",
+                            ]
+                            description = (
+                                f"{volumetric_data['parcellations'][dataset][1]}"
+                            )
                             module_tag = volumetric_data["parcellations"][dataset][0]
                             derivation = volumetric_data["parcellations"][dataset][2]
-        
+
                             # this is going ot be the "name" of the resource
-                            filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-                            file_extension = (
-                                os.path.splitext(os.path.basename(filepath))[1][1:]
-                            )
+                            filename_noext = os.path.splitext(
+                                os.path.basename(filepath)
+                            )[0]
+                            file_extension = os.path.splitext(
+                                os.path.basename(filepath)
+                            )[1][1:]
                             break
                         else:
                             L.error(
@@ -313,7 +320,7 @@ def create_volumetric_resources(
         # push
         content_type = f"application/{file_extension}"
         distribution_file = forge.attach(filepath, content_type)
-        
+
         resource_types.append("Dataset")
         nrrd_resource = Resource(
             type=resource_types,
@@ -323,8 +330,8 @@ def create_volumetric_resources(
             isRegisteredIn=isRegisteredIn,
             brainLocation=brainLocation,
             atlasRelease={"@id": id_atlas_release},
-            subject = subject,
-            contribution = contribution
+            subject=subject,
+            contribution=contribution,
         )
 
         nrrd_resource = add_nrrd_props(nrrd_resource, header, config, voxel_type)
@@ -345,9 +352,9 @@ def create_volumetric_resources(
                         f"{cell_density_file[0].upper()}" f"{cell_density_file[1:]}"
                     )
                     description = (
-                                f"{cell_density_name} volume for the "
-                                f"{volumetric_data['cell_densities'][dataset][1]}."
-                            )
+                        f"{cell_density_name} volume for the "
+                        f"{volumetric_data['cell_densities'][dataset][1]}."
+                    )
                 if provenances[0]:
                     description = f"{description} {prov_description}"
                 distribution_file = forge.attach(filepath, content_type)
@@ -367,9 +374,9 @@ def create_volumetric_resources(
                     sampleType=nrrd_resource.sampleType,
                     worldMatrix=nrrd_resource.worldMatrix,
                     resolution=nrrd_resource.resolution,
-                    bufferEncoding = nrrd_resource.bufferEncoding,
-                    endianness = nrrd_resource.endianness,
-                    subject = nrrd_resource.subject
+                    bufferEncoding=nrrd_resource.bufferEncoding,
+                    endianness=nrrd_resource.endianness,
+                    subject=nrrd_resource.subject,
                 )
 
                 datasets.append(nrrd_resources)
