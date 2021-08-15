@@ -89,7 +89,7 @@ def test_create_mesh_resources():
     wrong_provenance = "wrong_provenance"
 
     mesh_resource_simple = {
-        "type": ["Dataset", "BrainParcellationMesh"],
+        "type": ["BrainParcellationMesh", "Mesh", "Dataset"],
         "atlasRelease": {
             "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
             "e2e500ec-fe7e-4888-88b9-b72425315dda"

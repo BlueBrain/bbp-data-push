@@ -82,6 +82,25 @@ def create_mesh_resources(
         "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
         "@id": atlas_reference_system_id,
     }
+    
+    subject = {
+        "@type": "Subject",
+        "species": {
+            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
+            "label": "Mus musculus"
+        }
+    }
+
+    #Create contribution
+    if isinstance(forge._store, DemoStore):
+        contribution = []
+    else:
+        try:
+            contribution, log_info = add_contribution(forge)
+            L.info("\n".join(log_info))
+        except Exception as e:
+            L.error(f"Error: {e}")
+            exit(1)
 
     # Constructs the Resource properties payloads accordingly to the input atlas Mesh
     # datasets
@@ -188,7 +207,7 @@ def create_mesh_resources(
                 exit(1)
 
         mesh_resource = Resource(
-            type=["Dataset", "BrainParcellationMesh"],  # ["Mesh", ]
+            type=["BrainParcellationMesh", "Mesh", "Dataset"],
             name=f"{region_name.title()} Mesh",
             description=mesh_description,
             atlasRelease={"@id": id_atlas_release},
@@ -196,21 +215,11 @@ def create_mesh_resources(
             distribution=distribution_file,
             isRegisteredIn=isRegisteredIn,
             spatialUnit=spatial_unit,
+            subject = subject
         )
         # dataset = Dataset.from_resource(forge, mesh_resource, store_metadata=True)
 
-        if isinstance(forge._store, DemoStore):
-            mesh_resource.contribution = []
-        else:
-            try:
-                contributor, log_info = add_contribution(forge)
-                mesh_resource.contribution = Resource(
-                    type="Contribution", agent=contributor
-                )
-                L.info("\n".join(log_info))
-            except Exception as e:
-                L.error(f"Error: {e}")
-                exit(1)
+        mesh_resource.contribution = contribution
 
         datasets = [mesh_resource]
 
@@ -259,6 +268,7 @@ def create_mesh_resources(
                 )
             if provenances[0]:
                 mesh_description = f"{mesh_description} {prov_description}"
+
             mesh_resources = Resource(
                 type=mesh_resource.type,
                 name=f"{region_name.title()} Mesh",
@@ -269,6 +279,7 @@ def create_mesh_resources(
                 spatialUnit=mesh_resource.spatialUnit,
                 distribution=distribution_file,
                 contribution=mesh_resource.contribution,
+                subject = mesh_resource.subject
             )
             # dataset = Dataset.from_resource(forge, mesh_resources,
             # store_metadata=True)

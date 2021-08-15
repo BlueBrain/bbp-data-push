@@ -18,7 +18,7 @@ HierarchyJson:
   hierarchy_l23split: tests/tests_data/hierarchy_l23split.json
 GeneratedDatasetPath:
   VolumetricFile:
-    annotation_hybrid: tests/tests_data/annotation_hybrid.nrrd
+    annotation_hybrid: tests/tests_data/annotation_v2v3_hybrid.nrrd
     annotation_l23split: tests/tests_data/annotation_l23split.nrrd
     cell_densities: tests/tests_data/wrong_data/empty_cell_density
     neuron_densities: tests/tests_data/neuron_density

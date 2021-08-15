@@ -151,6 +151,10 @@ def create_volumetric_resources(
         "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
         "@id": atlas_reference_system_id,
     }
+    # isRegisteredIn = {
+    #     "@id": atlas_reference_system_id,
+    # }
+    #"@type": "BrainAtlasSpatialReferenceSystem"
     brainLocation = {
         "brainRegion": {"@id": f"mba:{region_id}", "label": region_name},
         "atlasSpatialReferenceSystem": {
@@ -161,6 +165,26 @@ def create_volumetric_resources(
             "@id": atlas_reference_system_id,
         },
     }
+    
+    subject = {
+        "@type": "Subject",
+        "species": {
+            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090", 
+            "label": "Mus musculus"
+        }
+    }
+    
+    #Create contribution
+    if isinstance(forge._store, DemoStore):
+        contribution = []
+    else:
+        try:
+            contribution, log_info = add_contribution(forge)
+            L.info("\n".join(log_info))
+        except Exception as e:
+            L.error(f"Error: {e}")
+            exit(1)
+
     # Config constants
     default_sampling_period = 30
     default_sampling_time_unit = "ms"
@@ -171,10 +195,12 @@ def create_volumetric_resources(
         file_found = False
         isFolder = False
         derivation = False
+        isCellDensity = False
         for dataset in volumetric_data["cell_densities"]:
             try:
                 if os.path.samefile(filepath, dataset):
                     file_found = True
+                    isCellDensity = True
                     if os.path.isdir(filepath):
                         isFolder = True
                         directory = filepath
@@ -187,13 +213,12 @@ def create_volumetric_resources(
                                 "volumetric files."
                             )
                             exit(1)
-
                         # this is going ot be the "name" of the resource
                         filepath = os.path.join(directory, files_nrrd[0])
                         filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-                        file_extension = os.path.splitext(os.path.basename(filepath))[
-                            1
-                        ][1:]
+                        file_extension = (
+                            os.path.splitext(os.path.basename(filepath))[1][1:]
+                        )
                         cell_density_file = filename_noext.replace("_", " ")
                         cell_density_name = (
                             f"{cell_density_file[0].upper()}" f"{cell_density_file[1:]}"
@@ -219,32 +244,37 @@ def create_volumetric_resources(
             except FileNotFoundError as e:
                 L.error(f"FileNotFoundError: {e}")
                 exit(1)
-        for dataset in volumetric_data["parcellations"]:
-            try:
-                if os.path.samefile(filepath, dataset):
-                    if filepath.endswith(".nrrd"):
-                        file_found = True
-                        voxel_type = "label"
-                        resource_types = [resource_type, "BrainParcellationDataLayer"]
-                        description = f"{volumetric_data['parcellations'][dataset][1]}"
-                        module_tag = volumetric_data["parcellations"][dataset][0]
-                        derivation = volumetric_data["parcellations"][dataset][2]
+        
+        # Jump it if a file has been recognized
+        if not file_found:
+            for dataset in volumetric_data["parcellations"]:
+                try:
+                    if os.path.samefile(filepath, dataset):
+                        if filepath.endswith(".nrrd"):
+                            file_found = True
+                            voxel_type = "label"
+                            resource_types = [resource_type, "BrainParcellationDataLayer"]
+                            description = f"{volumetric_data['parcellations'][dataset][1]}"
+                            module_tag = volumetric_data["parcellations"][dataset][0]
+                            derivation = volumetric_data["parcellations"][dataset][2]
+        
+                            # this is going ot be the "name" of the resource
+                            filename_noext = os.path.splitext(os.path.basename(filepath))[0]
+                            file_extension = (
+                                os.path.splitext(os.path.basename(filepath))[1][1:]
+                            )
+                            break
+                        else:
+                            L.error(
+                                f"Error: parcellation dataset '{filepath}' is not a "
+                                "volumetric .nrrd file"
+                            )
+                            exit(1)
+                except FileNotFoundError as e:
+                    L.error(f"FileNotFoundError: {e}")
+                    exit(1)
 
-                        # this is going ot be the "name" of the resource
-                        filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-                        file_extension = os.path.splitext(os.path.basename(filepath))[
-                            1
-                        ][1:]
-                        break
-                    else:
-                        L.error(
-                            f"Error: parcellation dataset '{filepath}' is not a "
-                            "volumetric .nrrd file"
-                        )
-                        exit(1)
-            except FileNotFoundError as e:
-                L.error(f"FileNotFoundError: {e}")
-                exit(1)
+        # If still not file found at this step
         if not file_found:
             L.error(
                 f"Error: '{filepath}' does not correspond to one of the datasets "
@@ -267,7 +297,6 @@ def create_volumetric_resources(
         header = None
         try:
             header = nrrd.read_header(filepath)
-            print(header)
         except nrrd.errors.NRRDError as e:
             L.error(f"NrrdError: {e}")
             L.info("Aborting pushing process.")  # setLevel(logging.INFO)
@@ -284,6 +313,8 @@ def create_volumetric_resources(
         # push
         content_type = f"application/{file_extension}"
         distribution_file = forge.attach(filepath, content_type)
+        
+        resource_types.append("Dataset")
         nrrd_resource = Resource(
             type=resource_types,
             name=filename_noext.replace("_", " ").title(),
@@ -292,41 +323,41 @@ def create_volumetric_resources(
             isRegisteredIn=isRegisteredIn,
             brainLocation=brainLocation,
             atlasRelease={"@id": id_atlas_release},
+            subject = subject
         )
 
         nrrd_resource = add_nrrd_props(nrrd_resource, header, config, voxel_type)
 
         if derivation:
             nrrd_resource.derivation = derivation
+            
+        nrrd_resource.contribution = contribution
 
-        if isinstance(forge._store, DemoStore):
-            nrrd_resource.contribution = []
-        else:
-            try:
-                nrrd_resource.contribution, log_info = add_contribution(
-                    forge, nrrd_resource
-                )
-                L.info("\n".join(log_info))
-            except Exception as e:
-                L.error(f"Error: {e}")
-                exit(1)
-
-        dataset = [nrrd_resource]
+        datasets = [nrrd_resource]
 
         # If the input is a folder containing the cell density file to push
         if isFolder:
             for f in range(1, len(files_nrrd)):  # start at the 2nd file
-
-                dataset = [nrrd_resource]
                 filepath = os.path.join(directory, files_nrrd[f])
                 filename_noext = os.path.splitext(os.path.basename(filepath))[0]
+                if isCellDensity:
+                    cell_density_file = filename_noext.replace("_", " ")
+                    cell_density_name = (
+                        f"{cell_density_file[0].upper()}" f"{cell_density_file[1:]}"
+                    )
+                    description = (
+                                f"{cell_density_name} volume for the "
+                                f"{volumetric_data['cell_densities'][dataset][1]}."
+                            )
+                if provenances[0]:
+                    description = f"{description} {prov_description}"
                 distribution_file = forge.attach(filepath, content_type)
                 # Use forge.reshape instead ?
                 nrrd_resources = Resource(
                     type=nrrd_resource.type,
                     name=filename_noext.replace("_", " ").title(),
                     distribution=distribution_file,
-                    description=nrrd_resource.description,
+                    description=description,
                     contribution=nrrd_resource.contribution,
                     isRegisteredIn=nrrd_resource.isRegisteredIn,
                     brainLocation=nrrd_resource.brainLocation,
@@ -337,11 +368,14 @@ def create_volumetric_resources(
                     sampleType=nrrd_resource.sampleType,
                     worldMatrix=nrrd_resource.worldMatrix,
                     resolution=nrrd_resource.resolution,
+                    bufferEncoding = nrrd_resource.bufferEncoding,
+                    endianness = nrrd_resource.endianness,
+                    subject = nrrd_resource.subject
                 )
 
-                dataset.append(nrrd_resources)
+                datasets.append(nrrd_resources)
 
-    return dataset
+    return datasets
 
 
 def add_nrrd_props(resource, nrrd_header, config, voxel_type):

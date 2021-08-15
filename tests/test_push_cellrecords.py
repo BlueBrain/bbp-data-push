@@ -82,7 +82,7 @@ def test_create_cell_record_resources():
     wrong_provenance = "wrong_provenance"
 
     cellrecords_resource_simple = {
-        "type": ['CellRecordSeries', 'Dataset'],
+        "type": ["CellRecordSeries", "Dataset"],
         "atlasRelease": {
             "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
             "e2e500ec-fe7e-4888-88b9-b72425315dda"

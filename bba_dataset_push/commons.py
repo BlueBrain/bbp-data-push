@@ -338,7 +338,16 @@ def add_contribution(forge):
         if isinstance(user_id, list):
             # TO DO, or wait for future resolver update
             pass
-
+        
+    agent = {
+        "@id": contributor.id, 
+        "@type": contributor.type
+    }
+    contribution = Resource(
+        type="Contribution",
+        agent=agent,
+    )
     # contribution = Resource(type="Contribution", agent=contributor)
+    #my_derived_dataset.add_contribution(john.id, versioned=False)
 
-    return contributor, log_info
+    return contribution, log_info

@@ -64,7 +64,7 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "AtlasSpatialReferenceSystem",
             ],
         },
-        "name": "Annotation Hybrid",
+        "name": "Annotation V2V3 Hybrid",
         "componentEncoding": "float64",
     }
 
@@ -111,10 +111,10 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
         volumetric_dict["name"] = "Excitatory Neuron Density"
         volumetric_dict["sampleType"] = "intensity"
         volumetric_dict["dimension"][0]["name"] = "intensity"
-        volumetric_dict.pop("bufferEncoding", None)
-        volumetric_dict.pop("endianness", None)
         volumetric_dict.pop("derivation", None)
-
+    
+    volumetric_dict["type"].append("Dataset")
+    
     return volumetric_dict
 
 
@@ -129,7 +129,7 @@ def test_create_volumetric_resources():
     forge = KnowledgeGraphForge(forge_config_file, token=nexus_token_file)
 
     dataset_path = [
-        str(Path(TEST_PATH, "tests/tests_data/annotation_hybrid.nrrd")),
+        str(Path(TEST_PATH, "tests/tests_data/annotation_v2v3_hybrid.nrrd")),
         str(Path(TEST_PATH, "tests/tests_data/annotation_l23split.nrrd")),
         str(Path(TEST_PATH, "tests/tests_data/cell_density")),
         str(Path(TEST_PATH, "tests/tests_data/neuron_density")),
@@ -218,7 +218,7 @@ def test_create_volumetric_resources():
     cell_density_dict_fulloptions = volumetric_dict(cell_density=True, nrrd_props=True)
 
     cell_density_dict_fulloptions["description"] = (
-        "Inhibitory neuron density volume for the Hybrid annotation volume from ccfv2 "
+        "Excitatory neuron density volume for the Hybrid annotation volume from ccfv2 "
         "and ccfv3 at 25 microns. Generated in the Atlas Pipeline by the module "
         "'atlas-building-tools cell-densities inhibitory-and-excitatory-neuron-"
         "densities' version 1.0.0."
@@ -234,6 +234,7 @@ def test_create_volumetric_resources():
             verbose=1,
         )[-1]
     )
+    # result return the payload from only the last dataset processed
     for key in cell_density_dict_fulloptions:
         assert result[key] == cell_density_dict_fulloptions[key]
 

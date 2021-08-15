@@ -20,7 +20,6 @@ L = logging.getLogger(__name__)
 
 
 def _push_to_Nexus(datasets, forge, schema_id):
-
     L.info(
         "\n----------------------- Resource content ----------------------"
         f"\n{datasets[-1]}"
