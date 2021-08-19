@@ -4,7 +4,7 @@ import imp
 
 from setuptools import setup, find_packages
 
-VERSION = imp.load_source("", "bba_dataset_push/__init__.py").__version__
+VERSION = imp.load_source("", "bba_data_push/__init__.py").__version__
 
 setup(
     name="bba_data_push",
@@ -32,6 +32,6 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     entry_points={
-        "console_scripts": ["bba-data-push=bba_dataset_push.bba_data_push:start"]
+        "console_scripts": ["bba-data-push=bba_data_push.bba_dataset_push:start"]
     },
 )

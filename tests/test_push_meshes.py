@@ -4,7 +4,7 @@ from pathlib import Path
 from kgforge.core import KnowledgeGraphForge
 
 # from bba_dataset_push.bba_data_push import push_meshes
-from bba_dataset_push.push_brainmesh import create_mesh_resources
+from bba_data_push.push_brainmesh import create_mesh_resources
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 

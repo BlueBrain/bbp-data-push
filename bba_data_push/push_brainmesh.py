@@ -11,13 +11,13 @@ import yaml
 import fnmatch
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
-from bba_dataset_push.commons import (
+from bba_data_push.commons import (
     get_brain_region_name,
     get_hierarchy_file,
     add_contribution,
     append_provenance_to_description,
 )
-from bba_dataset_push.logging import create_log_handler
+from bba_data_push.logging import create_log_handler
 
 L = create_log_handler(__name__, "./push_meshes.log")
 

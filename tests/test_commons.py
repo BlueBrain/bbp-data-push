@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 
-from bba_dataset_push.commons import (
+from bba_data_push.commons import (
     get_voxel_type,
     append_provenance_to_description,
     get_hierarchy_file,

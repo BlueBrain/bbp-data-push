@@ -1,7 +1,7 @@
 from pathlib import Path
 from click.testing import CliRunner
 
-from bba_dataset_push.bba_data_push import initialize_pusher_cli
+from bba_data_push.bba_dataset_push import initialize_pusher_cli
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 

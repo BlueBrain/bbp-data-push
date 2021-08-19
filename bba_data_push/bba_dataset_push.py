@@ -9,11 +9,11 @@ import logging
 import click
 from kgforge.core import KnowledgeGraphForge
 
-from bba_dataset_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
-from bba_dataset_push.push_brainmesh import create_mesh_resources
-from bba_dataset_push.push_sonata_cellrecordseries import create_cell_record_resources
-from bba_dataset_push.logging import log_args, close_handler
-from bba_dataset_push import __version__
+from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
+from bba_data_push.push_brainmesh import create_mesh_resources
+from bba_data_push.push_sonata_cellrecordseries import create_cell_record_resources
+from bba_data_push.logging import log_args, close_handler
+from bba_data_push import __version__
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
