@@ -1,9 +1,11 @@
 """
 Version corresponding to the git version tag
 """
-
-import pkg_resources
+from pkg_resources import get_distribution, DistributionNotFound
 from bba_data_push import __name__
 
-__version__ = pkg_resources.get_distribution(__name__).version
-
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    pass

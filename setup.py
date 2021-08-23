@@ -1,15 +1,11 @@
 #!/usr/bin/env python
-
-import imp
-
 from setuptools import setup, find_packages
-
-VERSION = imp.load_source("", "bba_data_push/__init__.py").__version__
 
 setup(
     name="bba_data_push",
     author="Blue Brain Project, EPFL",
-    version=VERSION,
+    use_scm_version=True,
+    setup_requires=["setuptools_scm"],
     description=(
         "Package creating resource payloads from atlas datasets and push them along "
         "with the corresponding dataset files into Nexus."
