@@ -23,7 +23,7 @@ setup(
         "PyJWT>=2.0.0",
     ],
     extras_require={
-        "dev": ["pytest>=4.3", "pytest-cov==2.10.0"],
+        "dev": ["pytest>=4.3", "pytest-cov>=2.8.0"],
     },
     packages=find_packages(),
     include_package_data=True,
