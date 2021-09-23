@@ -17,7 +17,7 @@ setup(
         "nexusforge>=0.5.0",
         "click>=7.0",
         "numpy>=1.19",
-        "h5py>=3.1.0",
+        "h5py>=2.10.0",
         "pynrrd>=0.4.0",
         "PyYAML>=5.3.1",
         "PyJWT>=2.0.0",
