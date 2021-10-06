@@ -336,10 +336,12 @@ def create_volumetric_resources(
         #                     description = (
         #                         f"{volumetric_data['cell_orientations'][dataset][1]}"
         #                     )
-        #                     module_tag = volumetric_data["cell_orientations"][dataset][
+        #                     module_tag = volumetric_data["cell_orientations"][dataset]
+        #                        [
         #                         0
         #                     ]
-        #                     derivation = volumetric_data["cell_orientations"][dataset][
+        #                     derivation = volumetric_data["cell_orientations"][dataset]
+        #                        [
         #                         2
         #                     ]
 
