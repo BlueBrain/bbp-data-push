@@ -146,11 +146,11 @@ def create_volumetric_resources(
         f"{description_hybrid} with the isocortex layer 2 and 3 split. The "
         f"resolution is {voxels_resolution} microns."
     )
-    description_orientation = (
-        "Quaternions field (w,x,y,z) defined over the ccfv2-ccfv3 Hybrid annotation "
-        "volume (spatial resolution of 25 µm) and representing the neuron "
-        "axone-to-dendrites orientation to voxels from the Isocortex region."
-    )
+    # description_orientation = (
+    #     "Quaternions field (w,x,y,z) defined over the ccfv2-ccfv3 Hybrid annotation "
+    #     "volume (spatial resolution of 25 µm) and representing the neuron "
+    #     "axone-to-dendrites orientation to voxels from the Isocortex region."
+    # )
     derivation_hybrid = [
         {
             "@type": "Derivation",
