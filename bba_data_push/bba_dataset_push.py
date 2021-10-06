@@ -29,7 +29,7 @@ def _push_to_Nexus(datasets, forge, schema_id):
             "\n-------------- Registration & Validation Status ---------------"
             "\nRegistering the constructed payload along the input dataset in Nexus..."
         )
-        forge.register(datasets[-1], schema_id)
+        forge.register(datasets, schema_id)
         L.info(
             f"<<Resource synchronization status>>: {str(datasets[-1]._synchronized)}"
         )
@@ -144,22 +144,61 @@ def base_ressource(f):
     required=True,
     help="The Allen annotation volume voxels " "resolution in microns",
 )
+@click.option(
+    "--new-atlasrelease-hierarchy-path",
+    type=click.Path(exists=True),
+    help="The path to the json hierarchy file containing an AIBS hierarchy "
+    "structure corresponding to the new Atlas Release payload to push."
+    "In fact, if provided, a new AtlasRelease resource payload will be created as well "
+    "as a ParcellationOntology resource with the input hierarchy file attached. The "
+    "AtlasRelease payload will then be linked to the  ParcellationOntology resource "
+    "created and will itself be referenced by the others resources created from the "
+    "input datasets. Finally the atlas release and the hierarchy file will be pushed "
+    "along the others resources.",
+)
 @click.pass_context
 @log_args(L)
-def push_volumetric(ctx, dataset_path, voxels_resolution, config, provenances):
+def push_volumetric(
+    ctx,
+    dataset_path,
+    voxels_resolution,
+    config,
+    provenances,
+    new_atlasrelease_hierarchy_path,
+):
     """Create a VolumetricDataLayer resource payload and push it along with the "
     corresponding volumetric input dataset files into Nexus.\n
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the volumetric payloads...")
-    datasets = create_volumetric_resources(
+    datasets, atlasreleases = create_volumetric_resources(
         ctx.obj["forge"],
         dataset_path,
         voxels_resolution,
         config,
         provenances,
+        new_atlasrelease_hierarchy_path,
         ctx.obj["verbose"],
     )
+    if atlasreleases:
+        try:
+            L.info(
+                "\nRegistering the constructed BrainAtlasRelease payloads in Nexus..."
+            )
+            ctx.obj["forge"].register(
+                atlasreleases[:-1], "https://neuroshapes.org/dash/atlasrelease"
+            )
+            L.info(
+                "\nRegistering the constructed Parcellation ontology payload in "
+                "Nexus..."
+            )
+            ctx.obj["forge"].register(
+                atlasreleases[-1], "https://neuroshapes.org/dash/ontology"
+            )
+        except Exception as e:
+            L.error(f"Error when registering resource. {e}")
+            exit(1)
+
     if datasets:
         _push_to_Nexus(
             datasets,
@@ -186,7 +225,7 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the mesh payloads...")
-    datasets = create_mesh_resources(
+    datasets, atlasreleases = create_mesh_resources(
         ctx.obj["forge"],
         dataset_path,
         config,
@@ -194,6 +233,17 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
         provenances,
         ctx.obj["verbose"],
     )
+    if atlasreleases:
+        try:
+            L.info(
+                "\nRegistering the constructed BrainAtlasRelease payloads in Nexus..."
+            )
+            ctx.obj["forge"].register(
+                atlasreleases, "https://neuroshapes.org/dash/atlasrelease"
+            )
+        except Exception as e:
+            L.error(f"Error when registering resource. {e}")
+            exit(1)
     if datasets:
         _push_to_Nexus(
             datasets,

@@ -280,16 +280,15 @@ def add_contribution(forge):
     user_email = token_info["email"]
     log_info = []
     try:
-        user_id = forge.resolve(
+        user_resource = forge.resolve(
             user_family_name, target="agents", scope="agent", type="Person"
         )
-        contributor = user_id
     except Exception as e:
         raise Exception(
             "Error when resolving the Person Resource in the agent bucket project. "
             f"{e}"
         )
-    if not user_id:
+    if not user_resource:
         log_info.append(
             f"\nThe user {user_name} extracted from the user token did not "
             "correspond to an agent registered in the 'agents' project in Nexus."
@@ -318,7 +317,7 @@ def add_contribution(forge):
                 "contributor in the dataset payload."
             )
             contributor = Resource(
-                type=["Person"],  # "Agent"
+                type=["Agent", "Person"],
                 name=user_name,
                 familyName=user_family_name,
                 givenName=user_given_name,
@@ -327,7 +326,6 @@ def add_contribution(forge):
                 contributor.user_email = user_email
             try:
                 forge.register(contributor, "https://neuroshapes.org/dash/person")
-                user_id = contributor.id
             except Exception as e:
                 raise Exception(
                     "Error when registering the user Person-type resource into "
@@ -335,16 +333,88 @@ def add_contribution(forge):
                 )
     else:
         # If multiple agents have the same family_name
-        if isinstance(user_id, list):
+        if isinstance(user_resource, list):
             # TO DO, or wait for future resolver update
             pass
+        else:
+            contributor = user_resource[0]
 
     agent = {"@id": contributor.id, "@type": contributor.type}
-    contribution = Resource(
-        type="Contribution",
-        agent=agent,
+    hadRole = {
+        "@id": "nsg:BrainAtlasPipelineExecutionRole",
+        "label": "Brain Atlas Pipeline Executor role",
+    }
+    contribution_contributor = Resource(
+        type="Contribution", agent=agent, hadRole=hadRole
     )
     # contribution = Resource(type="Contribution", agent=contributor)
     # my_derived_dataset.add_contribution(john.id, versioned=False)
+
+    # Add the Agent Organization
+    try:
+        institution = forge.resolve(
+            "École Polytechnique Fédérale de Lausanne",
+            target="agents",
+            scope="agent",
+            type="Organization",
+        )
+    except Exception as e:
+        raise Exception(
+            "Error when resolving the Organization Resource in the agent bucket "
+            f"project. {e}"
+        )
+    if not institution:
+        try:
+            filters = {"name": "École Polytechnique Fédérale de Lausanne"}
+            institution = forge.search(filters, limit=1)
+        except Exception as e:
+            raise Exception(
+                "Error when searching the Organization Resource in the destination "
+                f"project '{forge._store.bucket}'. {e}"
+            )
+        if not institution:
+            try:
+                institution = forge.retrieve(
+                    "https://www.grid.ac/institutes/grid.5333.6"
+                )
+            except Exception as e:
+                raise Exception(
+                    "Error when retrieving the Organization Resource "
+                    "@id : "
+                    "https://www.grid.ac/institutes/grid.5333.6"
+                    "in the destination "
+                    f"project '{forge._store.bucket}'. {e}"
+                )
+            if not institution:
+                log_info.append(
+                    "The Organization resource 'École Polytechnique Fédérale de "
+                    "Lausanne' has not been found in the destination project "
+                    f"'{forge._store.bucket}'. It will therefore be created."
+                )
+                institution = Resource(
+                    id="https://www.grid.ac/institutes/grid.5333.6",
+                    type="Organization",  # Agent
+                    alternateName="EPFL",
+                    name="École Polytechnique Fédérale de Lausanne",
+                )
+                try:
+                    forge.register(
+                        institution, "https://neuroshapes.org/dash/organization"
+                    )
+                except Exception as e:
+                    raise Exception(
+                        "Error when registering the user Organization-type resource "
+                        f"into Nexus. {e}"
+                    )
+        else:
+            institution = institution[0]
+
+    agent = {"@id": institution.id, "@type": "Organization"}  # Agent
+    contribution_institution = Resource(
+        type="Contribution",
+        agent=agent,
+    )
+
+    contribution = [contribution_contributor, contribution_institution]
 
     return contribution, log_info

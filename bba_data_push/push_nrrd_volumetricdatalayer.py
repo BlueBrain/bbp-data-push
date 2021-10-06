@@ -12,6 +12,8 @@ import yaml
 import numpy as np
 import nrrd
 import fnmatch
+from datetime import datetime
+from uuid import uuid4
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
 
@@ -31,6 +33,7 @@ def create_volumetric_resources(
     voxels_resolution: int,
     config_path,
     provenances: list,
+    new_atlasrelease_hierarchy_path,
     verbose,
 ) -> list:
     """
@@ -65,84 +68,29 @@ def create_volumetric_resources(
         )
         exit(1)
 
-    resource_type = "VolumetricDataLayer"
-    # Dictionary of properties corresponding to the different possible Atlas
-    # volumetric dataset
-    description_hybrid = (
-        f"Hybrid annotation volume from ccfv2 and ccfv3 at {voxels_resolution} "
-        "microns"
-    )
-    description_split = (
-        f"{description_hybrid} with the isocortex layer 2 and 3 split. The "
-        f"resolution is {voxels_resolution} microns."
-    )
-    derivation_hybrid = [
-        {
-            "@type": "Derivation",
-            "description": "The ccfv3 (2017) has smoother region borders, without "
-            "jaggies. "
-            "The enveloppe or most regions was used in this volume",
-            "entity": {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                "025eef5f-2a9a-4119-b53f-338452c72f2a"
-            },
-        },
-        {
-            "@type": "Derivation",
-            "description": "The ccfv2 (2011) has a finer granularity than ccfv3 in "
-            "term of leaf nodes, these were imported in this volume",
-            "entity": {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                "7b4b36ad-911c-4758-8686-2bf7943e10fb"
-            },
-        },
-    ]
-    derivation_split = {
-        "@type": "Derivation",
-        "description": "The separation between layer 2 and layer 3 was performed on "
-        "the source volume.",
-        "entity": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-            "7b2f498d-a20f-4992-8410-d8b44ec72c9a"
-        },
-    }
+    # For a new atlas release creation verify that the right parcellation volume has
+    # been provided
+    if new_atlasrelease_hierarchy_path:
+        for inputdata in inputpath:
+            if os.path.samefile(volumetric_path["annotation_l23split"], inputdata):
+                file_found = True
+                break
+        if not file_found:
+            L.error(
+                "Error: The argument 'new-atlasrelease-hierarchy-path' has been "
+                "provided but the parcellation volume corresponding to the Atlas "
+                "Release (aka 'annotation_l23split' in the dataset configuration file) "
+                "is missing among the input datasets."
+            )
+            exit(1)
 
-    # List of the possible volumetric data input
-    volumetric_data = {
-        "parcellations": {
-            f"{volumetric_path['annotation_hybrid']}": [
-                "combine-annotations",
-                f"{description_hybrid}. The version "
-                "replaces the leaf regions in ccfv3 with the leaf region of "
-                "ccfv2, which have additional levels of hierarchy.",
-                derivation_hybrid,
-            ],
-            f"{volumetric_path['annotation_l23split']}": [
-                "split-isocortex-layer-23",
-                description_split,
-                derivation_split,
-            ],
-        },
-        "cell_densities": {
-            f"{volumetric_path['cell_densities']}": [
-                "glia-cell-densities",
-                description_hybrid,
-            ],
-            f"{volumetric_path['neuron_densities']}": [
-                "inhibitory-and-excitatory-neuron-densities",
-                description_hybrid,
-            ],
-        },
-    }
+    # Mutual resource properties
+
     atlas_reference_system_id = (
         "https://bbp.epfl.ch/neurosciencegraph/data/"
         "allen_ccfv3_spatial_reference_system"
     )
-    # Link to Atlas Release: Allen Mouse CCF v2-v3 hybrid
-    id_atlas_release = (
-        "https://bbp.epfl.ch/neurosciencegraph/data/"
-        "e2e500ec-fe7e-4888-88b9-b72425315dda"
-    )
+
     region_id = 997  # default: 997 --> root, whole brain
     region_name = "root"
 
@@ -151,10 +99,7 @@ def create_volumetric_resources(
         "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
         "@id": atlas_reference_system_id,
     }
-    # isRegisteredIn = {
-    #     "@id": atlas_reference_system_id,
-    # }
-    # "@type": "BrainAtlasSpatialReferenceSystem"
+
     brainLocation = {
         "brainRegion": {"@id": f"mba:{region_id}", "label": region_name},
         "atlasSpatialReferenceSystem": {
@@ -190,7 +135,103 @@ def create_volumetric_resources(
     default_sampling_time_unit = "ms"
     spatial_unit = "µm"
 
+    # Resource payload properties values corresponding to the different possible Atlas
+    # volumetric datasets
+    resource_type = "VolumetricDataLayer"
+    description_hybrid = (
+        f"Hybrid annotation volume from ccfv2 and ccfv3 at {voxels_resolution} "
+        "microns"
+    )
+    description_split = (
+        f"{description_hybrid} with the isocortex layer 2 and 3 split. The "
+        f"resolution is {voxels_resolution} microns."
+    )
+    description_orientation = (
+        "Quaternions field (w,x,y,z) defined over the ccfv2-ccfv3 Hybrid annotation "
+        "volume (spatial resolution of 25 µm) and representing the neuron "
+        "axone-to-dendrites orientation to voxels from the Isocortex region."
+    )
+    derivation_hybrid = [
+        {
+            "@type": "Derivation",
+            "description": "The ccfv3 (2017) has smoother region borders, without "
+            "jaggies. "
+            "The enveloppe or most regions was used in this volume",
+            "entity": {
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+                "025eef5f-2a9a-4119-b53f-338452c72f2a",
+                "@type": "['VolumetricDataLayer', 'BrainParcellationDataLayer']",
+            },
+        },
+        {
+            "@type": "Derivation",
+            "description": "The ccfv2 (2011) has a finer granularity than ccfv3 in "
+            "term of leaf nodes, these were imported in this volume",
+            "entity": {
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+                "7b4b36ad-911c-4758-8686-2bf7943e10fb",
+                "@type": "['VolumetricDataLayer', 'BrainParcellationDataLayer']",
+            },
+        },
+    ]
+    derivation_split = {
+        "@type": "Derivation",
+        "description": "The separation between layer 2 and layer 3 was performed on "
+        "the source volume.",
+        "entity": {
+            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+            "7b2f498d-a20f-4992-8410-d8b44ec72c9a",
+            "@type": "['VolumetricDataLayer', 'BrainParcellationDataLayer']",
+        },
+    }
+
+    # Dictionary containing the possible volumetric dataset to push
+
+    volumetric_data = {
+        "parcellations": {
+            f"{volumetric_path['annotation_hybrid']}": [
+                "combine-annotations",
+                f"{description_hybrid}. The version "
+                "replaces the leaf regions in ccfv3 with the leaf region of "
+                "ccfv2, which have additional levels of hierarchy.",
+                derivation_hybrid,
+                "atlasrelease_ccfv2v3",
+            ],
+            f"{volumetric_path['annotation_l23split']}": [
+                "split-isocortex-layer-23",
+                description_split,
+                derivation_split,
+                "last_atlasrelease",
+            ],
+        },
+        "cell_densities": {
+            f"{volumetric_path['cell_densities']}": [
+                "glia-cell-densities",
+                description_hybrid,
+                "last_atlasrelease",
+            ],
+            f"{volumetric_path['neuron_densities']}": [
+                "inhibitory-and-excitatory-neuron-densities",
+                description_hybrid,
+                "last_atlasrelease",
+            ],
+        },
+        # "cell_orientations": {
+        #     f"{volumetric_path['cell_orientations']}": [
+        #         "orientation-field",
+        #         description_orientation,
+        #         derivation_split_but_without the description,
+        #         "atlasrelease_ccfv2v3",
+        #     ]
+        # },
+    }
+
     # Constructs the Resource properties payloads with the dictionary of properties
+    datasets = []
+    atlasreleases = []
+    atlasrelease_dict = {}
+    atlasRelease = {}
+    fetch_atlasrelease = True
     for filepath in inputpath:
         file_found = False
         isFolder = False
@@ -281,7 +322,46 @@ def create_volumetric_resources(
                     L.error(f"FileNotFoundError: {e}")
                     exit(1)
 
-        # If still not file found at this step
+        # if not file_found:
+        #     for dataset in volumetric_data["cell_orientations"]:
+        #         try:
+        #             if os.path.samefile(filepath, dataset):
+        #                 if filepath.endswith(".nrrd"):
+        #                     file_found = True
+        #                     voxel_type = "vector"
+        #                     resource_types = [
+        #                         resource_type,
+        #                         "CellOrientationField",
+        #                     ]
+        #                     description = (
+        #                         f"{volumetric_data['cell_orientations'][dataset][1]}"
+        #                     )
+        #                     module_tag = volumetric_data["cell_orientations"][dataset][
+        #                         0
+        #                     ]
+        #                     derivation = volumetric_data["cell_orientations"][dataset][
+        #                         2
+        #                     ]
+
+        #                     # this is going ot be the "name" of the resource
+        #                     filename_noext = os.path.splitext(
+        #                         os.path.basename(filepath)
+        #                     )[0]
+        #                     file_extension = os.path.splitext(
+        #                         os.path.basename(filepath)
+        #                     )[1][1:]
+        #                     break
+        #                 else:
+        #                     L.error(
+        #                         f"Error: parcellation dataset '{filepath}' is not a "
+        #                         "volumetric .nrrd file"
+        #                     )
+        #                     exit(1)
+        #         except FileNotFoundError as e:
+        #             L.error(f"FileNotFoundError: {e}")
+        #             exit(1)
+
+        # If still no file found at this step then raise error
         if not file_found:
             L.error(
                 f"Error: '{filepath}' does not correspond to one of the datasets "
@@ -315,6 +395,44 @@ def create_volumetric_resources(
             "sampling_period": default_sampling_period,
             "sampling_time_unit": default_sampling_time_unit,
         }
+        if not isinstance(forge._store, DemoStore):
+            if fetch_atlasrelease or os.path.samefile(
+                volumetric_path["annotation_hybrid"], dataset
+            ):
+                if not os.path.samefile(volumetric_path["annotation_hybrid"], dataset):
+                    fetch_atlasrelease = False
+                atlasrelease_dict = return_atlasrelease(
+                    forge,
+                    config_content,
+                    new_atlasrelease_hierarchy_path,
+                    volumetric_data["parcellations"][dataset][3],
+                    atlas_reference_system_id,
+                    subject,
+                )
+
+            if isinstance(atlasrelease_dict["atlas_release"], list):
+                atlasRelease = [
+                    {
+                        "@id": atlasrelease_dict["atlas_release"][0].id,
+                        "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                    },
+                    {
+                        "@id": atlasrelease_dict["atlas_release"][1].id,
+                        "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                    },
+                ]
+                if atlasrelease_dict["create_ccfv2v3"]:
+                    atlasrelease_dict["atlas_release"][0].contribution = contribution
+                    atlasrelease_dict["atlas_release"][1].contribution = contribution
+                    atlasreleases.append(atlasrelease_dict["atlas_release"][0])
+                    atlasreleases.append(atlasrelease_dict["atlas_release"][1])
+            else:
+                atlasRelease = {
+                    "@id": atlasrelease_dict["atlas_release"].id,
+                    "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                }
+                atlasrelease_dict["atlas_release"].contribution = contribution
+                atlasreleases.append(atlasrelease_dict["atlas_release"])
 
         # We create a 1st payload that will be recycled in case of multiple files to
         # push
@@ -329,7 +447,7 @@ def create_volumetric_resources(
             description=description,
             isRegisteredIn=isRegisteredIn,
             brainLocation=brainLocation,
-            atlasRelease={"@id": id_atlas_release},
+            atlasRelease=atlasRelease,
             subject=subject,
             contribution=contribution,
         )
@@ -339,7 +457,23 @@ def create_volumetric_resources(
         if derivation:
             nrrd_resource.derivation = derivation
 
-        datasets = [nrrd_resource]
+        # Link the atlasrelease to its parcellation
+        if not isinstance(forge._store, DemoStore):
+            if new_atlasrelease_hierarchy_path and os.path.samefile(
+                volumetric_path["annotation_l23split"], dataset
+            ):
+                nrrd_resource.id = forge.format(
+                    "identifier", "brainparcellationdatalayer", str(uuid4())
+                )
+                atlasrelease_dict["atlas_release"].parcellationVolume = {
+                    "@id": nrrd_resource.id,
+                    "@type": "BrainParcellationDataLayer",
+                }
+
+                atlasrelease_dict["hierarchy"].contribution = contribution
+                atlasreleases.append(atlasrelease_dict["hierarchy"])
+
+        datasets.append(nrrd_resource)
 
         # If the input is a folder containing the cell density file to push
         if isFolder:
@@ -381,7 +515,199 @@ def create_volumetric_resources(
 
                 datasets.append(nrrd_resources)
 
-    return datasets
+    return datasets, atlasreleases
+
+
+def return_atlasrelease(
+    forge,
+    config_content,
+    new_atlasrelease_hierarchy_path,
+    atlasrelease_choice,
+    atlas_reference_system_id,
+    subject,
+):
+
+    spatialReferenceSystem = {
+        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+        "allen_ccfv3_spatial_reference_system",
+        "@type": "AtlasSpatialReferenceSystem",
+    }
+
+    # average brain model ccfv3
+    brainTemplateDataLayer = {
+        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+        "dca40f99-b494-4d2c-9a2f-c407180138b7",
+        "@type": "BrainTemplateDataLayer",
+    }
+
+    releaseDate = {
+        "@type": "xsd:date",
+        "@value": f"{datetime.today().strftime('%Y-%m-%d')}",
+    }
+
+    if atlasrelease_choice == "last_atlasrelease":
+        if not new_atlasrelease_hierarchy_path:
+            # Atlas release hybrid v2-v3 L2L3 split
+            try:
+                filters = {"name": "Allen Mouse CCF v2-v3 hybrid l2-l3 split"}
+                atlasrelease_resource = forge.search(filters, limit=1)[0]
+                atlasrelease_dict = {"atlas_release": atlasrelease_resource}
+                if not atlasrelease_resource:
+                    L.error(
+                        "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 hybrid l2-l3 "
+                        "split' resource found in the destination project "
+                        f"'{forge._store.bucket}'. Please provide the argument "
+                        "--new-atlasrelease-hierarchy-path to first generate and "
+                        "push a new atlas release resourceinto your project ."
+                    )
+                    exit(1)
+            except Exception as e:
+                L.error(
+                    "Error when searching the BrainAtlasRelease Resource 'Allen "
+                    "Mouse CCF v2-v3 hybrid l2-l3 split' in the destination "
+                    f"project '{forge._store.bucket}'. {e}"
+                )
+                exit(1)
+        else:
+            description = (
+                "This atlas release uses the brain parcellation resulting of the "
+                "hybridation between CCFv2 and CCFv3 and integrating the splitting of "
+                "layer 2 and layer 3. The average brain template and the ontology is "
+                "common across CCFv2 and CCFv3."
+            )
+
+            atlasrelease_resource = Resource(
+                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
+                type=["AtlasRelease", "BrainAtlasRelease"],
+                name="Allen Mouse CCF v2-v3 hybrid l2-l3 split",
+                description=description,
+                brainTemplateDataLayer=brainTemplateDataLayer,
+                spatialReferenceSystem=spatialReferenceSystem,
+                releaseDate=releaseDate,
+                subject=subject,
+            )
+            if not os.path.samefile(
+                new_atlasrelease_hierarchy_path,
+                config_content["HierarchyJson"]["hierarchy_l23split"],
+            ):
+                L.error(
+                    "Error: The atlas regions hierarchy file provided does not "
+                    "correspond to 'hierarchy_l23split' from the dataset configuration "
+                    "file"
+                )
+                exit(1)
+
+            description = (
+                "AIBS Mouse CCF Atlas regions hierarchy tree file including the split "
+                "of layer 2 and layer 3"
+            )
+            # Original AIBS hierarchy file
+            derivation = {
+                "@type": "Derivation",
+                "entity": {
+                    "@id": "http://bbp.epfl.ch/neurosciencegraph/ontologies/mba",
+                    "@type": ["Entity", "Ontology"],
+                },
+            }
+            file_extension = os.path.splitext(
+                os.path.basename(new_atlasrelease_hierarchy_path)
+            )[1][1:]
+
+            content_type = f"application/{file_extension}"
+            distribution_file = forge.attach(
+                new_atlasrelease_hierarchy_path, content_type
+            )
+
+            hierarchy_resource = Resource(
+                id=forge.format("identifier", "parcellationontology", str(uuid4())),
+                type=["Entity", "Ontology", "ParcellationOntology"],
+                name="AIBS Mouse CCF Atlas parcellation ontology L2L3 split",
+                distribution=distribution_file,
+                description=description,
+                derivation=derivation,
+                subject=subject,
+            )
+
+            atlasrelease_resource.parcellationOntology = {
+                "@id": hierarchy_resource.id,
+                "@type": ["ParcellationOntology", "Ontology"],
+            }
+            atlasrelease_dict = {
+                "atlas_release": atlasrelease_resource,
+                "hierarchy": hierarchy_resource,
+            }
+
+    # Old Atlas Releases ccfv2 and ccfv3
+    elif atlasrelease_choice == "atlasrelease_ccfv2v3":
+        try:
+            filters = {"name": "Allen Mouse CCF v2"}
+            atlasreleasev2_resource = forge.search(filters, limit=1)[0]
+            filters = {"name": "Allen Mouse CCF v3"}
+            atlasreleasev3_resource = forge.search(filters, limit=1)[0]
+            atlasrelease_dict = {
+                "atlas_release": [atlasreleasev2_resource, atlasreleasev3_resource],
+                "create_ccfv2v3": False,
+            }
+        except Exception as e:
+            L.error(
+                "Error when searching the BrainAtlasRelease Resources 'Allen "
+                "Mouse CCF v2' and 'Allen Mouse CCF v3'in the destination "
+                f"project '{forge._store.bucket}'. {e}"
+            )
+            exit(1)
+        if not atlasreleasev2_resource or not atlasreleasev3_resource:
+            L.info(
+                "No BrainAtlasRelease 'Allen Mouse CCF v2' and 'Allen "
+                "Mouse CCF v3' resources found in the destination project "
+                f"'{forge._store.bucket}'. They will therefore be created."
+            )
+            description_ccfv2 = (
+                "This atlas release uses the brain parcellation of CCFv2 (2011). The "
+                "average brain template and the ontology is common across CCFv2 and "
+                "CCFv3."
+            )
+            name_ccfv2 = "Allen Mouse CCF v2"
+            parcellationOntology = {
+                "@id": "http://bbp.epfl.ch/neurosciencegraph/ontologies/mba",
+                "@type": ["Ontology", "ParcellationOntology"],
+            }
+            parcellationVolume = {
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/ "
+                "7b4b36ad-911c-4758-8686-2bf7943e10fb",
+                "@type": "BrainParcellationDataLayer",
+            }
+
+            atlasreleasev2_resource = Resource(
+                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
+                type=["AtlasRelease", "BrainAtlasRelease"],
+                name=name_ccfv2,
+                description=description_ccfv2,
+                brainTemplateDataLayer=brainTemplateDataLayer,
+                spatialReferenceSystem=spatialReferenceSystem,
+                releaseDate=releaseDate,
+                subject=subject,
+                parcellationOntology=parcellationOntology,
+                parcellationVolume=parcellationVolume,
+            )
+
+            atlasreleasev3_resource = Resource(
+                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
+                type=["AtlasRelease", "BrainAtlasRelease"],
+                name=name_ccfv2.replace("v2", "v3"),
+                description=description_ccfv2.replace("CCFv2 (2011)", "CCFv3 (2017)"),
+                brainTemplateDataLayer=brainTemplateDataLayer,
+                spatialReferenceSystem=spatialReferenceSystem,
+                releaseDate=releaseDate,
+                subject=subject,
+                parcellationOntology=parcellationOntology,
+                parcellationVolume=parcellationVolume,
+            )
+            atlasrelease_dict = {
+                "atlas_release": [atlasreleasev2_resource, atlasreleasev3_resource],
+                "create_ccfv2v3": True,
+            }
+
+    return atlasrelease_dict
 
 
 def add_nrrd_props(resource, nrrd_header, config, voxel_type):

@@ -90,10 +90,7 @@ def test_create_mesh_resources():
 
     mesh_resource_simple = {
         "type": ["BrainParcellationMesh", "Mesh", "Dataset"],
-        "atlasRelease": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-            "e2e500ec-fe7e-4888-88b9-b72425315dda"
-        },
+        "atlasRelease": {},
         "brainLocation": {
             "atlasSpatialReferenceSystem": {
                 "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -137,7 +134,7 @@ def test_create_mesh_resources():
             [hierarchy_path[0]],
             provenances=[None],
             verbose=0,
-        )[-1]
+        )[0][-1]
     )
 
     for key in mesh_resource_simple:
@@ -162,7 +159,7 @@ def test_create_mesh_resources():
 
     # Search for the hybrid mesh dataset to compare with (if multiple results returned)
     hybrid_v2v3_dataset = None
-    for dataset in result:
+    for dataset in result[0]:
         if vars(dataset)["name"] == "Region_1 Mesh":
             hybrid_v2v3_dataset = vars(dataset)
 

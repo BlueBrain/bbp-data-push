@@ -17,10 +17,7 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
 
     volumetric_dict = {
         "type": ["VolumetricDataLayer", "BrainParcellationDataLayer"],
-        "atlasRelease": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-            "e2e500ec-fe7e-4888-88b9-b72425315dda"
-        },
+        "atlasRelease": {},
         "brainLocation": {
             "atlasSpatialReferenceSystem": {
                 "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -47,7 +44,8 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "jaggies. The enveloppe or most regions was used in this volume",
                 "entity": {
                     "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                    "025eef5f-2a9a-4119-b53f-338452c72f2a"
+                    "025eef5f-2a9a-4119-b53f-338452c72f2a",
+                    "@type": "['VolumetricDataLayer', 'BrainParcellationDataLayer']",
                 },
             },
             {
@@ -56,7 +54,8 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "term of leaf nodes, these were imported in this volume",
                 "entity": {
                     "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                    "7b4b36ad-911c-4758-8686-2bf7943e10fb"
+                    "7b4b36ad-911c-4758-8686-2bf7943e10fb",
+                    "@type": "['VolumetricDataLayer', 'BrainParcellationDataLayer']",
                 },
             },
         ],
@@ -215,8 +214,9 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_path,
             provenances=[None],
+            new_atlasrelease_hierarchy_path=None,
             verbose=0,
-        )[-1]
+        )[0][-1]
     )
     for key in volumetric_dict_simple:
         assert result[key] == volumetric_dict_simple[key]
@@ -237,8 +237,9 @@ def test_create_volumetric_resources():
         voxel_resolution,
         config_path,
         provenances=provenance,
+        new_atlasrelease_hierarchy_path=None,
         verbose=1,
-    )
+    )[0]
 
     # Search for the excitatory neuron dataset to compare with (if multiple results
     # returned)
@@ -261,6 +262,7 @@ def test_create_volumetric_resources():
             voxel_resolution,
             wrong_config_key,
             provenances=[provenance],
+            new_atlasrelease_hierarchy_path=None,
             verbose=0,
         )[-1]
     assert str(e.value) == "'annotation_hybrid'"
@@ -273,6 +275,7 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_data_emptydata,
             provenances=[provenance],
+            new_atlasrelease_hierarchy_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -285,6 +288,7 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_path,
             provenances=[provenance],
+            new_atlasrelease_hierarchy_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -297,6 +301,7 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_data_notfound,
             provenances=[provenance],
+            new_atlasrelease_hierarchy_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -309,6 +314,7 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_wrongdatatype,
             provenances=[provenance],
+            new_atlasrelease_hierarchy_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -321,6 +327,7 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_wrongdatatype,
             provenances=[provenance],
+            new_atlasrelease_hierarchy_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -333,6 +340,7 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_corruptedData,
             provenances=[provenance],
+            new_atlasrelease_hierarchy_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -345,6 +353,7 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_path,
             provenances=[wrong_provenance],
+            new_atlasrelease_hierarchy_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1

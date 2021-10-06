@@ -22,8 +22,9 @@ GeneratedDatasetPath:
     annotation_l23split: tests/tests_data/annotation_l23split.nrrd
     cell_densities: tests/tests_data/cell_density
     neuron_densities: tests/tests_data/neuron_density
+    cell_orientation: tests/tests_data/orientations.nrrd
   MeshFile:
-    brain_region_meshes_hybrid: ./tests/tests_data/brain_region_meshes_hybrid
+    brain_region_meshes_hybrid: tests/tests_data/brain_region_meshes_hybrid
     brain_region_meshes_l23split: tests/tests_data/brain_region_meshes_l23split
   CellRecordsFile:
     cell_records_sonata: tests/tests_data/cell_records_sonata.h5
