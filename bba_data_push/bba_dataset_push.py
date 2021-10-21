@@ -1,6 +1,8 @@
 """ 
 Create resource payload and push them along with the corresponding dataset files into 
-Nexus.
+Nexus. Eventually return a JSON temporary file containing the Activity resource payload 
+detailings the Atlas pipeline run specifications. This file can be provided as an input 
+by the bba-dataset-push module that will erase it after use.
 To know more about Nexus, see https://bluebrainnexus.io.
 Link to BBP Atlas pipeline confluence documentation: 
 https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
@@ -42,13 +44,13 @@ def _push_to_Nexus(datasets, forge, schema_id):
 @click.option("-v", "--verbose", count=True)
 @click.option(
     "--forge-config-file",
-    type=click.Path(exists=True),
+    type=click.Path(),
     default=(
         "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/"
         "notebooks/use-cases/prod-forge-nexus.yml"
     ),
-    help="Path to the configuration file " "used to  instantiate the Forge",
-)  # type=click.Path(exists=True)
+    help="Path to the configuration file used to instantiate the Forge",
+)
 @click.option(
     "--nexus-env",
     default="prod",
@@ -121,19 +123,22 @@ def base_ressource(f):
         "--config",
         type=click.Path(exists=True),
         required=True,
-        help="Path to the "
-        "generated dataset configuration file. This is a yaml file containing the "
-        "paths to the Atlas pipeline generated dataset",
+        help="Path to the generated dataset configuration file. This is a yaml file "
+        "containing the paths to the Atlas pipeline generated dataset",
     )(f)
     f = click.option(
         "--provenances",
         type=str,
         multiple=True,
         default=[None],
-        help="Strings "
-        "containing the name and version of the module that generated the dataset. "
-        "They must follow the form '<module_name>:<anything> <version>'.",
+        help="Strings containing the name and version of the module that generated the "
+        "dataset. They must follow the form '<module_name>:<anything> <version>'.",
     )(f)
+    # f = click.option("--activity-id", required=True, type=str, help="string which "
+    #                  "corresponds to the Nexus identifier of the Activity Resource. If "
+    #                  "the Activity Resource already exists in Nexus it will be linked "
+    #                  "to the datasets to be pushed else the Activity will be created "
+    #                  "and pushed too. ")(f)
     return f
 
 
@@ -142,7 +147,7 @@ def base_ressource(f):
 @click.option(
     "--voxels-resolution",
     required=True,
-    help="The Allen annotation volume voxels " "resolution in microns",
+    help="The Allen annotation volume voxels resolution in microns",
 )
 @click.option(
     "--new-atlasrelease-hierarchy-path",
@@ -180,20 +185,26 @@ def push_volumetric(
         new_atlasrelease_hierarchy_path,
         ctx.obj["verbose"],
     )
-    if atlasreleases:
+    if atlasreleases["atlas_releases"]:
         try:
             L.info(
                 "\nRegistering the constructed BrainAtlasRelease payloads in Nexus..."
             )
             ctx.obj["forge"].register(
-                atlasreleases[:-1], "https://neuroshapes.org/dash/atlasrelease"
+                atlasreleases["atlas_releases"],
+                "https://neuroshapes.org/dash/atlasrelease",
             )
+        except Exception as e:
+            L.error(f"Error when registering resource. {e}")
+            exit(1)
+    if atlasreleases["hierarchy"]:
+        try:
             L.info(
                 "\nRegistering the constructed Parcellation ontology payload in "
                 "Nexus..."
             )
             ctx.obj["forge"].register(
-                atlasreleases[-1], "https://neuroshapes.org/dash/ontology"
+                atlasreleases["hierarchy"], "https://neuroshapes.org/dash/ontology"
             )
         except Exception as e:
             L.error(f"Error when registering resource. {e}")
@@ -214,8 +225,7 @@ def push_volumetric(
     type=click.Path(exists=True),
     required=True,
     multiple=True,
-    help="The path to the json hierarchy file containing an AIBS hierarchy "
-    "structure.",
+    help="The path to the json hierarchy file containing an AIBS hierarchy structure.",
 )
 @click.pass_context
 @log_args(L)
@@ -257,7 +267,7 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
 @click.option(
     "--voxels-resolution",
     required=True,
-    help="The Allen annotation volume " "voxels resolution in microns",
+    help="The Allen annotation volume voxels resolution in microns",
 )
 @click.pass_context
 @log_args(L)

@@ -153,7 +153,7 @@ def create_mesh_resources(
                             atlasreleases.append(atlasrelease_dict["atlas_release"][0])
                             atlasreleases.append(atlasrelease_dict["atlas_release"][1])
                 elif os.path.samefile(
-                    filepath, mesh_path["brain_region_meshes_l23split"]
+                    filepath, mesh_path["brain_region_meshes_hybrid_l23split"]
                 ):
                     hierarchy_tag = "hierarchy_l23split"
                     if atlasrelease_dict:
@@ -354,7 +354,7 @@ def return_atlasrelease(
         "@value": f"{datetime.today().strftime('%Y-%m-%d')}",
     }
 
-    if os.path.samefile(dataset, mesh_path["brain_region_meshes_l23split"]):
+    if os.path.samefile(dataset, mesh_path["brain_region_meshes_hybrid_l23split"]):
         # Atlas release hybrid v2-v3 L2L3 split
         try:
             filters = {"name": "Allen Mouse CCF v2-v3 hybrid l2-l3 split"}

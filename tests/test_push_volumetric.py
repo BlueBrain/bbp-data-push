@@ -45,7 +45,7 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "entity": {
                     "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
                     "025eef5f-2a9a-4119-b53f-338452c72f2a",
-                    "@type": "['VolumetricDataLayer', 'BrainParcellationDataLayer']",
+                    "@type": "Dataset",
                 },
             },
             {
@@ -55,7 +55,7 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "entity": {
                     "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
                     "7b4b36ad-911c-4758-8686-2bf7943e10fb",
-                    "@type": "['VolumetricDataLayer', 'BrainParcellationDataLayer']",
+                    "@type": "Dataset",
                 },
             },
         ],
@@ -136,7 +136,7 @@ def test_create_volumetric_resources():
 
     dataset_path = [
         str(Path(TEST_PATH, "tests/tests_data/annotation_v2v3_hybrid.nrrd")),
-        str(Path(TEST_PATH, "tests/tests_data/annotation_l23split.nrrd")),
+        str(Path(TEST_PATH, "tests/tests_data/annotation_hybrid_l23split.nrrd")),
         str(Path(TEST_PATH, "tests/tests_data/cell_density")),
         str(Path(TEST_PATH, "tests/tests_data/neuron_density")),
     ]

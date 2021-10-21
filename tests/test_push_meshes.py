@@ -21,7 +21,7 @@ def test_create_mesh_resources():
 
     dataset_path = [
         str(Path(TEST_PATH, "tests/tests_data/brain_region_meshes_hybrid")),
-        str(Path(TEST_PATH, "tests/tests_data/brain_region_meshes_l23split")),
+        str(Path(TEST_PATH, "tests/tests_data/brain_region_meshes_hybrid_l23split")),
     ]
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
     hierarchy_path = [

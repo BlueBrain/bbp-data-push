@@ -50,7 +50,7 @@ def get_voxel_type(voxel_type, component_size: int):
                 raise ValueError(
                     f"There is an incompatibility between the provided type "
                     f"({voxel_type }) and the component size ({component_size}) "
-                    "number of component per voxel."
+                    "aka the number of component per voxel."
                 )
         except KeyError as e:
             raise KeyError(f"{e}. The voxel type {voxel_type} is not correct.")
