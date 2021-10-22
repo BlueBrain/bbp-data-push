@@ -135,10 +135,10 @@ def base_ressource(f):
         "dataset. They must follow the form '<module_name>:<anything> <version>'.",
     )(f)
     # f = click.option("--activity-id", required=True, type=str, help="string which "
-    #                  "corresponds to the Nexus identifier of the Activity Resource. If "
-    #                  "the Activity Resource already exists in Nexus it will be linked "
-    #                  "to the datasets to be pushed else the Activity will be created "
-    #                  "and pushed too. ")(f)
+    #                   "corresponds to the Nexus identifier of the Activity Resource. "
+    #                   "If the Activity Resource already exists in Nexus it will be "
+    #                   "linked to the datasets to be pushed else the Activity will be "
+    #                   "created and pushed too. ")(f)
     return f
 
 
