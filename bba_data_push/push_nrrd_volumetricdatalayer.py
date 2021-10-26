@@ -181,8 +181,10 @@ def create_volumetric_resources(
         "Annotation volume corresponding to the AIBS volume CCFv2 realigned to the "
         f"AIBS volume CCFv3 at {voxels_resolution} microns"
     )
-    description_realigned_simple = "Realigned annotation volume from ccfv2 to ccfv3 at "
-    f"{voxels_resolution} microns"
+    description_realigned_simple = (
+        f"Realigned annotation volume from ccfv2 to ccfv3 at {voxels_resolution} "
+        "microns"
+    )
     description_realigned_split = (
         f"{description_realigned} with the isocortex layer 2 and 3 split"
     )
@@ -190,11 +192,14 @@ def create_volumetric_resources(
         f"{description_realigned_simple} with the isocortex layer 2 and 3 split"
     )
     description_orientation = "Quaternions field (w,x,y,z) defined over the"
-    description_orientation_end = f"(spatial resolution of {voxels_resolution} µm) and "
-    "representing the neuron axone-to-dendrites orientation to voxels from the "
-    "Isocortex region."
-    description_orientation_hybrid = f"{description_orientation} CCF v2-v3 Hybrid "
-    f"annotation volume {description_orientation_end}"
+    description_orientation_end = (
+        f"(spatial resolution of {voxels_resolution} µm) and representing the neuron "
+        "axone-to-dendrites orientation to voxels from the Isocortex region."
+    )
+    description_orientation_hybrid = (
+        f"{description_orientation} CCF v2-v3 Hybrid annotation volume "
+        f"{description_orientation_end}"
+    )
     description_orientation_realigned = (
         f"{description_orientation} CCF v2-to-v3 Realigned annotation volume "
         f"{description_orientation_end}"
