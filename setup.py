@@ -21,7 +21,7 @@ setup(
         "pynrrd>=0.4.0",
         "PyYAML>=5.3.1",
         "PyJWT>=2.0.0",
-        "pyparsing==2.*"
+        "pyparsing==2.*",
     ],
     extras_require={
         "dev": ["pytest>=4.3", "pytest-cov>=2.8.0"],

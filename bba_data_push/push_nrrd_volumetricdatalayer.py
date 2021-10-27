@@ -278,21 +278,21 @@ def create_volumetric_resources(
                 "ccfv2, which have additional levels of hierarchy.",
                 derivation_ccfv2v3,
                 "atlasrelease_ccfv2v3",
-                "parcellationId"
+                "parcellationId",
             ],
             f"{volumes['annotation_hybrid_l23split']}": [
                 "split-isocortex-layer-23",
                 description_hybrid_split,
                 derivation_hybrid_described,
                 "atlasrelease_hybrid",
-                "parcellationId"
+                "parcellationId",
             ],
             f"{volumes['annotation_realigned_l23split']}": [
                 "split-isocortex-layer-23",
                 description_realigned_split,
                 derivation_realigned,
                 "atlasrelease_realigned",
-                "parcellationId"
+                "parcellationId",
             ],
         },
         "cell_orientations": {
@@ -301,14 +301,14 @@ def create_volumetric_resources(
                 description_orientation_hybrid,
                 derivation_hybrid,
                 "atlasrelease_ccfv2v3",
-                "quaternion"
+                "quaternion",
             ],
             f"{volumes['cell_orientations_realigned']}": [
                 "orientation-field",
                 description_orientation_realigned,
                 derivation_realigned,
                 "atlasrelease_realigned",
-                "quaternion"
+                "quaternion",
             ],
         },
         "placement_hints": {
@@ -317,14 +317,14 @@ def create_volumetric_resources(
                 description_PH_hybrid_split,
                 derivation_hybrid,
                 "atlasrelease_ccfv2v3",
-                "distance"
+                "distance",
             ],
             f"{volumes['placement_hints_realigned_l23split']}": [
                 "placement-hints isocortex",
                 description_PH_realigned_split,
                 derivation_realigned,
                 "atlasrelease_realigned",
-                 "distance"
+                "distance",
             ],
         },
         "cell_densities": {
@@ -333,14 +333,14 @@ def create_volumetric_resources(
                 description_hybrid,
                 derivation_hybrid,
                 "atlasrelease_hybrid",
-                "quantity"
+                "quantity",
             ],
             f"{volumes['neuron_densities']}": [
                 "inhibitory-and-excitatory-neuron-densities",
                 description_hybrid,
                 derivation_hybrid,
                 "atlasrelease_hybrid",
-                "quantity"
+                "quantity",
             ],
         },
     }
@@ -398,9 +398,9 @@ def create_volumetric_resources(
                         atlasrelease_choice = volumetric_data["cell_densities"][
                             dataset
                         ][3]
-                        dataSampleModality = [volumetric_data["cell_densities"][
-                            dataset
-                        ][4]]
+                        dataSampleModality = [
+                            volumetric_data["cell_densities"][dataset][4]
+                        ]
                         break
                     else:
                         L.error(
@@ -431,9 +431,9 @@ def create_volumetric_resources(
                             atlasrelease_choice = volumetric_data["parcellations"][
                                 dataset
                             ][3]
-                            dataSampleModality = [volumetric_data["parcellations"][
-                                dataset
-                            ][4]]
+                            dataSampleModality = [
+                                volumetric_data["parcellations"][dataset][4]
+                            ]
 
                             # this is going ot be the "name" of the resource
                             filename_noext = os.path.splitext(
@@ -472,9 +472,9 @@ def create_volumetric_resources(
                             atlasrelease_choice = volumetric_data["cell_orientations"][
                                 dataset
                             ][3]
-                            dataSampleModality = [volumetric_data["cell_orientations"][
-                                dataset
-                            ][4]]
+                            dataSampleModality = [
+                                volumetric_data["cell_orientations"][dataset][4]
+                            ]
 
                             # this is going ot be the "name" of the resource
                             filename_noext = os.path.splitext(
@@ -561,9 +561,9 @@ def create_volumetric_resources(
                             atlasrelease_choice = volumetric_data["placement_hints"][
                                 dataset
                             ][3]
-                            dataSampleModality = [volumetric_data["placement_hints"][
-                                dataset
-                            ][4]]
+                            dataSampleModality = [
+                                volumetric_data["placement_hints"][dataset][4]
+                            ]
 
                             if (
                                 dataset
@@ -686,7 +686,7 @@ def create_volumetric_resources(
             isRegisteredIn=isRegisteredIn,
             brainLocation=brainLocation,
             atlasRelease=atlasRelease,
-            dataSampleModality = dataSampleModality,
+            dataSampleModality=dataSampleModality,
             subject=subject,
             contribution=contribution,
         )
@@ -826,7 +826,7 @@ def create_volumetric_resources(
                     resolution=nrrd_resource.resolution,
                     bufferEncoding=nrrd_resource.bufferEncoding,
                     endianness=nrrd_resource.endianness,
-                    dataSampleModality = nrrd_resource.dataSampleModality,
+                    dataSampleModality=nrrd_resource.dataSampleModality,
                     subject=nrrd_resource.subject,
                 )
 
@@ -849,7 +849,7 @@ def create_volumetric_resources(
                 datasets.append(nrrd_resources)
                 if isPH:
                     if f >= 7:
-                        nrrd_resources.dataSampleModality=["mask"]
+                        nrrd_resources.dataSampleModality = ["mask"]
                         break
 
     return datasets, atlasreleases
