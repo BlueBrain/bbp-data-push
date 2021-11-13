@@ -15,6 +15,7 @@ import fnmatch
 import re
 from datetime import datetime
 from uuid import uuid4
+import copy
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
 
@@ -170,13 +171,20 @@ def create_volumetric_resources(
     # Resource payload properties values corresponding to the different possible Atlas
     # volumetric datasets
     resource_type = "VolumetricDataLayer"
+
+    description_ccfv2 = (
+        f"Original Allen ccfv2 annotation volume at {voxels_resolution} microns"
+    )
+    description_ccfv3 = (
+        f"Original Allen ccfv3 annotation volume at {voxels_resolution} microns"
+    )
     description_hybrid = (
         f"Hybrid annotation volume from ccfv2 and ccfv3 at {voxels_resolution} "
         "microns"
     )
-    description_hybrid_split = (
-        f"{description_hybrid} with the isocortex layer 2 and 3 split"
-    )
+    description_split = "with the isocortex layer 2 and 3 split"
+    description_ccfv3_split = f"{description_ccfv3} {description_split}"
+    description_hybrid_split = f"{description_hybrid} {description_split}"
     description_realigned = (
         "Annotation volume corresponding to the AIBS volume CCFv2 realigned to the "
         f"AIBS volume CCFv3 at {voxels_resolution} microns"
@@ -185,9 +193,7 @@ def create_volumetric_resources(
         f"Realigned annotation volume from ccfv2 to ccfv3 at {voxels_resolution} "
         "microns"
     )
-    description_realigned_split = (
-        f"{description_realigned} with the isocortex layer 2 and 3 split"
-    )
+    description_realigned_split = f"{description_realigned} {description_split}"
     description_realigned_split_simple = (
         f"{description_realigned_simple} with the isocortex layer 2 and 3 split"
     )
@@ -195,6 +201,10 @@ def create_volumetric_resources(
     description_orientation_end = (
         f"(spatial resolution of {voxels_resolution} µm) and representing the neuron "
         "axone-to-dendrites orientation to voxels from the Isocortex region."
+    )
+    description_orientation_ccfv3 = (
+        f"{description_orientation} Original Allen ccfv3 annotation volume "
+        f"{description_orientation_end}"
     )
     description_orientation_hybrid = (
         f"{description_orientation} CCF v2-v3 Hybrid annotation volume "
@@ -208,6 +218,10 @@ def create_volumetric_resources(
         "The layers are ordered with respect to depth, which means that the layer "
         "which is the closest from the skull is the first layer (upper layer) and the "
         "deepest one is the last (lower layer)."
+    )
+    description_PH_ccfv3_split = (
+        "Placement hints (cortical distance of voxels to layer boundaries) of the "
+        f"Isocortex Layer XX of the {description_ccfv3_split}. {description_PH}"
     )
     description_PH_hybrid_split = (
         "Placement hints (cortical distance of voxels to layer boundaries) of the "
@@ -224,8 +238,7 @@ def create_volumetric_resources(
         {
             "@type": "Derivation",
             "description": "The ccfv3 (2017) has smoother region borders, without "
-            "jaggies. "
-            "The enveloppe or most regions was used in this volume",
+            "jaggies. The enveloppe or most regions was used in this volume",
             "entity": {
                 "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
                 "025eef5f-2a9a-4119-b53f-338452c72f2a",
@@ -252,10 +265,31 @@ def create_volumetric_resources(
             "@type": "Dataset",
         },
     }
-    derivation_hybrid_described = derivation_hybrid.copy()
-    derivation_hybrid_described[
+    derivation_hybrid_split = copy.deepcopy(derivation_hybrid)
+    derivation_hybrid_split[
         "description"
     ] = "The separation between layer 2 and layer 3 was performed on the source volume."
+    derivation_hybrid_split["entity"][
+        "@id"
+    ] = "https://bbp.epfl.ch/neurosciencegraph/data/"
+    "0b14f764-8f8d-4de9-84fa-a59f3308d64d"
+
+    derivation_ccfv3 = {
+        "@type": "Derivation",
+        "entity": {
+            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+            "025eef5f-2a9a-4119-b53f-338452c72f2a",
+            "@type": "Dataset",
+        },
+    }
+    derivation_ccfv3_split = copy.deepcopy(derivation_hybrid)
+    derivation_ccfv3_split[
+        "description"
+    ] = "The separation between layer 2 and layer 3 was performed on the source volume."
+    derivation_ccfv3_split["entity"][
+        "@id"
+    ] = "https://bbp.epfl.ch/neurosciencegraph/data/"
+    "0b14f764-8f8d-4de9-84fa-a59f3308d64d"
 
     derivation_realigned = {
         "@type": "Derivation",
@@ -266,9 +300,24 @@ def create_volumetric_resources(
             "@type": "Dataset",
         },
     }
+    derivation_correctednissl = {
+        "@type": "Derivation",
+        "entity": {
+            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+            "35cb6642-db10-49e9-8f9c-46be17a9c376",
+            "@type": "Dataset",
+        },
+    }
+    deriv_celldensities_template = {
+        "@type": "Derivation",
+        "entity": {
+            "@id": "",
+            "@type": "Dataset",
+        },
+    }
 
     # Dictionary containing the possible volumetric dataset to push
-
+    refined_inhib = "inhibitory_neuron_densities_preserveprop_ccfv2_correctednissl"
     volumetric_data = {
         "parcellations": {
             f"{volumes['annotation_hybrid']}": [
@@ -283,23 +332,37 @@ def create_volumetric_resources(
             f"{volumes['annotation_hybrid_l23split']}": [
                 "split-isocortex-layer-23",
                 description_hybrid_split,
-                derivation_hybrid_described,
-                "atlasrelease_hybrid",
+                derivation_hybrid,
+                "atlasrelease_hybridsplit",
+                "parcellationId",
+            ],
+            f"{volumes['annotation_ccfv3_l23split']}": [
+                "split-isocortex-layer-23",
+                description_ccfv3_split,
+                derivation_ccfv3_split,
+                "atlasrelease_ccfv3split",
                 "parcellationId",
             ],
             f"{volumes['annotation_realigned_l23split']}": [
                 "split-isocortex-layer-23",
                 description_realigned_split,
                 derivation_realigned,
-                "atlasrelease_realigned",
+                "atlasrelease_realignedsplit",
                 "parcellationId",
             ],
         },
         "cell_orientations": {
+            f"{volumes['cell_orientations_ccfv3']}": [
+                "orientation-field",
+                description_orientation_ccfv3,
+                derivation_ccfv3_split,
+                "atlasrelease_ccfv3",
+                "quaternion",
+            ],
             f"{volumes['cell_orientations_hybrid']}": [
                 "orientation-field",
                 description_orientation_hybrid,
-                derivation_hybrid,
+                derivation_hybrid_split,
                 "atlasrelease_ccfv2v3",
                 "quaternion",
             ],
@@ -307,7 +370,7 @@ def create_volumetric_resources(
                 "orientation-field",
                 description_orientation_realigned,
                 derivation_realigned,
-                "atlasrelease_realigned",
+                "atlasrelease_realignedsplit",
                 "quaternion",
             ],
         },
@@ -315,31 +378,103 @@ def create_volumetric_resources(
             f"{volumes['placement_hints_hybrid_l23split']}": [
                 "placement-hints isocortex",
                 description_PH_hybrid_split,
-                derivation_hybrid,
-                "atlasrelease_ccfv2v3",
+                derivation_hybrid_split,
+                "atlasrelease_hybridsplit",
+                "distance",
+            ],
+            f"{volumes['placement_hints_ccfv3_l23split']}": [
+                "placement-hints isocortex",
+                description_PH_ccfv3_split,
+                derivation_ccfv3,
+                "atlasrelease_ccfv3split",
                 "distance",
             ],
             f"{volumes['placement_hints_realigned_l23split']}": [
                 "placement-hints isocortex",
                 description_PH_realigned_split,
                 derivation_realigned,
-                "atlasrelease_realigned",
+                "atlasrelease_realignedsplit",
                 "distance",
             ],
         },
         "cell_densities": {
-            f"{volumes['cell_densities']}": [
+            f"{volumes['cell_densities_hybrid']}": [
                 "glia-cell-densities",
                 description_hybrid,
-                derivation_hybrid,
-                "atlasrelease_hybrid",
+                None,
+                "atlasrelease_hybridsplit",
                 "quantity",
             ],
-            f"{volumes['neuron_densities']}": [
+            f"{volumes['neuron_densities_hybrid']}": [
                 "inhibitory-and-excitatory-neuron-densities",
                 description_hybrid,
-                derivation_hybrid,
-                "atlasrelease_hybrid",
+                None,
+                "atlasrelease_hybridsplit",
+                "quantity",
+            ],
+            f"{volumes['overall_cell_density_ccfv2_correctednissl']}": [
+                "",
+                f"{description_ccfv2}. It has been generated using the corrected nissl "
+                "volume",
+                derivation_correctednissl,
+                "atlasrelease_ccfv2",
+                "quantity",
+            ],
+            f"{volumes['cell_densities_ccfv2_correctednissl']}": [
+                "glia-cell-densities",
+                f"{description_ccfv2}. It has been generated using the corrected nissl "
+                "volume",
+                f"{volumes['overall_cell_density_ccfv2_correctednissl']}",
+                "atlasrelease_ccfv2",
+                "quantity",
+            ],
+            f"{volumes['neuron_densities_ccfv2_correctednissl']}": [
+                "inhibitory-and-excitatory-neuron-densities",
+                f"{description_ccfv2}. It has been generated using the corrected nissl "
+                "volume",
+                (
+                    f"{volumes['cell_densities_ccfv2_correctednissl']}",
+                    "neuron_density.nrrd",
+                ),
+                "atlasrelease_ccfv2",
+                "quantity",
+            ],
+            f"{volumes['inhibitory_neuron_densities_linprog_ccfv2_correctednissl']}": [
+                "",
+                f"{description_ccfv2}. It has been generated with the corrected nissl "
+                "volume and using the algorithm linprog",
+                (
+                    f"{volumes['cell_densities_ccfv2_correctednissl']}",
+                    "neuron_density.nrrd",
+                ),
+                "atlasrelease_ccfv2",
+                "quantity",
+            ],
+            f"{volumes[refined_inhib]}": [
+                "",
+                f"{description_ccfv2}. It has been generated with the corrected nissl "
+                "volume and using the algorithm keep-proportions",
+                (
+                    f"{volumes['cell_densities_ccfv2_correctednissl']}",
+                    "neuron_density.nrrd",
+                ),
+                "atlasrelease_ccfv2",
+                "quantity",
+            ],
+            f"{volumes['mtypes_densities_profile_ccfv2_correctednissl']}": [
+                "",
+                f"{description_ccfv2}. It has been generated from density profiles and "
+                "using the corrected nissl volume",
+                None,
+                "atlasrelease_ccfv2",
+                "quantity",
+            ],
+            f"{volumes['mtypes_densities_probability_map_ccfv2_correctednissl']}": [
+                "",
+                f"{description_ccfv2}. It has been generated from a probability mapping"
+                " and using the corrected nissl volume",
+                None,
+                "atlasrelease_ccfv2",
                 "quantity",
             ],
         },
@@ -350,12 +485,15 @@ def create_volumetric_resources(
     atlasreleases = {"atlas_releases": [], "hierarchy": []}
     atlasrelease_dict = {"atlasrelease_choice": False, "hierarchy": False}
     atlasRelease = {}
+    dict_ids = {}
     for filepath in inputpath:
         file_found = False
         isFolder = False
         derivation = False
         isCellDensity = False
         isPH = False
+        derivation_data_found = False
+        dimension_name = False
         for dataset in volumetric_data["cell_densities"]:
             try:
                 if os.path.samefile(filepath, dataset):
@@ -379,9 +517,32 @@ def create_volumetric_resources(
                         file_extension = os.path.splitext(os.path.basename(filepath))[
                             1
                         ][1:]
-                        cell_density_file = filename_noext.replace("_", " ")
-                        cell_density_name = (
-                            f"{cell_density_file[0].upper()}" f"{cell_density_file[1:]}"
+                        file_split = filename_noext.split("_")
+                        v = "mtypes_densities_probability_map_ccfv2_correctednissl"
+                        try:
+                            if os.path.samefile(
+                                directory,
+                                volumes[
+                                    "mtypes_densities_profile_ccfv2_correctednissl"
+                                ],
+                            ) or os.path.samefile(
+                                directory,
+                                volumes[v],
+                            ):
+                                file_split.insert(0, "Mtype")
+                        except FileNotFoundError:
+                            pass
+                        cell_density_file = " ".join(file_split)
+                        atlasrelease_choice = volumetric_data["cell_densities"][
+                            dataset
+                        ][3]
+                        filename_noext = cell_density_file
+                        if atlasrelease_choice == "atlasrelease_ccfv2":
+                            filename_noext = f"{filename_noext} Ccfv2 Corrected Nissl"
+                        description = (
+                            f"{cell_density_file[0].upper()}{cell_density_file[1:]} "
+                            "volume for the "
+                            f"{volumetric_data['cell_densities'][dataset][1]}."
                         )
                         voxel_type = "intensity"
                         resource_types = [
@@ -389,25 +550,225 @@ def create_volumetric_resources(
                             "GliaCellDensity",
                             "CellDensityDataLayer",
                         ]
-                        description = (
-                            f"{cell_density_name} volume for the "
-                            f"{volumetric_data['cell_densities'][dataset][1]}."
-                        )
                         module_tag = volumetric_data["cell_densities"][dataset][0]
-                        derivation = volumetric_data["cell_densities"][dataset][2]
-                        atlasrelease_choice = volumetric_data["cell_densities"][
-                            dataset
-                        ][3]
+                        # Derivation
+                        if volumetric_data["cell_densities"][dataset][2]:
+                            if not isinstance(
+                                volumetric_data["cell_densities"][dataset][2], dict
+                            ):
+                                if isinstance(
+                                    volumetric_data["cell_densities"][dataset][2], tuple
+                                ):
+                                    data_deriv = volumetric_data["cell_densities"][
+                                        dataset
+                                    ][2][0]
+                                    subdata_deriv = volumetric_data["cell_densities"][
+                                        dataset
+                                    ][2][1]
+                                    fulldata_deriv = f"{data_deriv}/{subdata_deriv}"
+                                else:
+                                    data_deriv = volumetric_data["cell_densities"][
+                                        dataset
+                                    ][2]
+                                # Search for the file to derive from in the input files
+                                # and if it is already a resource or not
+                                for inputdata in inputpath:
+                                    if os.path.samefile(
+                                        data_deriv,
+                                        inputdata,
+                                    ):
+                                        derivation_data_found = True
+                                        for r in range(0, len(datasets)):
+                                            distrib = datasets[r].distribution.args[0]
+                                            if isinstance(
+                                                volumetric_data["cell_densities"][
+                                                    dataset
+                                                ][2],
+                                                tuple,
+                                            ):
+                                                data_deriv = fulldata_deriv
+                                            # check if a previous resource is the one
+                                            # from which it derives
+                                            if os.path.samefile(data_deriv, distrib):
+                                                # Check if the previous resource
+                                                # already an id
+                                                try:
+                                                    if datasets[r].id:
+                                                        pass
+                                                except AttributeError:
+                                                    dataset_id = forge.format(
+                                                        "identifier",
+                                                        "celldensity",
+                                                        str(uuid4()),
+                                                    )
+                                                    datasets[r].id = f"{dataset_id}"
+                                                derivation = copy.deepcopy(
+                                                    deriv_celldensities_template
+                                                )
+                                                derivation["entity"][
+                                                    "@id"
+                                                ] = f"{dataset_id}"
+                                                break
+                                        # if the parent resource has not been created
+                                        # yet
+                                        if not derivation:
+                                            dict_ids[f"{data_deriv}"] = forge.format(
+                                                "identifier",
+                                                "celldensity",
+                                                str(uuid4()),
+                                            )
+                                            derivation = copy.deepcopy(
+                                                deriv_celldensities_template
+                                            )
+                                            derivation["entity"]["@id"] = dict_ids[
+                                                f"{data_deriv}"
+                                            ]
+                                if not derivation_data_found:
+                                    L.info(
+                                        f"The file '{data_deriv}' whose "
+                                        "resource corresponding to the file "
+                                        f"'{dataset}' derivates is absent from the "
+                                        "input dataset. The property 'derivation' "
+                                        "from the latter resource will be thus left "
+                                        "empty."
+                                    )
+                            else:
+                                derivation = volumetric_data["cell_densities"][dataset][
+                                    2
+                                ]
                         dataSampleModality = [
                             volumetric_data["cell_densities"][dataset][4]
                         ]
                         break
                     else:
-                        L.error(
-                            f"Error: cell density dataset '{filepath}' is not a folder "
-                            "containing cell densities .nrrd files"
-                        )
-                        exit(1)
+                        if filepath.endswith(".nrrd"):
+                            file_found = True
+                            # this is going ot be the "name" of the resource
+                            filename_noext = os.path.splitext(
+                                os.path.basename(filepath)
+                            )[0]
+                            file_extension = os.path.splitext(
+                                os.path.basename(filepath)
+                            )[1][1:]
+                            file_split = filename_noext.split("_")[:3]
+                            cell_density_file = " ".join(file_split)
+                            atlasrelease_choice = volumetric_data["cell_densities"][
+                                dataset
+                            ][3]
+                            filename_noext = cell_density_file
+                            if atlasrelease_choice == "atlasrelease_ccfv2":
+                                filename_noext = (
+                                    f"{filename_noext} Ccfv2 Corrected Nissl"
+                                )
+                            description = (
+                                f"{cell_density_file[0].upper()}"
+                                f"{cell_density_file[1:]} volume for the "
+                                f"{volumetric_data['cell_densities'][dataset][1]}."
+                            )
+                            voxel_type = "intensity"
+                            resource_types = [
+                                resource_type,
+                                "GliaCellDensity",
+                                "CellDensityDataLayer",
+                            ]
+                            module_tag = volumetric_data["cell_densities"][dataset][0]
+                            # Derivation
+                            if volumetric_data["cell_densities"][dataset][2]:
+                                if not isinstance(
+                                    volumetric_data["cell_densities"][dataset][2], dict
+                                ):
+
+                                    # Search for the file to derive from in the input
+                                    # files and if it is already a resource or not
+                                    if isinstance(
+                                        volumetric_data["cell_densities"][dataset][2],
+                                        tuple,
+                                    ):
+
+                                        data_deriv = volumetric_data["cell_densities"][
+                                            dataset
+                                        ][2][0]
+                                        subdata_deriv = volumetric_data[
+                                            "cell_densities"
+                                        ][dataset][2][1]
+                                        fulldata_deriv = f"{data_deriv}/{subdata_deriv}"
+                                    else:
+                                        data_deriv = volumetric_data["cell_densities"][
+                                            dataset
+                                        ][2]
+                                    for inputdata in inputpath:
+                                        if os.path.samefile(
+                                            data_deriv,
+                                            inputdata,
+                                        ):
+                                            derivation_data_found = True
+                                            for r in range(0, len(datasets)):
+                                                distrib = datasets[r].distribution.args[
+                                                    0
+                                                ]
+                                                if isinstance(
+                                                    volumetric_data["cell_densities"][
+                                                        dataset
+                                                    ][2],
+                                                    tuple,
+                                                ):
+                                                    data_deriv = fulldata_deriv
+                                                if os.path.samefile(
+                                                    data_deriv, distrib
+                                                ):
+                                                    try:
+                                                        if datasets[r].id:
+                                                            pass
+                                                    except AttributeError:
+                                                        datasets[r].id = forge.format(
+                                                            "identifier",
+                                                            "celldensity",
+                                                            str(uuid4()),
+                                                        )
+                                                    derivation = copy.deepcopy(
+                                                        deriv_celldensities_template
+                                                    )
+                                                    derivation["entity"][
+                                                        "@id"
+                                                    ] = datasets[r].id
+                                                    break
+                                            if not derivation:
+                                                dict_ids[
+                                                    f"{data_deriv}"
+                                                ] = forge.format(
+                                                    "identifier",
+                                                    "celldensity",
+                                                    str(uuid4()),
+                                                )
+                                                derivation = copy.deepcopy(
+                                                    deriv_celldensities_template
+                                                )
+                                                derivation["entity"]["@id"] = dict_ids[
+                                                    f"{data_deriv}"
+                                                ]
+                                    if not derivation_data_found:
+                                        L.info(
+                                            f"The file '{data_deriv}' whose "
+                                            "resource corresponding to the file "
+                                            f"'{dataset}' derivates is absent from the "
+                                            "input dataset. The property 'derivation' "
+                                            "from the latter resource will be thus "
+                                            "left empty."
+                                        )
+                                else:
+                                    derivation = volumetric_data["cell_densities"][
+                                        dataset
+                                    ][2]
+                            dataSampleModality = [
+                                volumetric_data["cell_densities"][dataset][4]
+                            ]
+                            break
+                        else:
+                            L.error(
+                                f"Error: parcellation dataset '{filepath}' is not a "
+                                "volumetric .nrrd file"
+                            )
+                            exit(1)
             except FileNotFoundError:
                 pass
 
@@ -475,7 +836,7 @@ def create_volumetric_resources(
                             dataSampleModality = [
                                 volumetric_data["cell_orientations"][dataset][4]
                             ]
-
+                            dimension_name = "quaternion"
                             # this is going ot be the "name" of the resource
                             filename_noext = os.path.splitext(
                                 os.path.basename(filepath)
@@ -624,8 +985,25 @@ def create_volumetric_resources(
             "sampling_period": default_sampling_period,
             "sampling_time_unit": default_sampling_time_unit,
         }
-
-        if not isinstance(forge._store, DemoStore):
+        if atlasrelease_choice == "atlasrelease_ccfv2":
+            atlasRelease = {
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+                "dd114f81-ba1f-47b1-8900-e497597f06ac",
+                "@type": ["AtlasRelease", "BrainAtlasRelease"],
+            }
+        elif atlasrelease_choice == "atlasrelease_ccfv3":
+            atlasRelease = {
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+                "831a626a-c0ae-4691-8ce8-cfb7491345d9",
+                "@type": ["AtlasRelease", "BrainAtlasRelease"],
+            }
+        elif atlasrelease_choice == "atlasrelease_ccfv3split":
+            atlasRelease = {
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
+                "5149d239-8b4d-43bb-97b7-8841a12d85c4",
+                "@type": ["AtlasRelease", "BrainAtlasRelease"],
+            }
+        elif not isinstance(forge._store, DemoStore):
             if not atlasrelease_dict["atlasrelease_choice"] or (
                 atlasrelease_choice != atlasrelease_dict["atlasrelease_choice"]
             ):
@@ -696,13 +1074,10 @@ def create_volumetric_resources(
         if derivation:
             nrrd_resource.derivation = derivation
 
-        try:
-            if os.path.samefile(
-                volumes["cell_orientations_hybrid"], dataset
-            ) or os.path.samefile(volumes["cell_orientations_realigned"], dataset):
-                nrrd_resource.dimension[0]["name"] = "quaternion"
-        except FileNotFoundError:
-            pass
+        if dataset in dict_ids:
+            nrrd_resource.id = dict_ids[dataset]
+        if dimension_name:
+            nrrd_resource.dimension[0]["name"] = dimension_name
 
         # Link the atlasrelease to its parcellation
         if not isinstance(forge._store, DemoStore):
@@ -760,14 +1135,27 @@ def create_volumetric_resources(
                 distribution_file = forge.attach(filepath, content_type)
 
                 if isCellDensity:
-                    cell_density_file = filename_noext.replace("_", " ")
-                    cell_density_name = (
-                        f"{cell_density_file[0].upper()}" f"{cell_density_file[1:]}"
-                    )
+                    file_split = filename_noext.split("_")
+                    v = "mtypes_densities_probability_map_ccfv2_correctednissl"
+                    try:
+                        if os.path.samefile(
+                            directory,
+                            volumes["mtypes_densities_profile_ccfv2_correctednissl"],
+                        ) or os.path.samefile(
+                            directory,
+                            volumes[v],
+                        ):
+                            file_split.insert(0, "Mtype")
+                    except FileNotFoundError:
+                        pass
+                    cell_density_file = " ".join(file_split)
                     description = (
-                        f"{cell_density_name} volume for the "
-                        f"{volumetric_data['cell_densities'][dataset][1]}."
+                        f"{cell_density_file[0].upper()}{cell_density_file[1:]} volume "
+                        f"for the {volumetric_data['cell_densities'][dataset][1]}."
                     )
+                    name = cell_density_file.title()
+                    if atlasrelease_choice == "atlasrelease_ccfv2":
+                        name = f"{name} Ccfv2 Corrected Nissl"
 
                 if isPH:
                     name = f"{name} {suffixe}"
@@ -830,6 +1218,9 @@ def create_volumetric_resources(
                     subject=nrrd_resource.subject,
                 )
 
+                if derivation:
+                    nrrd_resources.derivation = nrrd_resource.derivation
+
                 if isPH:
                     if 5 < f < 8:
                         try:
@@ -845,12 +1236,16 @@ def create_volumetric_resources(
                         nrrd_resources = add_nrrd_props(
                             nrrd_resources, header, config, voxel_type
                         )
-
-                datasets.append(nrrd_resources)
-                if isPH:
                     if f >= 7:
                         nrrd_resources.dataSampleModality = ["mask"]
-                        break
+                        nrrd_resources.type = [
+                            "VolumetricDataLayer",
+                            "nsg:PlacementHintsDataReport",
+                            "Dataset",
+                        ]
+                        f = len(files_list)
+
+                datasets.append(nrrd_resources)
 
     return datasets, atlasreleases
 
@@ -884,7 +1279,7 @@ def return_atlasrelease(
     }
     link_to_hierarchy = False
     atlasrelease_resource = []
-    if atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_hybrid":
+    if atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_hybridsplit":
         if not new_atlasrelease_hierarchy_path:
             # Atlas release hybrid v2-v3 L2L3 split
             try:
@@ -928,7 +1323,7 @@ def return_atlasrelease(
             exit(1)
 
     # Atlas Releases realigned split volume
-    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_realigned":
+    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_realignedsplit":
         if not new_atlasrelease_hierarchy_path:
             try:
                 filters = {"name": "Allen Mouse CCF v2-v3 realigned l2-l3 split"}

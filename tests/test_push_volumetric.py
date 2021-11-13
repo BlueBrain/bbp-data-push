@@ -137,8 +137,8 @@ def test_create_volumetric_resources():
     dataset_path = [
         str(Path(TEST_PATH, "tests/tests_data/annotation_v2v3_hybrid.nrrd")),
         str(Path(TEST_PATH, "tests/tests_data/annotation_hybrid_l23split.nrrd")),
-        str(Path(TEST_PATH, "tests/tests_data/cell_density")),
-        str(Path(TEST_PATH, "tests/tests_data/neuron_density")),
+        str(Path(TEST_PATH, "tests/tests_data/cell_densities_hybrid")),
+        str(Path(TEST_PATH, "tests/tests_data/neuron_densities_hybrid")),
     ]
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
     provenance = [

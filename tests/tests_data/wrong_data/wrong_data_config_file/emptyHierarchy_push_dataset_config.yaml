@@ -6,12 +6,26 @@ generatedDatasetType:
 - MeshFile
 - CellPositionFile
 generatedDataset:
-- annotation_hybrid
-- annotation_l23split
-- cell_densities
-- neuron_densities
-- brain_region_meshes_hybrid
-- brain_region_meshes_l23split
+- annotation_v2v3_hybrid
+- annotation_hybrid_l23split
+- annotation_ccfv3_l23split
+- cell_orientations_ccfv3
+- cell_orientations_hybrid
+- cell_orientations_realigned
+- placement_hints_ccfv3_l23split
+- placement_hints_hybrid_l23split
+- placement_hints_realigned_l23split
+- overall_cell_density_ccfv2_correctednissl
+- cell_densities_hybrid
+- cell_densities_ccfv2_correctednissl
+- neuron_densities_hybrid
+- neuron_densities_ccfv2_correctednissl
+- inhibitory_neuron_densities_linprog_ccfv2_correctednissl
+- inhibitory_neuron_densities_preserveprop_ccfv2_correctednissl
+- mtypes_densities_profile_ccfv2_correctednissl
+- mtypes_densities_probability_map_ccfv2_correctednissl
+- brain_region_meshes_v2v3_hybrid
+- brain_region_meshes_hybrid_l23split
 - cell_records_sonata
 HierarchyJson:
   hierarchy: tests/tests_data/wrong_data/empty_hierarchy.json
@@ -19,11 +33,26 @@ HierarchyJson:
 GeneratedDatasetPath:
   VolumetricFile:
     annotation_hybrid: tests/tests_data/annotation_v2v3_hybrid.nrrd
-    annotation_l23split: tests/tests_data/annotation_l23split.nrrd
-    cell_densities: tests/tests_data/test_cell_density
-    neuron_densities: tests/tests_data/neuron_density
+    annotation_ccfv3_l23split: tests/tests_data/annotation_ccfv3_l23split.nrrd
+    annotation_hybrid_l23split: tests/tests_data/annotation_hybrid_l23split.nrrd
+    annotation_realigned_l23split: tests/tests_data/annotation_realigned_l23split.nrrd
+    overall_cell_density_ccfv2_correctednissl: tests/tests_data/overall_cell_density_ccfv2_correctednissl.nrrd
+    cell_densities_hybrid: tests/tests_data/cell_densities_hybrid
+    cell_densities_ccfv2_correctednissl: tests/tests_data/cell_densities
+    neuron_densities_hybrid: tests/tests_data/neuron_densities_hybrid
+    neuron_densities_ccfv2_correctednissl: tests/tests_data/neuron_density
+    inhibitory_neuron_densities_linprog_ccfv2_correctednissl: tests/tests_data/inhibitory_neuron_densities_linprog_ccfv2_correctednissl
+    inhibitory_neuron_densities_preserveprop_ccfv2_correctednissl: tests/tests_data/inhibitory_neuron_densities_preserveprop_ccfv2_correctednissl
+    mtypes_densities_profile_ccfv2_correctednissl: tests/tests_data/mtypes_densities_profile_ccfv2_correctednissl
+    mtypes_densities_probability_map_ccfv2_correctednissl: tests/tests_data/mtypes_densities_probability_map_ccfv2_correctednissl
+    cell_orientations_ccfv3: tests/tests_data/cell_orientations_ccfv3.nrrd
+    cell_orientations_hybrid: tests/tests_data/cell_orientations_hybrid.nrrd
+    cell_orientations_realigned: tests/tests_data/cell_orientations_realigned.nrrd
+    placement_hints_ccfv3_l23split: tests/tests_data/placement_hints_iso_test_split
+    placement_hints_hybrid_l23split: tests/tests_data/placement_hints_hybrid_l23split
+    placement_hints_realigned_l23split: tests/tests_data/placement_hints_realigned_l23split
   MeshFile:
     brain_region_meshes_hybrid: tests/tests_data/brain_region_meshes_hybrid
-    brain_region_meshes_l23split: tests/tests_data/brain_region_meshes_l23split
+    brain_region_meshes_hybrid_l23split: tests/tests_data/brain_region_meshes_hybrid_l23split
   CellRecordsFile:
-    cell_records_sonata: tests/tests_data/cell_positions_hybrid.h5
+    cell_records_sonata: tests/tests_data/cell_records_sonata.h5
