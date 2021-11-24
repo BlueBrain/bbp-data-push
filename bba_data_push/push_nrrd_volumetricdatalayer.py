@@ -9,11 +9,11 @@ https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 
 import os
 import yaml
+import json
 import numpy as np
 import nrrd
 import fnmatch
 import re
-from datetime import datetime
 from uuid import uuid4
 import copy
 from kgforge.core import Resource
@@ -21,12 +21,14 @@ from kgforge.specializations.stores.demo_store import DemoStore
 
 from bba_data_push.commons import (
     get_voxel_type,
+    get_brain_region_prop,
     add_contribution,
     append_provenance_to_description,
+    return_atlasrelease,
 )
 from bba_data_push.logging import create_log_handler
 
-L = create_log_handler(__name__, "./push_volumetric.log")
+L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
 
 
 def create_volumetric_resources(
@@ -36,6 +38,8 @@ def create_volumetric_resources(
     config_path,
     provenances: list,
     new_atlasrelease_hierarchy_path,
+    input_hierarchy,
+    link_regions_path,
     verbose,
 ) -> list:
     """
@@ -173,10 +177,10 @@ def create_volumetric_resources(
     resource_type = "VolumetricDataLayer"
 
     description_ccfv2 = (
-        f"Original Allen ccfv2 annotation volume at {voxels_resolution} microns"
+        f"original Allen ccfv2 annotation volume at {voxels_resolution} microns"
     )
     description_ccfv3 = (
-        f"Original Allen ccfv3 annotation volume at {voxels_resolution} microns"
+        f"original Allen ccfv3 annotation volume at {voxels_resolution} microns"
     )
     description_hybrid = (
         f"Hybrid annotation volume from ccfv2 and ccfv3 at {voxels_resolution} "
@@ -189,14 +193,14 @@ def create_volumetric_resources(
         "Annotation volume corresponding to the AIBS volume CCFv2 realigned to the "
         f"AIBS volume CCFv3 at {voxels_resolution} microns"
     )
-    description_realigned_simple = (
-        f"Realigned annotation volume from ccfv2 to ccfv3 at {voxels_resolution} "
-        "microns"
-    )
+    # description_realigned_simple = (
+    #     f"Realigned annotation volume from ccfv2 to ccfv3 at {voxels_resolution} "
+    #     "microns"
+    # )
     description_realigned_split = f"{description_realigned} {description_split}"
-    description_realigned_split_simple = (
-        f"{description_realigned_simple} with the isocortex layer 2 and 3 split"
-    )
+    # description_realigned_split_simple = (
+    #     f"{description_realigned_simple} with the isocortex layer 2 and 3 split"
+    # )
     description_orientation = "Quaternions field (w,x,y,z) defined over the"
     description_orientation_end = (
         f"(spatial resolution of {voxels_resolution} µm) and representing the neuron "
@@ -223,15 +227,15 @@ def create_volumetric_resources(
         "Placement hints (cortical distance of voxels to layer boundaries) of the "
         f"Isocortex Layer XX of the {description_ccfv3_split}. {description_PH}"
     )
-    description_PH_hybrid_split = (
-        "Placement hints (cortical distance of voxels to layer boundaries) of the "
-        f"Isocortex Layer XX of the {description_hybrid_split}. {description_PH}"
-    )
-    description_PH_realigned_split = (
-        "Placement hints (cortical distance of voxels to layer boundaries) of the "
-        f"Isocortex Layer XX of the {description_realigned_split_simple} with the "
-        f"isocortex layer 2 and 3 split. {description_PH}"
-    )
+    # description_PH_hybrid_split = (
+    #     "Placement hints (cortical distance of voxels to layer boundaries) of the "
+    #     f"Isocortex Layer XX of the {description_hybrid_split}. {description_PH}"
+    # )
+    # description_PH_realigned_split = (
+    #     "Placement hints (cortical distance of voxels to layer boundaries) of the "
+    #     f"Isocortex Layer XX of the {description_realigned_split_simple} with the "
+    #     f"isocortex layer 2 and 3 split. {description_PH}"
+    # )
 
     #  "@type": ["VolumetricDataLayer", "BrainParcellationDataLayer"],
     derivation_ccfv2v3 = [
@@ -289,7 +293,7 @@ def create_volumetric_resources(
     derivation_ccfv3_split["entity"][
         "@id"
     ] = "https://bbp.epfl.ch/neurosciencegraph/data/"
-    "0b14f764-8f8d-4de9-84fa-a59f3308d64d"
+    "c4d189a0-67ec-4d5f-87f6-0bc61cf8e579"
 
     derivation_realigned = {
         "@type": "Derivation",
@@ -375,13 +379,13 @@ def create_volumetric_resources(
             ],
         },
         "placement_hints": {
-            f"{volumes['placement_hints_hybrid_l23split']}": [
-                "placement-hints isocortex",
-                description_PH_hybrid_split,
-                derivation_hybrid_split,
-                "atlasrelease_hybridsplit",
-                "distance",
-            ],
+            # f"{volumes['placement_hints_hybrid_l23split']}": [
+            #     "placement-hints isocortex",
+            #     description_PH_hybrid_split,
+            #     derivation_hybrid_split,
+            #     "atlasrelease_hybridsplit",
+            #     "distance",
+            # ],
             f"{volumes['placement_hints_ccfv3_l23split']}": [
                 "placement-hints isocortex",
                 description_PH_ccfv3_split,
@@ -389,13 +393,22 @@ def create_volumetric_resources(
                 "atlasrelease_ccfv3split",
                 "distance",
             ],
-            f"{volumes['placement_hints_realigned_l23split']}": [
-                "placement-hints isocortex",
-                description_PH_realigned_split,
-                derivation_realigned,
-                "atlasrelease_realignedsplit",
-                "distance",
-            ],
+            # f"{volumes['placement_hints_realigned_l23split']}": [
+            #     "placement-hints isocortex",
+            #     description_PH_realigned_split,
+            #     derivation_realigned,
+            #     "atlasrelease_realignedsplit",
+            #     "distance",
+            # ],
+        },
+        "volume_mask": {
+            f"{volumes['brain_region_mask_ccfv3_l23split']}": [
+                "",
+                description_ccfv3_split,
+                None,
+                "atlasrelease_ccfv3split",
+                "parcellationId",
+            ]
         },
         "cell_densities": {
             f"{volumes['cell_densities_hybrid']}": [
@@ -492,8 +505,12 @@ def create_volumetric_resources(
         derivation = False
         isCellDensity = False
         isPH = False
+        isRegionMask = False
         derivation_data_found = False
         dimension_name = False
+        flat_tree = {}
+        action_summary_file = False
+        link_summary_content = {}
         for dataset in volumetric_data["cell_densities"]:
             try:
                 if os.path.samefile(filepath, dataset):
@@ -795,7 +812,6 @@ def create_volumetric_resources(
                             dataSampleModality = [
                                 volumetric_data["parcellations"][dataset][4]
                             ]
-
                             # this is going ot be the "name" of the resource
                             filename_noext = os.path.splitext(
                                 os.path.basename(filepath)
@@ -925,21 +941,22 @@ def create_volumetric_resources(
                             dataSampleModality = [
                                 volumetric_data["placement_hints"][dataset][4]
                             ]
-
-                            if (
-                                dataset
-                                == f"{volumes['placement_hints_hybrid_l23split']}"
-                            ):
-                                suffixe = "CCF v2-v3 Hybrid L23 Split"
-                                annotation_description = description_hybrid_split
-                            elif (
-                                dataset
-                                == f"{volumes['placement_hints_realigned_l23split']}"
-                            ):
-                                suffixe = "CCF v2-to-v3 Realigned L23 Split"
-                                annotation_description = (
-                                    description_realigned_split_simple
-                                )
+                            suffixe = "CCFv3 L23 Split"
+                            annotation_description = description_ccfv3_split
+                            # if (
+                            #     dataset
+                            #     == f"{volumes['placement_hints_hybrid_l23split']}"
+                            # ):
+                            #     suffixe = "CCF v2-v3 Hybrid L23 Split"
+                            #     annotation_description = description_hybrid_split
+                            # elif (
+                            #     dataset
+                            #     == f"{volumes['placement_hints_realigned_l23split']}"
+                            # ):
+                            #     suffixe = "CCF v2-to-v3 Realigned L23 Split"
+                            #     annotation_description = (
+                            #         description_realigned_split_simple
+                            #     )
                             break
                         else:
                             L.error(
@@ -951,6 +968,110 @@ def create_volumetric_resources(
 
                 except FileNotFoundError:
                     pass
+
+        if not file_found:
+            for dataset in volumetric_data["volume_mask"]:
+                try:
+                    if os.path.samefile(filepath, dataset):
+                        isRegionMask = True
+                        file_found = True
+                        if os.path.isdir(filepath):
+                            isFolder = True
+                            directory = filepath
+                            files = os.listdir(directory)
+                            pattern = "*.nrrd"
+                            files_list = fnmatch.filter(files, pattern)
+                            if not files_list:
+                                L.error(
+                                    f"Error: '{filepath}' do not contain any mask "
+                                    "volumetric files."
+                                )
+                                exit(1)
+                            # this is going ot be the "name" of the resource
+                            filepath = os.path.join(directory, files_list[0])
+                            filename_noext = os.path.splitext(
+                                os.path.basename(filepath)
+                            )[0]
+                            file_extension = os.path.splitext(
+                                os.path.basename(filepath)
+                            )[1][1:]
+                            voxel_type = "label"
+                            resource_types = [
+                                resource_type,
+                                "nsg:BrainParcellationMask",
+                            ]
+                            try:
+                                region_id = int(filename_noext)
+                            except ValueError as error:
+                                L.error(
+                                    f"ValueError in '{filepath}' file name. {error}. "
+                                    "The mask file names have to be integer "
+                                    "representing their region"
+                                )
+                                exit(1)
+                            try:
+                                region_name, hierarchy_tree = get_brain_region_prop(
+                                    region_id, ["name"], input_hierarchy, flat_tree
+                                )
+                                region_name = region_name["name"]
+                                flat_tree = hierarchy_tree
+                            except KeyError as e:
+                                L.error(f"KeyError: {e}")
+                                exit(1)
+                            except ValueError as e:
+                                L.error(f"ValueError: {e}")
+                                exit(1)
+
+                            description = (
+                                f"Binary mask volume - {region_name.title()} (ID: "
+                                f"{region_id}) - for the "
+                                f"{volumetric_data['volume_mask'][dataset][1]}."
+                            )
+
+                            module_tag = volumetric_data["volume_mask"][dataset][0]
+                            derivation = volumetric_data["volume_mask"][dataset][2]
+                            atlasrelease_choice = volumetric_data["volume_mask"][
+                                dataset
+                            ][3]
+                            dataSampleModality = [
+                                volumetric_data["volume_mask"][dataset][4]
+                            ]
+                            # this is going ot be the "name" of the resource
+                            filename_noext = os.path.splitext(
+                                os.path.basename(filepath)
+                            )[0]
+                            file_extension = os.path.splitext(
+                                os.path.basename(filepath)
+                            )[1][1:]
+                            filename_noext = f"{region_name.title()} Mask"
+                            if atlasrelease_choice == "atlasrelease_ccfv3split":
+                                filename_noext = f"{filename_noext} Ccfv2 L23split"
+                            if link_regions_path:
+                                try:
+                                    with open(
+                                        link_regions_path, "r+"
+                                    ) as link_summary_file:
+                                        link_summary_file = open(
+                                            link_regions_path, "r+"
+                                        )
+                                        link_summary_file.seek(0)
+                                        link_summary_content = json.loads(
+                                            link_summary_file.read()
+                                        )
+                                    action_summary_file = "append"
+                                except json.decoder.JSONDecodeError:
+                                    action_summary_file = "write"
+                            break
+                        else:
+                            L.error(
+                                f"Error: volumetric mask dataset '{filepath}' is not a "
+                                "folder containing binary mask volume."
+                            )
+                            exit(1)
+
+                except FileNotFoundError:
+                    pass
+
         # If still no file found at this step then raise error
         if not file_found:
             L.error(
@@ -1008,16 +1129,23 @@ def create_volumetric_resources(
                 atlasrelease_choice != atlasrelease_dict["atlasrelease_choice"]
             ):
                 atlasrelease_dict["atlasrelease_choice"] = atlasrelease_choice
-                atlasrelease_dict = return_atlasrelease(
-                    forge,
-                    config_content,
-                    new_atlasrelease_hierarchy_path,
-                    atlasrelease_dict,
-                    parcellation_found,
-                    atlas_reference_system_id,
-                    subject,
-                )
-
+                try:
+                    atlasrelease_dict = return_atlasrelease(
+                        forge,
+                        config_content,
+                        new_atlasrelease_hierarchy_path,
+                        atlasrelease_dict,
+                        parcellation_found,
+                        atlas_reference_system_id,
+                        subject,
+                    )
+                except Exception as e:
+                    L.error(f"Exception: {e}")
+                    exit(1)
+                except FileNotFoundError as e:
+                    L.error(f"FileNotFoundError: {e}")
+                    exit(1)
+            # if atlasrelease are ccfv2 and ccfv3
             if isinstance(atlasrelease_dict["atlas_release"], list):
                 atlasRelease = [
                     {
@@ -1078,6 +1206,35 @@ def create_volumetric_resources(
             nrrd_resource.id = dict_ids[dataset]
         if dimension_name:
             nrrd_resource.dimension[0]["name"] = dimension_name
+
+        if action_summary_file:
+            atlasrelease_link = {"atlasRelease": {"@id": atlasRelease["@id"]}}
+            mask_id = forge.format("identifier", "BrainParcellationMask", str(uuid4()))
+            nrrd_resource.id = mask_id
+            mask_link = {"mask": {"@id": mask_id}}
+            if action_summary_file == "append":
+                try:
+                    if (
+                        "atlasRelease"
+                        not in link_summary_content[f"{region_id}"].keys()
+                    ):
+                        link_summary_content[f"{region_id}"].update(atlasrelease_link)
+                    if "mask" not in link_summary_content[f"{region_id}"].keys():
+                        link_summary_content[f"{region_id}"].update(mask_link)
+                except KeyError as error:
+                    L.error(
+                        f"KeyError: The region whose region id is '{error}' can "
+                        "not be found in the input link region json file"
+                    )
+                    exit(1)
+            else:
+                region_summary = {
+                    f"{region_id}": {
+                        "atlasRelease": {"@id": atlasRelease["@id"]},
+                        "mask": {"@id": mask_id},
+                    }
+                }
+                link_summary_content.update(region_summary)
 
         # Link the atlasrelease to its parcellation
         if not isinstance(forge._store, DemoStore):
@@ -1194,6 +1351,81 @@ def create_volumetric_resources(
                         distribution_json = forge.attach(report_json, content_type)
                         distribution_file = [distribution_mask, distribution_json]
 
+                if isRegionMask:
+                    try:
+                        region_id = int(filename_noext)
+                    except ValueError as error:
+                        L.error(
+                            f"ValueError in '{filepath}' file name. {error}. "
+                            "The mask file names have to be integer "
+                            "representing their region"
+                        )
+                        exit(1)
+                    try:
+                        region_name, hierarchy_tree = get_brain_region_prop(
+                            region_id, ["name"], input_hierarchy, flat_tree
+                        )
+                        region_name = region_name["name"]
+                    except KeyError as e:
+                        L.error(f"KeyError: {e}")
+                        exit(1)
+
+                    description = (
+                        f"Binary mask volume - {region_name.title()} (ID: "
+                        f"{region_id}) - for the "
+                        f"{volumetric_data['volume_mask'][dataset][1]}."
+                    )
+                    name = f"{region_name.title()} Mask"
+                    if atlasrelease_choice == "atlasrelease_ccfv3split":
+                        name = f"{name} Ccfv2 L23split"
+                    if action_summary_file:
+                        atlasrelease_link = {
+                            "atlasRelease": {"@id": atlasRelease["@id"]}
+                        }
+                        mask_id = forge.format(
+                            "identifier", "BrainParcellationMask", str(uuid4())
+                        )
+                        mask_link = {"mask": {"@id": mask_id}}
+                        if action_summary_file == "append":
+                            try:
+                                if (
+                                    "atlasRelease"
+                                    not in link_summary_content[f"{region_id}"].keys()
+                                ):
+                                    link_summary_content[f"{region_id}"].update(
+                                        atlasrelease_link
+                                    )
+                                if (
+                                    "mask"
+                                    not in link_summary_content[f"{region_id}"].keys()
+                                ):
+                                    link_summary_content[f"{region_id}"].update(
+                                        mask_link
+                                    )
+                            except KeyError as error:
+                                L.error(
+                                    "KeyError: The region whose region id is "
+                                    f"'{error}' can not be found in the input link "
+                                    "region json file"
+                                )
+                                exit(1)
+                        else:
+                            region_summary = {
+                                f"{region_id}": {
+                                    "atlasRelease": {"@id": atlasRelease["@id"]},
+                                    "mask": {"@id": mask_id},
+                                }
+                            }
+                            link_summary_content.update(region_summary)
+                    if f == len(files_list) - 1:
+                        link_summary_file = open(link_regions_path, "w")
+                        link_summary_file.write(
+                            json.dumps(
+                                link_summary_content, ensure_ascii=False, indent=2
+                            )
+                        )
+                        link_summary_file.close()
+
                 if provenances[0]:
                     description = f"{description} {prov_description}"
                 # Use forge.reshape instead ?
@@ -1245,269 +1477,12 @@ def create_volumetric_resources(
                         ]
                         f = len(files_list)
 
+                    if action_summary_file:
+                        nrrd_resources.id = mask_id
+
                 datasets.append(nrrd_resources)
 
     return datasets, atlasreleases
-
-
-def return_atlasrelease(
-    forge,
-    config_content,
-    new_atlasrelease_hierarchy_path,
-    atlasrelease_dict,
-    parcellation_found,
-    atlas_reference_system_id,
-    subject,
-):
-
-    spatialReferenceSystem = {
-        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-        "allen_ccfv3_spatial_reference_system",
-        "@type": "AtlasSpatialReferenceSystem",
-    }
-
-    # average brain model ccfv3
-    brainTemplateDataLayer = {
-        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-        "dca40f99-b494-4d2c-9a2f-c407180138b7",
-        "@type": "BrainTemplateDataLayer",
-    }
-
-    releaseDate = {
-        "@type": "xsd:date",
-        "@value": f"{datetime.today().strftime('%Y-%m-%d')}",
-    }
-    link_to_hierarchy = False
-    atlasrelease_resource = []
-    if atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_hybridsplit":
-        if not new_atlasrelease_hierarchy_path:
-            # Atlas release hybrid v2-v3 L2L3 split
-            try:
-                filters = {"name": "Allen Mouse CCF v2-v3 hybrid l2-l3 split"}
-                atlasrelease_resource = forge.search(filters, limit=1)[0]
-                atlasrelease_dict["atlas_release"] = atlasrelease_resource
-            except Exception as e:
-                L.error(
-                    "Error when searching the BrainAtlasRelease Resource 'Allen "
-                    "Mouse CCF v2-v3 hybrid l2-l3 split' in the destination "
-                    f"project '{forge._store.bucket}'. {e}"
-                )
-                exit(1)
-        elif "annotation_hybrid_l23split" in parcellation_found:
-            description = (
-                "This atlas release uses the brain parcellation resulting of the "
-                "hybridation between CCFv2 and CCFv3 and integrating the splitting of "
-                "layer 2 and layer 3. The average brain template and the ontology is "
-                "common across CCFv2 and CCFv3."
-            )
-            atlasrelease_resource = Resource(
-                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease"],
-                name="Allen Mouse CCF v2-v3 hybrid l2-l3 split",
-                description=description,
-                brainTemplateDataLayer=brainTemplateDataLayer,
-                spatialReferenceSystem=spatialReferenceSystem,
-                subject=subject,
-                releaseDate=releaseDate,
-            )
-            link_to_hierarchy = True
-        if not atlasrelease_resource:
-            L.error(
-                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 hybrid l2-l3 "
-                "split' resource found in the destination project "
-                f"'{forge._store.bucket}'. Please provide the argument "
-                "--new-atlasrelease-hierarchy-path and the right parcellation volume "
-                "to first generate and push a new atlas release resource into your "
-                "project ."
-            )
-            exit(1)
-
-    # Atlas Releases realigned split volume
-    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_realignedsplit":
-        if not new_atlasrelease_hierarchy_path:
-            try:
-                filters = {"name": "Allen Mouse CCF v2-v3 realigned l2-l3 split"}
-                atlasrelease_resource = forge.search(filters, limit=1)[0]
-                atlasrelease_dict["atlas_release"] = atlasrelease_resource
-            except Exception as e:
-                L.error(
-                    "Error when searching the BrainAtlasRelease Resource 'Allen "
-                    "Mouse CCF v2-v3 realigned l2-l3 split' in the destination "
-                    f"project '{forge._store.bucket}'. {e}"
-                )
-                exit(1)
-        elif "annotation_realigned_l23split" in parcellation_found:
-            description = (
-                "This atlas release uses the brain parcellation resulting of the "
-                "realignment of CCFv2 over CCFv3 and integrating the splitting of "
-                "layer 2 and layer 3. The average brain template and the ontology is "
-                "common across CCFv2 and CCFv3."
-            )
-            atlasrelease_resource = Resource(
-                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease"],
-                name="Allen Mouse CCF v2-v3 realigned l2-l3 split",
-                description=description,
-                brainTemplateDataLayer=brainTemplateDataLayer,
-                spatialReferenceSystem=spatialReferenceSystem,
-                subject=subject,
-                releaseDate=releaseDate,
-            )
-            link_to_hierarchy = True
-        if not atlasrelease_resource:
-            L.error(
-                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 realigned l2-l3 "
-                "split' resource found in the destination project "
-                f"'{forge._store.bucket}'. Please provide the argument "
-                "--new-atlasrelease-hierarchy-path and the right parcellation volume "
-                "to first generate and push a new atlas release resource into your "
-                "project."
-            )
-            exit(1)
-
-    # Old Atlas Releases ccfv2 and ccfv3
-    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_ccfv2v3":
-        try:
-            filters = {"name": "Allen Mouse CCF v2"}
-            atlasreleasev2_resource = forge.search(filters, limit=1)[0]
-            filters = {"name": "Allen Mouse CCF v3"}
-            atlasreleasev3_resource = forge.search(filters, limit=1)[0]
-            atlasrelease_dict["atlas_release"] = [
-                atlasreleasev2_resource,
-                atlasreleasev3_resource,
-            ]
-            atlasrelease_dict["create_new"] = False
-        except Exception as e:
-            L.error(
-                "Error when searching the BrainAtlasRelease Resources 'Allen "
-                "Mouse CCF v2' and 'Allen Mouse CCF v3'in the destination "
-                f"project '{forge._store.bucket}'. {e}"
-            )
-            exit(1)
-        if not atlasreleasev2_resource or not atlasreleasev3_resource:
-            L.info(
-                "No BrainAtlasRelease 'Allen Mouse CCF v2' and 'Allen "
-                "Mouse CCF v3' resources found in the destination project "
-                f"'{forge._store.bucket}'. They will therefore be created."
-            )
-            description_ccfv2 = (
-                "This atlas release uses the brain parcellation of CCFv2 (2011). The "
-                "average brain template and the ontology is common across CCFv2 and "
-                "CCFv3."
-            )
-            name_ccfv2 = "Allen Mouse CCF v2"
-            parcellationOntology = {
-                "@id": "http://bbp.epfl.ch/neurosciencegraph/ontologies/mba",
-                "@type": ["Entity", "Ontology", "ParcellationOntology"],
-            }
-            parcellationVolume = {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/ "
-                "7b4b36ad-911c-4758-8686-2bf7943e10fb",
-                "@type": [
-                    "Dataset",
-                    "VolumetricDataLayer",
-                    "BrainParcellationDataLayer",
-                ],
-            }
-
-            atlasreleasev2_resource = Resource(
-                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease"],
-                name=name_ccfv2,
-                description=description_ccfv2,
-                brainTemplateDataLayer=brainTemplateDataLayer,
-                spatialReferenceSystem=spatialReferenceSystem,
-                subject=subject,
-                parcellationOntology=parcellationOntology,
-                parcellationVolume=parcellationVolume,
-                releaseDate=releaseDate,
-            )
-
-            atlasreleasev3_resource = Resource(
-                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease"],
-                name=name_ccfv2.replace("v2", "v3"),
-                description=description_ccfv2.replace("CCFv2 (2011)", "CCFv3 (2017)"),
-                brainTemplateDataLayer=brainTemplateDataLayer,
-                spatialReferenceSystem=spatialReferenceSystem,
-                subject=subject,
-                parcellationOntology=parcellationOntology,
-                parcellationVolume=parcellationVolume,
-                releaseDate=releaseDate,
-            )
-            atlasrelease_dict["atlas_release"] = [
-                atlasreleasev2_resource,
-                atlasreleasev3_resource,
-            ]
-            atlasrelease_dict["create_new"] = True
-
-    # Link the new atlas release to the hierarchy file
-    if new_atlasrelease_hierarchy_path and link_to_hierarchy:
-        if not atlasrelease_dict["hierarchy"]:
-            try:
-                if os.path.samefile(
-                    new_atlasrelease_hierarchy_path,
-                    config_content["HierarchyJson"]["hierarchy_l23split"],
-                ):
-                    pass
-                else:
-                    L.error(
-                        "Error: The atlas regions hierarchy file provided does not "
-                        "correspond to 'hierarchy_l23split' from the dataset "
-                        "configuration file"
-                    )
-                    exit(1)
-            except FileNotFoundError as error:
-                L.error(f"Error: {error}")
-                exit(1)
-
-            description = (
-                "AIBS Mouse CCF Atlas regions hierarchy tree file including the split "
-                "of layer 2 and layer 3"
-            )
-            # Original AIBS hierarchy file
-            # "@type": ["Entity", "Ontology"],
-            derivation = {
-                "@type": "Derivation",
-                "entity": {
-                    "@id": "http://bbp.epfl.ch/neurosciencegraph/ontologies/mba",
-                    "@type": "Entity",
-                },
-            }
-            file_extension = os.path.splitext(
-                os.path.basename(new_atlasrelease_hierarchy_path)
-            )[1][1:]
-
-            content_type = f"application/{file_extension}"
-            distribution_file = forge.attach(
-                new_atlasrelease_hierarchy_path, content_type
-            )
-
-            hierarchy_resource = Resource(
-                id=forge.format("identifier", "parcellationontology", str(uuid4())),
-                type=["Entity", "Ontology", "ParcellationOntology"],
-                name="AIBS Mouse CCF Atlas parcellation ontology L2L3 split",
-                distribution=distribution_file,
-                description=description,
-                derivation=derivation,
-                subject=subject,
-            )
-
-            hierarchy_resource.label = hierarchy_resource.name
-            atlasrelease_resource.parcellationOntology = {
-                "@id": hierarchy_resource.id,
-                "@type": ["Entity", "ParcellationOntology", "Ontology"],
-            }
-            atlasrelease_dict["atlas_release"] = atlasrelease_resource
-            atlasrelease_dict["hierarchy"] = hierarchy_resource
-        else:
-            atlasrelease_resource.parcellationOntology = {
-                "@id": atlasrelease_dict["hierarchy"].id,
-                "@type": ["Entity", "ParcellationOntology", "Ontology"],
-            }
-            atlasrelease_dict["atlas_release"] = atlasrelease_resource
-
-    return atlasrelease_dict
 
 
 def add_nrrd_props(resource, nrrd_header, config, voxel_type):
@@ -1609,7 +1584,11 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
             space_directions = [None, [1, 0, 0], [0, 1, 0], [0, 0, 1], None]
 
     resource.componentEncoding = NRRD_TYPES_TO_NUMPY[nrrd_header["type"]]
-    resource.endianness = nrrd_header["endian"]
+    # in case the nrrd file corresponds to a mask
+    try:
+        resource.endianness = nrrd_header["endian"]
+    except KeyError:
+        resource.endianness = "little"
     resource.bufferEncoding = nrrd_header["encoding"]
     resource.fileExtension = config["file_extension"]
     resource.dimension = []

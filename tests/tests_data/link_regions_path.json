@@ -1,0 +1,35 @@
+{
+  "4": {
+    "atlasRelease": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/5149d239-8b4d-43bb-97b7-8841a12d85c4"
+    },
+    "mask": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/BrainParcellationMask/af2e604c-1788-41c5-869b-1691001afaf2"
+    },
+    "mesh": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/BrainParcellationMesh/ac3f0a6f-050f-41e1-b4eb-adf4f664f57b"
+    }
+  },
+  "2": {
+    "atlasRelease": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/5149d239-8b4d-43bb-97b7-8841a12d85c4"
+    },
+    "mask": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/BrainParcellationMask/863cce57-8a7f-4df0-994c-945727b11d09"
+    },
+    "mesh": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/BrainParcellationMesh/03482900-a4b1-4f3f-9451-b2ea5da8d303"
+    }
+  },
+  "1": {
+    "atlasRelease": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/5149d239-8b4d-43bb-97b7-8841a12d85c4"
+    },
+    "mask": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/BrainParcellationMask/fc8952cb-f335-40c1-a893-f9391fc26e5a"
+    },
+    "mesh": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/BrainParcellationMesh/64da3d5c-8fd4-4267-b1c2-6adf10b7081a"
+    }
+  }
+}

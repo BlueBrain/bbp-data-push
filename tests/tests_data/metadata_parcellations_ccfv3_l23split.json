@@ -1,0 +1,42 @@
+{
+  "1": {
+    "id": 1,
+    "regionVolume": 506052890625.0,
+    "regionVolumeRatioToWholeBrain": 1.0,
+    "layers": [],
+    "adjacentTo": {},
+    "continuousWith": []
+  },
+  "2": {
+    "id": 2,
+    "regionVolume": 5971531250.0,
+    "regionVolumeRatioToWholeBrain": 0.011800211718235356,
+    "layers": [],
+    "adjacentTo": {
+      "15": 0.0001435109148023536,
+      "30": 0.008610654888141214,
+      "38": 0.0084511983161386
+    },
+    "continuousWith": []
+  },
+  "4": {
+    "id": 4,
+    "regionVolume": 484375.0,
+    "regionVolumeRatioToWholeBrain": 9.57162796564156e-07,
+    "layers": [
+      "2",
+      "5"
+    ],
+    "adjacentTo": {
+      "145": 0.026785714285714284,
+      "354": 0.5625,
+      "651": 0.4107142857142857
+    },
+    "continuousWith": [
+      363,
+      687,
+      827,
+      1015
+    ]
+  }
+}

@@ -28,7 +28,7 @@ def test_create_mesh_resources():
         str(Path(TEST_PATH, "tests/tests_data/hierarchy.json")),
         str(Path(TEST_PATH, "tests/tests_data/hierarchy_l23split.json")),
     ]
-    provenance = "parcellation2mesh:parcellation2mesh, version 0.0.1"
+    provenance = "parcellationexport:parcellationexport, version 0.0.1"
 
     # Arguments wrong
     empty_folder = str(
@@ -111,8 +111,8 @@ def test_create_mesh_resources():
             },
         },
         "description": (
-            "Brain region mesh - Region_1 (ID: 1). It is based in the parcellation "
-            "volume resulting of the hybridation between CCFv2 and CCFv3."
+            "Brain region mesh - Region_1 (ID: 1) - for the Hybrid annotation volume "
+            "from ccfv2 and ccfv3 at 25 µm."
         ),
         "isRegisteredIn": {
             "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -122,7 +122,7 @@ def test_create_mesh_resources():
                 "AtlasSpatialReferenceSystem",
             ],
         },
-        "name": "Region_1 Mesh",
+        "name": "Region_1 Mesh Hybrid",
         "spatialUnit": "µm",
     }
 
@@ -132,7 +132,9 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             config_path,
             [hierarchy_path[0]],
+            voxels_resolution=25,
             provenances=[None],
+            link_regions_path=None,
             verbose=0,
         )[0][-1]
     )
@@ -142,10 +144,11 @@ def test_create_mesh_resources():
 
     # test with every arguments
     mesh_resource_fulloptions = copy.deepcopy(mesh_resource_simple)
+    mesh_resource_fulloptions["name"] = "Region_1 Mesh Hybrid L23split"
     mesh_resource_fulloptions["description"] = (
-        "Brain region mesh - Region_1 (ID: 1). It is based in the parcellation volume "
-        "resulting of the hybridation between CCFv2 and CCFv3. Generated in the Atlas "
-        "Pipeline by the module 'parcellation2mesh' version 0.0.1."
+        "Brain region mesh - Region_1 (ID: 1) - for the Hybrid annotation volume from "
+        "ccfv2 and ccfv3 at 25 µm with the isocortex layer 2 and 3 split. Generated in "
+        "the Atlas Pipeline by the module 'parcellationexport' version 0.0.1."
     )
 
     result = create_mesh_resources(
@@ -153,14 +156,16 @@ def test_create_mesh_resources():
         dataset_path,
         config_path,
         hierarchy_path,
+        voxels_resolution=25,
         provenances=[provenance],
+        link_regions_path=None,
         verbose=1,
     )
 
     # Search for the hybrid mesh dataset to compare with (if multiple results returned)
     hybrid_v2v3_dataset = None
     for dataset in result[0]:
-        if vars(dataset)["name"] == "Region_1 Mesh":
+        if vars(dataset)["name"] == "Region_1 Mesh Hybrid L23split":
             hybrid_v2v3_dataset = vars(dataset)
 
     for key in mesh_resource_fulloptions:
@@ -175,7 +180,9 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             wrong_config_key,
             [hierarchy_path[0]],
+            voxels_resolution=25,
             provenances=[provenance],
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert str(e.value) == "'brain_region_meshes_hybrid'"
@@ -187,7 +194,9 @@ def test_create_mesh_resources():
             [wrong_dataset_name],
             config_path,
             [hierarchy_path[0]],
+            voxels_resolution=25,
             provenances=[provenance],
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -199,7 +208,9 @@ def test_create_mesh_resources():
             [not_a_dir],
             config_wrongdatatype,
             [hierarchy_path[0]],
+            voxels_resolution=25,
             provenances=[provenance],
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -211,7 +222,9 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             config_data_notfound,
             [hierarchy_path[0]],
+            voxels_resolution=25,
             provenances=[provenance],
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -223,7 +236,9 @@ def test_create_mesh_resources():
             [empty_folder],
             config_data_emptydata,
             [hierarchy_path[0]],
+            voxels_resolution=25,
             provenances=[provenance],
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -235,7 +250,9 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             config_data_emptyhierarchy,
             [empty_hierarchy],
+            voxels_resolution=25,
             provenances=[provenance],
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -247,7 +264,9 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             config_data_wronghierarchy,
             [wrong_hierarchy],
+            voxels_resolution=25,
             provenances=[provenance],
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -259,7 +278,9 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             config_path,
             [hierarchy_path[0]],
+            voxels_resolution=25,
             provenances=[wrong_provenance],
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1

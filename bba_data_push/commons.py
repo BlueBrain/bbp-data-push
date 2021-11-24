@@ -4,6 +4,8 @@ import json
 import copy
 import requests
 import jwt
+from uuid import uuid4
+from datetime import datetime
 from kgforge.core import Resource
 
 
@@ -161,7 +163,9 @@ def get_hierarchy_file(input_hierarchy: list, config_content: dict, hierarchy_ta
     return hierarchy_path
 
 
-def get_brain_region_name(region_id: int, hierarchy_path, flat_tree: dict = None):
+def get_brain_region_prop(
+    region_id: int, region_info: list, hierarchy_path, flat_tree: dict = None
+):
     """
     Search and return the region name corresponding to the input region identifier in
     the input hierarchy file. In order to do this, an array tree structure will be
@@ -171,17 +175,38 @@ def get_brain_region_name(region_id: int, hierarchy_path, flat_tree: dict = None
 
     Parameters:
         region_id : input mouse brain region identifier (integer).
+        region_info : input list of region information to return.
         hierarchy_path : path to the hierarchy json file containing brain regions
                          hierarchy.
         flat_tree : the eventual hierarchy tree array indexed from the hierarchy file
                     nested content.
 
     Returns:
-        region_name : List of one or multiple Resource object composed of attached
-                      input file and their set of properties.
+        region_info_dict : Dictionary whose keys are from the input region_info and
+        values are from the input hierarchy_path
+        contained region_info .
         hierarchy: hierarchy tree array indexed from the hierarchy file nested content.
     """
-    region_name = None
+    region_info_list = [
+        "id",
+        "atlas_id",
+        "ontology_id",
+        "acronym",
+        "name",
+        "color_hex_triplet",
+        "graph_order",
+        "st_level",
+        "hemisphere_id",
+        "parent_structure_id",
+    ]
+
+    for info in region_info:
+        if info not in region_info_list:
+            raise KeyError(
+                f"Error: The region information '{info}' is not a valable one"
+            )
+
+    region_info_dict = {}
     try:
         region_id = int(region_id)
     except ValueError as e:
@@ -225,16 +250,17 @@ def get_brain_region_name(region_id: int, hierarchy_path, flat_tree: dict = None
                     node_to_explore = node_to_explore + child_node["children"]
     try:
         hierarchy = flat_tree
-        region_name = hierarchy[region_id]["name"]
+        for info in region_info:
+            region_info_dict[info] = hierarchy[region_id][info]
     except KeyError:
         raise KeyError(
-            f"Region name corresponding to id '{region_id}' is not found in the "
+            f"Region {info} corresponding to id '{region_id}' is not found in the "
             f"hierarchy json file ({hierarchy_path})."
         )
         # region_name = get_brain_region_name_allen(region_id) #if no resultat in the
         # hierarchy file
 
-    return region_name, hierarchy
+    return region_info_dict, hierarchy
 
 
 # # No more used
@@ -418,3 +444,263 @@ def add_contribution(forge):
     contribution = [contribution_contributor, contribution_institution]
 
     return contribution, log_info
+
+
+def return_atlasrelease(
+    forge,
+    config_content,
+    new_atlasrelease_hierarchy_path,
+    atlasrelease_dict,
+    parcellation_found,
+    atlas_reference_system_id,
+    subject,
+):
+
+    spatialReferenceSystem = {
+        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+        "allen_ccfv3_spatial_reference_system",
+        "@type": "AtlasSpatialReferenceSystem",
+    }
+
+    # average brain model ccfv3
+    brainTemplateDataLayer = {
+        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
+        "dca40f99-b494-4d2c-9a2f-c407180138b7",
+        "@type": "BrainTemplateDataLayer",
+    }
+
+    releaseDate = {
+        "@type": "xsd:date",
+        "@value": f"{datetime.today().strftime('%Y-%m-%d')}",
+    }
+    link_to_hierarchy = False
+    atlasrelease_resource = []
+    if atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_hybridsplit":
+        if not new_atlasrelease_hierarchy_path:
+            # Atlas release hybrid v2-v3 L2L3 split
+            try:
+                filters = {"name": "Allen Mouse CCF v2-v3 hybrid l2-l3 split"}
+                atlasrelease_resource = forge.search(filters, limit=1)[0]
+                atlasrelease_dict["atlas_release"] = atlasrelease_resource
+            except Exception as e:
+                raise Exception(
+                    "Error when searching the BrainAtlasRelease Resource 'Allen "
+                    "Mouse CCF v2-v3 hybrid l2-l3 split' in the destination "
+                    f"project '{forge._store.bucket}'. {e}"
+                )
+                exit(1)
+        elif "annotation_hybrid_l23split" in parcellation_found:
+            description = (
+                "This atlas release uses the brain parcellation resulting of the "
+                "hybridation between CCFv2 and CCFv3 and integrating the splitting of "
+                "layer 2 and layer 3. The average brain template and the ontology is "
+                "common across CCFv2 and CCFv3."
+            )
+            atlasrelease_resource = Resource(
+                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
+                type=["AtlasRelease", "BrainAtlasRelease"],
+                name="Allen Mouse CCF v2-v3 hybrid l2-l3 split",
+                description=description,
+                brainTemplateDataLayer=brainTemplateDataLayer,
+                spatialReferenceSystem=spatialReferenceSystem,
+                subject=subject,
+                releaseDate=releaseDate,
+            )
+            link_to_hierarchy = True
+        if not atlasrelease_resource:
+            raise Exception(
+                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 hybrid l2-l3 "
+                "split' resource found in the destination project "
+                f"'{forge._store.bucket}'. Please provide the argument "
+                "--new-atlasrelease-hierarchy-path and the right parcellation volume "
+                "to first generate and push a new atlas release resource into your "
+                "project ."
+            )
+            exit(1)
+
+    # Atlas Releases realigned split volume
+    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_realignedsplit":
+        if not new_atlasrelease_hierarchy_path:
+            try:
+                filters = {"name": "Allen Mouse CCF v2-v3 realigned l2-l3 split"}
+                atlasrelease_resource = forge.search(filters, limit=1)[0]
+                atlasrelease_dict["atlas_release"] = atlasrelease_resource
+            except Exception as e:
+                raise Exception(
+                    "Error when searching the BrainAtlasRelease Resource 'Allen "
+                    "Mouse CCF v2-v3 realigned l2-l3 split' in the destination "
+                    f"project '{forge._store.bucket}'. {e}"
+                )
+                exit(1)
+        elif "annotation_realigned_l23split" in parcellation_found:
+            description = (
+                "This atlas release uses the brain parcellation resulting of the "
+                "realignment of CCFv2 over CCFv3 and integrating the splitting of "
+                "layer 2 and layer 3. The average brain template and the ontology is "
+                "common across CCFv2 and CCFv3."
+            )
+            atlasrelease_resource = Resource(
+                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
+                type=["AtlasRelease", "BrainAtlasRelease"],
+                name="Allen Mouse CCF v2-v3 realigned l2-l3 split",
+                description=description,
+                brainTemplateDataLayer=brainTemplateDataLayer,
+                spatialReferenceSystem=spatialReferenceSystem,
+                subject=subject,
+                releaseDate=releaseDate,
+            )
+            link_to_hierarchy = True
+        if not atlasrelease_resource:
+            raise Exception(
+                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 realigned l2-l3 "
+                "split' resource found in the destination project "
+                f"'{forge._store.bucket}'. Please provide the argument "
+                "--new-atlasrelease-hierarchy-path and the right parcellation volume "
+                "to first generate and push a new atlas release resource into your "
+                "project."
+            )
+            exit(1)
+
+    # Old Atlas Releases ccfv2 and ccfv3
+    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_ccfv2v3":
+        try:
+            filters = {"name": "Allen Mouse CCF v2"}
+            atlasreleasev2_resource = forge.search(filters, limit=1)[0]
+            filters = {"name": "Allen Mouse CCF v3"}
+            atlasreleasev3_resource = forge.search(filters, limit=1)[0]
+            atlasrelease_dict["atlas_release"] = [
+                atlasreleasev2_resource,
+                atlasreleasev3_resource,
+            ]
+            atlasrelease_dict["create_new"] = False
+        except Exception as e:
+            raise Exception(
+                "Error when searching the BrainAtlasRelease Resources 'Allen "
+                "Mouse CCF v2' and 'Allen Mouse CCF v3'in the destination "
+                f"project '{forge._store.bucket}'. {e}"
+            )
+            exit(1)
+        if not atlasreleasev2_resource or not atlasreleasev3_resource:
+            # L.info(
+            #     "No BrainAtlasRelease 'Allen Mouse CCF v2' and 'Allen "
+            #     "Mouse CCF v3' resources found in the destination project "
+            #     f"'{forge._store.bucket}'. They will therefore be created."
+            # )
+            description_ccfv2 = (
+                "This atlas release uses the brain parcellation of CCFv2 (2011). The "
+                "average brain template and the ontology is common across CCFv2 and "
+                "CCFv3."
+            )
+            name_ccfv2 = "Allen Mouse CCF v2"
+            parcellationOntology = {
+                "@id": "http://bbp.epfl.ch/neurosciencegraph/ontologies/mba",
+                "@type": ["Entity", "Ontology", "ParcellationOntology"],
+            }
+            parcellationVolume = {
+                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/ "
+                "7b4b36ad-911c-4758-8686-2bf7943e10fb",
+                "@type": [
+                    "Dataset",
+                    "VolumetricDataLayer",
+                    "BrainParcellationDataLayer",
+                ],
+            }
+
+            atlasreleasev2_resource = Resource(
+                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
+                type=["AtlasRelease", "BrainAtlasRelease"],
+                name=name_ccfv2,
+                description=description_ccfv2,
+                brainTemplateDataLayer=brainTemplateDataLayer,
+                spatialReferenceSystem=spatialReferenceSystem,
+                subject=subject,
+                parcellationOntology=parcellationOntology,
+                parcellationVolume=parcellationVolume,
+                releaseDate=releaseDate,
+            )
+
+            atlasreleasev3_resource = Resource(
+                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
+                type=["AtlasRelease", "BrainAtlasRelease"],
+                name=name_ccfv2.replace("v2", "v3"),
+                description=description_ccfv2.replace("CCFv2 (2011)", "CCFv3 (2017)"),
+                brainTemplateDataLayer=brainTemplateDataLayer,
+                spatialReferenceSystem=spatialReferenceSystem,
+                subject=subject,
+                parcellationOntology=parcellationOntology,
+                parcellationVolume=parcellationVolume,
+                releaseDate=releaseDate,
+            )
+            atlasrelease_dict["atlas_release"] = [
+                atlasreleasev2_resource,
+                atlasreleasev3_resource,
+            ]
+            atlasrelease_dict["create_new"] = True
+
+    # Link the new atlas release to the hierarchy file
+    if new_atlasrelease_hierarchy_path and link_to_hierarchy:
+        if not atlasrelease_dict["hierarchy"]:
+            try:
+                if os.path.samefile(
+                    new_atlasrelease_hierarchy_path,
+                    config_content["HierarchyJson"]["hierarchy_l23split"],
+                ):
+                    pass
+                else:
+                    raise Exception(
+                        "Error: The atlas regions hierarchy file provided does not "
+                        "correspond to 'hierarchy_l23split' from the dataset "
+                        "configuration file"
+                    )
+                    exit(1)
+            except FileNotFoundError as error:
+                raise FileNotFoundError(f"Error: {error}")
+                exit(1)
+
+            description = (
+                "AIBS Mouse CCF Atlas regions hierarchy tree file including the split "
+                "of layer 2 and layer 3"
+            )
+            # Original AIBS hierarchy file
+            # "@type": ["Entity", "Ontology"],
+            derivation = {
+                "@type": "Derivation",
+                "entity": {
+                    "@id": "http://bbp.epfl.ch/neurosciencegraph/ontologies/mba",
+                    "@type": "Entity",
+                },
+            }
+            file_extension = os.path.splitext(
+                os.path.basename(new_atlasrelease_hierarchy_path)
+            )[1][1:]
+
+            content_type = f"application/{file_extension}"
+            distribution_file = forge.attach(
+                new_atlasrelease_hierarchy_path, content_type
+            )
+
+            hierarchy_resource = Resource(
+                id=forge.format("identifier", "parcellationontology", str(uuid4())),
+                type=["Entity", "Ontology", "ParcellationOntology"],
+                name="AIBS Mouse CCF Atlas parcellation ontology L2L3 split",
+                distribution=distribution_file,
+                description=description,
+                derivation=derivation,
+                subject=subject,
+            )
+
+            hierarchy_resource.label = hierarchy_resource.name
+            atlasrelease_resource.parcellationOntology = {
+                "@id": hierarchy_resource.id,
+                "@type": ["Entity", "ParcellationOntology", "Ontology"],
+            }
+            atlasrelease_dict["atlas_release"] = atlasrelease_resource
+            atlasrelease_dict["hierarchy"] = hierarchy_resource
+        else:
+            atlasrelease_resource.parcellationOntology = {
+                "@id": atlasrelease_dict["hierarchy"].id,
+                "@type": ["Entity", "ParcellationOntology", "Ontology"],
+            }
+            atlasrelease_dict["atlas_release"] = atlasrelease_resource
+
+    return atlasrelease_dict

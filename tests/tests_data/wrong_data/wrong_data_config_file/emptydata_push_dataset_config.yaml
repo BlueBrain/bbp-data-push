@@ -5,8 +5,9 @@ generatedDatasetType:
 - VolumetricFile
 - MeshFile
 - CellPositionFile
+- MetadataFile
 generatedDataset:
-- annotation_v2v3_hybrid
+- annotation_hybrid
 - annotation_hybrid_l23split
 - annotation_ccfv3_l23split
 - cell_orientations_ccfv3
@@ -27,6 +28,7 @@ generatedDataset:
 - brain_region_meshes_v2v3_hybrid
 - brain_region_meshes_hybrid_l23split
 - cell_records_sonata
+- metadata_parcellations_ccfv3_l23split
 HierarchyJson:
   hierarchy: tests/tests_data/hierarchy.json
   hierarchy_l23split: tests/tests_data/hierarchy_l23split.json
@@ -51,8 +53,12 @@ GeneratedDatasetPath:
     placement_hints_ccfv3_l23split: tests/tests_data/placement_hints_iso_test_split
     placement_hints_hybrid_l23split: tests/tests_data/placement_hints_hybrid_l23split
     placement_hints_realigned_l23split: tests/tests_data/placement_hints_realigned_l23split
+    brain_region_mask_ccfv3_l23split: tests/tests_data/brain_region_mask_ccfv3_l23split
   MeshFile:
     brain_region_meshes_hybrid: tests/tests_data/brain_region_meshes_hybrid
     brain_region_meshes_hybrid_l23split: tests/tests_data/brain_region_meshes_hybrid_l23split
+    brain_region_meshes_ccfv3_l23split: tests/tests_data/brain_region_meshes_ccfv3_l23split
   CellRecordsFile:
     cell_records_sonata: tests/tests_data/cell_records_sonata.h5
+  MetadataFile:
+    metadata_parcellations_ccfv3_l23split: tests/tests_data/metadata_parcellations_ccfv3_l23split.json

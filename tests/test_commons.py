@@ -5,7 +5,7 @@ from bba_data_push.commons import (
     get_voxel_type,
     append_provenance_to_description,
     get_hierarchy_file,
-    get_brain_region_name,
+    get_brain_region_prop,
     # add_contribution,
 )
 
@@ -183,7 +183,10 @@ def test_get_brain_region_name():
     hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))
     flat_tree = None
 
-    region_name, hierarchy = get_brain_region_name(region_id, hierarchy_path, flat_tree)
+    region_name, hierarchy = get_brain_region_prop(
+        region_id, ["name"], hierarchy_path, flat_tree
+    )
+    region_name = region_name["name"]
 
     assert region_name == "region_1"
     assert hierarchy == {
@@ -202,8 +205,8 @@ def test_get_brain_region_name():
     flat_tree = hierarchy
 
     assert (
-        get_brain_region_name(region_id, hierarchy_path, flat_tree)[0] == "Basic cell "
-        "groups and regions"
+        get_brain_region_prop(region_id, ["name"], hierarchy_path, flat_tree)[0]["name"]
+        == "Basic cell groups and regions"
     )
 
     region_id = "wrong_region_id"
@@ -211,7 +214,7 @@ def test_get_brain_region_name():
     flat_tree = None
 
     with pytest.raises(ValueError) as e:
-        get_brain_region_name(region_id, hierarchy_path, flat_tree)
+        get_brain_region_prop(region_id, ["name"], hierarchy_path, flat_tree)
     assert "ValueError: invalid literal for int() with base 10" in str(e.value)
 
     region_id = 0
@@ -219,7 +222,7 @@ def test_get_brain_region_name():
     flat_tree = hierarchy
 
     with pytest.raises(KeyError) as e:
-        get_brain_region_name(region_id, hierarchy_path, flat_tree)
+        get_brain_region_prop(region_id, ["name"], hierarchy_path, flat_tree)
     assert "Region name corresponding to id '0' is not found" in str(e.value)
 
     region_id = 1
@@ -229,7 +232,7 @@ def test_get_brain_region_name():
     flat_tree = None
 
     with pytest.raises(ValueError) as e:
-        get_brain_region_name(region_id, hierarchy_path, flat_tree)
+        get_brain_region_prop(region_id, ["name"], hierarchy_path, flat_tree)
     assert "Error when decoding the hierarchy json file" in str(e.value)
 
     region_id = 1
@@ -239,7 +242,7 @@ def test_get_brain_region_name():
     flat_tree = None
 
     with pytest.raises(KeyError) as e:
-        get_brain_region_name(region_id, hierarchy_path, flat_tree)
+        get_brain_region_prop(region_id, ["name"], hierarchy_path, flat_tree)
     assert "Region name corresponding to id '1' is not found" in str(e.value)
 
 

@@ -140,6 +140,7 @@ def test_create_volumetric_resources():
         str(Path(TEST_PATH, "tests/tests_data/cell_densities_hybrid")),
         str(Path(TEST_PATH, "tests/tests_data/neuron_densities_hybrid")),
     ]
+    hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
     provenance = [
         "atlas-building-tools combination combine-annotations:atlas-building-tools, "
@@ -215,6 +216,8 @@ def test_create_volumetric_resources():
             config_path,
             provenances=[None],
             new_atlasrelease_hierarchy_path=None,
+            input_hierarchy=hierarchy_path,
+            link_regions_path=None,
             verbose=0,
         )[0][-1]
     )
@@ -238,6 +241,8 @@ def test_create_volumetric_resources():
         config_path,
         provenances=provenance,
         new_atlasrelease_hierarchy_path=None,
+        input_hierarchy=hierarchy_path,
+        link_regions_path=None,
         verbose=1,
     )[0]
 
@@ -263,6 +268,8 @@ def test_create_volumetric_resources():
             wrong_config_key,
             provenances=[provenance],
             new_atlasrelease_hierarchy_path=None,
+            input_hierarchy=hierarchy_path,
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert str(e.value) == "'annotation_hybrid'"
@@ -276,6 +283,8 @@ def test_create_volumetric_resources():
             config_data_emptydata,
             provenances=[provenance],
             new_atlasrelease_hierarchy_path=None,
+            input_hierarchy=hierarchy_path,
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -289,6 +298,8 @@ def test_create_volumetric_resources():
             config_path,
             provenances=[provenance],
             new_atlasrelease_hierarchy_path=None,
+            input_hierarchy=hierarchy_path,
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -302,6 +313,8 @@ def test_create_volumetric_resources():
             config_data_notfound,
             provenances=[provenance],
             new_atlasrelease_hierarchy_path=None,
+            input_hierarchy=hierarchy_path,
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -315,6 +328,8 @@ def test_create_volumetric_resources():
             config_wrongdatatype,
             provenances=[provenance],
             new_atlasrelease_hierarchy_path=None,
+            input_hierarchy=hierarchy_path,
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -328,6 +343,8 @@ def test_create_volumetric_resources():
             config_wrongdatatype,
             provenances=[provenance],
             new_atlasrelease_hierarchy_path=None,
+            input_hierarchy=hierarchy_path,
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -341,6 +358,8 @@ def test_create_volumetric_resources():
             config_corruptedData,
             provenances=[provenance],
             new_atlasrelease_hierarchy_path=None,
+            input_hierarchy=hierarchy_path,
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -354,6 +373,8 @@ def test_create_volumetric_resources():
             config_path,
             provenances=[wrong_provenance],
             new_atlasrelease_hierarchy_path=None,
+            input_hierarchy=hierarchy_path,
+            link_regions_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1

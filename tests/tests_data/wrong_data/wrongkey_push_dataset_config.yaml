@@ -5,6 +5,7 @@ generatedDatasetType:
 - VolumetricFile
 - MeshFile
 - CellPositionFile
+- MetadataFile
 generatedDataset:
 - wrong_key
 - wrong_key
@@ -27,3 +28,5 @@ GeneratedDatasetPath:
     wrong_key: tests/tests_data/brain_region_meshes_l23split
   CellRecordsFile:
     wrong_key: tests/tests_data/cell_positions_hybrid.h5
+  MetadataFile:
+    wrong_key: tests/tests_data/metadata_parcellations_ccfv3_l23split.json

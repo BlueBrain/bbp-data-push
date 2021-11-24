@@ -14,6 +14,7 @@ from kgforge.core import KnowledgeGraphForge
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
 from bba_data_push.push_brainmesh import create_mesh_resources
 from bba_data_push.push_sonata_cellrecordseries import create_cell_record_resources
+from bba_data_push.push_json_regionsummary import create_regionsummary_resources
 from bba_data_push.logging import log_args, close_handler
 from bba_data_push import __version__
 
@@ -31,7 +32,7 @@ def _push_to_Nexus(datasets, forge, schema_id):
             "\n-------------- Registration & Validation Status ---------------"
             "\nRegistering the constructed payload along the input dataset in Nexus..."
         )
-        forge.register(datasets, schema_id)
+        forge.register(datasets, schema_id)  # schema_id
         L.info(
             f"<<Resource synchronization status>>: {str(datasets[-1]._synchronized)}"
         )
@@ -120,7 +121,7 @@ def base_ressource(f):
         help="The files or directories of file to push on Nexus",
     )(f)
     f = click.option(
-        "--config",
+        "--config-path",
         type=click.Path(exists=True),
         required=True,
         help="Path to the generated dataset configuration file. This is a yaml file "
@@ -145,11 +146,6 @@ def base_ressource(f):
 @initialize_pusher_cli.command()
 @base_ressource
 @click.option(
-    "--voxels-resolution",
-    required=True,
-    help="The Allen annotation volume voxels resolution in microns",
-)
-@click.option(
     "--new-atlasrelease-hierarchy-path",
     type=click.Path(exists=True),
     help="The path to the json hierarchy file containing an AIBS hierarchy "
@@ -161,15 +157,34 @@ def base_ressource(f):
     "input datasets. Finally the atlas release and the hierarchy file will be pushed "
     "along the others resources.",
 )
+@click.option(
+    "--hierarchy-path",
+    type=click.Path(exists=True),
+    help="The path to the json hierarchy file containing an AIBS hierarchy structure.",
+)
+@click.option(
+    "--voxels-resolution",
+    required=True,
+    help="The Allen annotation volume voxels resolution in microns",
+)
+@click.option(
+    "--link-regions-path",
+    help="Optional json file containing link between regions and resources  (@ ids of "
+    "mask, mesh and atlas release resources) to be extracted by the CLI "
+    "push-regionsummary. If the file already exists it will be annoted else it will be "
+    "created.",
+)
 @click.pass_context
 @log_args(L)
 def push_volumetric(
     ctx,
     dataset_path,
     voxels_resolution,
-    config,
+    config_path,
     provenances,
     new_atlasrelease_hierarchy_path,
+    hierarchy_path,
+    link_regions_path,
 ):
     """Create a VolumetricDataLayer resource payload and push it along with the "
     corresponding volumetric input dataset files into Nexus.\n
@@ -180,9 +195,11 @@ def push_volumetric(
         ctx.obj["forge"],
         dataset_path,
         voxels_resolution,
-        config,
+        config_path,
         provenances,
         new_atlasrelease_hierarchy_path,
+        hierarchy_path,
+        link_regions_path,
         ctx.obj["verbose"],
     )
     if atlasreleases["atlas_releases"]:
@@ -227,9 +244,29 @@ def push_volumetric(
     multiple=True,
     help="The path to the json hierarchy file containing an AIBS hierarchy structure.",
 )
+@click.option(
+    "--voxels-resolution",
+    required=True,
+    help="The Allen annotation volume voxels resolution in microns",
+)
+@click.option(
+    "--link-regions-path",
+    help="Optional json file containing link between regions and resources  (@ ids of "
+    "mask, mesh and atlas release resources) to be extracted by the CLI "
+    "push-regionsummary. If the file already exists it will be annoted else it will be "
+    "created.",
+)
 @click.pass_context
 @log_args(L)
-def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
+def push_meshes(
+    ctx,
+    dataset_path,
+    config_path,
+    hierarchy_path,
+    voxels_resolution,
+    provenances,
+    link_regions_path,
+):
     """Create a Mesh resource payload and push it along with the corresponding brain
     .OBJ mesh folder input dataset files into Nexus.\n
     """
@@ -238,22 +275,26 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
     datasets, atlasreleases = create_mesh_resources(
         ctx.obj["forge"],
         dataset_path,
-        config,
+        config_path,
         hierarchy_path,
+        voxels_resolution,
         provenances,
+        link_regions_path,
         ctx.obj["verbose"],
     )
-    if atlasreleases:
+    if atlasreleases["atlas_releases"]:
         try:
             L.info(
                 "\nRegistering the constructed BrainAtlasRelease payloads in Nexus..."
             )
             ctx.obj["forge"].register(
-                atlasreleases, "https://neuroshapes.org/dash/atlasrelease"
+                atlasreleases["atlas_releases"],
+                "https://neuroshapes.org/dash/atlasrelease",
             )
         except Exception as e:
             L.error(f"Error when registering resource. {e}")
             exit(1)
+
     if datasets:
         _push_to_Nexus(
             datasets,
@@ -264,14 +305,9 @@ def push_meshes(ctx, dataset_path, config, hierarchy_path, provenances):
 
 @initialize_pusher_cli.command()
 @base_ressource
-@click.option(
-    "--voxels-resolution",
-    required=True,
-    help="The Allen annotation volume voxels resolution in microns",
-)
 @click.pass_context
 @log_args(L)
-def push_cellrecords(ctx, dataset_path, voxels_resolution, config, provenances):
+def push_cellrecords(ctx, dataset_path, voxels_resolution, config_path, provenances):
     """Create a CellRecordSerie resource payload and push it along with the
     corresponding Sonata hdf5 file input dataset files into Nexus.\n
     """
@@ -281,7 +317,7 @@ def push_cellrecords(ctx, dataset_path, voxels_resolution, config, provenances):
         ctx.obj["forge"],
         dataset_path,
         voxels_resolution,
-        config,
+        config_path,
         provenances,
         ctx.obj["verbose"],
     )
@@ -289,6 +325,49 @@ def push_cellrecords(ctx, dataset_path, voxels_resolution, config, provenances):
         _push_to_Nexus(
             datasets, ctx.obj["forge"], "https://neuroshapes.org/dash/cellrecordseries"
         )
+
+
+@initialize_pusher_cli.command()
+@base_ressource
+@click.option(
+    "--hierarchy-path",
+    type=click.Path(exists=True),
+    required=True,
+    multiple=True,
+    help="The path to the json hierarchy file containing an AIBS hierarchy structure.",
+)
+@click.option(
+    "--link-regions-path",
+    required=True,
+    help="Json file containing link between regions and resources  (@ ids of "
+    "mask, mesh and atlas release resources) to be extracted.",
+)
+@click.pass_context
+@log_args(L)
+def push_regionsummary(
+    ctx, dataset_path, config_path, hierarchy_path, provenances, link_regions_path
+):
+    """Create a RegionSummary resource payload and push it along with the corresponding
+    brain region metadata json input dataset files into Nexus.\n
+    """
+    L.setLevel(ctx.obj["verbose"])
+    L.info("Filling the metadata of the RegionSummary payload...")
+    datasets = create_regionsummary_resources(
+        ctx.obj["forge"],
+        dataset_path,
+        config_path,
+        hierarchy_path,
+        provenances,
+        link_regions_path,
+        ctx.obj["verbose"],
+    )
+
+    if datasets:
+        _push_to_Nexus(
+            datasets,
+            ctx.obj["forge"],
+            "",
+        )  # https://neuroshapes.org/dash/entity
 
 
 def start():
