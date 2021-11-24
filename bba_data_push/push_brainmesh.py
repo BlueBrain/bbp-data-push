@@ -367,8 +367,8 @@ def create_mesh_resources(
                 },
             }
             mesh_description = (
-                f"Brain region mesh - {region_name.title()} (ID: {region_id}) - for the "
-                f"{annotation_description}."
+                f"Brain region mesh - {region_name.title()} (ID: {region_id}) - for "
+                f"the {annotation_description}."
             )
             if provenances[0]:
                 mesh_description = f"{mesh_description} {prov_description}"
