@@ -178,7 +178,7 @@ def create_regionsummary_resources(
 
         mask = {
             "@id": link_summary_content[region_id]["mask"]["@id"],
-            "@type": ["nsg:BrainParcellationMask", "Dataset"],
+            "@type": ["BrainParcellationMask", "Dataset"],
         }
 
         brainLocation = {
@@ -200,7 +200,7 @@ def create_regionsummary_resources(
         L.info(f"Creating the RegionSummary payload for region {region_id}...")
 
         summary_resource = Resource(
-            type="nsg:RegionSummary",
+            type="RegionSummary",
             name=f"{region_name.title()} Summary {annotation_name}",
             description=description,
             brainLocation=brainLocation,

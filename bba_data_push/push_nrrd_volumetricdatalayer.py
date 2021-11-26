@@ -164,7 +164,7 @@ def create_volumetric_resources(
     # "atTime": "{date time}",
     # generation = {
     #     "@type": "Generation",
-    #     "activity": {"@id": "ggg", "@type": ["Activity", "nsg:pipelinerule"]},
+    #     "activity": {"@id": "ggg", "@type": ["Activity", "pipelinerule"]},
     # }
 
     # Config constants
@@ -836,7 +836,7 @@ def create_volumetric_resources(
                         if filepath.endswith(".nrrd"):
                             file_found = True
                             voxel_type = "vector"
-                            resource_types = [resource_type, "nsg:CellOrientationField"]
+                            resource_types = [resource_type, "CellOrientationField"]
                             description = (
                                 f"{volumetric_data['cell_orientations'][dataset][1]}"
                             )
@@ -927,7 +927,7 @@ def create_volumetric_resources(
                             voxel_type = "vector"
                             resource_types = [
                                 resource_type,
-                                "nsg:PlacementHintsDataLayer",
+                                "PlacementHintsDataLayer",
                             ]
                             layer_number = re.findall(
                                 r"\d+", filename_noext.replace("_", " ").title()
@@ -998,7 +998,7 @@ def create_volumetric_resources(
                             voxel_type = "label"
                             resource_types = [
                                 resource_type,
-                                "nsg:BrainParcellationMask",
+                                "BrainParcellationMask",
                             ]
                             try:
                                 region_id = int(filename_noext)
@@ -1472,7 +1472,7 @@ def create_volumetric_resources(
                         nrrd_resources.dataSampleModality = ["mask"]
                         nrrd_resources.type = [
                             "VolumetricDataLayer",
-                            "nsg:PlacementHintsDataReport",
+                            "PlacementHintsDataReport",
                             "Dataset",
                         ]
                         f = len(files_list)
@@ -1610,7 +1610,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
         else:
             # this is a time dim as it is located after space dim)
             if passed_spatial_dim:
-                current_dim["@type"] = "nsg:TimeDimension"
+                current_dim["@type"] = "TimeDimension"
                 current_dim["samplingPeriod"] = config["sampling_period"]
                 current_dim["unitCode"] = config["sampling_time_unit"]
 
