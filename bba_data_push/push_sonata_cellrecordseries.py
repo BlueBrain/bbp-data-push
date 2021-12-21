@@ -13,7 +13,7 @@ import h5py
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
 
-from bba_data_push.commons import add_contribution, append_provenance_to_description
+from bba_data_push.commons import return_contribution, append_provenance_to_description
 from bba_data_push.logging import create_log_handler
 
 L = create_log_handler(__name__, "./push_cellrecord.log")
@@ -116,7 +116,7 @@ def create_cell_record_resources(
         contribution = []
     else:
         try:
-            contribution, log_info = add_contribution(forge)
+            contribution, log_info = return_contribution(forge)
             L.info("\n".join(log_info))
         except Exception as e:
             L.error(f"Error: {e}")

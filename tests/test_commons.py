@@ -6,7 +6,7 @@ from bba_data_push.commons import (
     append_provenance_to_description,
     get_hierarchy_file,
     get_brain_region_prop,
-    # add_contribution,
+    # return_contribution,
 )
 
 TEST_PATH = Path(Path(__file__).parent.parent)
@@ -246,6 +246,6 @@ def test_get_brain_region_name():
     assert "Region name corresponding to id '1' is not found" in str(e.value)
 
 
-def test_add_contribution():
+def test_return_contribution():
     # Wait for a future Nexus token management.
     pass

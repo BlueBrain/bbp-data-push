@@ -7,6 +7,7 @@ import jwt
 from uuid import uuid4
 from datetime import datetime
 from kgforge.core import Resource
+from kgforge.core.commons.exceptions import RegistrationError
 
 
 # Simplify it ? resolve automatically the voxel_type ?
@@ -282,7 +283,7 @@ def get_brain_region_prop(
 #     return resource
 
 
-def add_contribution(forge):
+def return_contribution(forge):
     """
     Create and return a Contribution Resource from the user informations extracted
     from its token.
@@ -367,7 +368,7 @@ def add_contribution(forge):
 
     agent = {"@id": contributor.id, "@type": contributor.type}
     hadRole = {
-        "@id": "nsg:BrainAtlasPipelineExecutionRole",
+        "@id": "BrainAtlasPipelineExecutionRole",
         "label": "Brain Atlas Pipeline Executor role",
     }
     contribution_contributor = Resource(
@@ -419,7 +420,7 @@ def add_contribution(forge):
                 )
                 institution = Resource(
                     id="https://www.grid.ac/institutes/grid.5333.6",
-                    type="Organization",  # Agent
+                    type=["Organization", "Agent"],
                     alternateName="EPFL",
                     name="École Polytechnique Fédérale de Lausanne",
                 )
@@ -444,6 +445,160 @@ def add_contribution(forge):
     contribution = [contribution_contributor, contribution_institution]
 
     return contribution, log_info
+
+
+def return_softwareagent(forge, metadata_dict):
+
+    try:
+        softwareagent_resources = forge.resolve(
+            metadata_dict["softwareagent_name"],
+            target="agents",
+            scope="agent",
+            type="SoftwareAgent",
+        )
+    except Exception:
+        pass
+
+    if softwareagent_resources:
+        softwareagent_resource = softwareagent_resources[0]
+    else:
+        try:
+            p = forge.paths("Dataset")
+            softwareagent_resources = forge.search(
+                p.name == metadata_dict["softwareagent_name"], limit=1
+            )
+        except Exception as e:
+            raise Exception(
+                "Error when searching the SoftwareAgent Resource in the destination "
+                f"project '{forge._store.bucket}'. {e}"
+            )
+        if softwareagent_resources:
+            softwareagent_resource = softwareagent_resources[0]
+        else:
+            softwareSourceCode = {
+                "@type": "SoftwareSourceCode",
+                "codeRepository": metadata_dict["repo_adress"],
+                "programmingLanguage": metadata_dict["langage"],
+            }
+            description = (
+                "Set of processing modules generating data for the Mouse Cell Atlas."
+            )
+            softwareagent_resource = Resource(
+                type=["Agent", "SoftwareAgent"],
+                name=metadata_dict["softwareagent_name"],
+                description=description,
+                softwareSourceCode=softwareSourceCode,
+            )
+            try:
+                forge.register(
+                    softwareagent_resource, "https://neuroshapes.org/dash/softwareagent"
+                )
+            except Exception as e:
+                raise Exception(
+                    f"Error when registering the SoftwareAgent Resource into Nexus. {e}"
+                )
+
+    return softwareagent_resource
+
+
+def return_activity_payload(
+    forge,
+    activity_metadata_path,
+):
+
+    try:
+        with open(activity_metadata_path, "r") as f:
+            activity_metadata = json.loads(f.read())
+    except json.decoder.JSONDecodeError as e:
+        raise (f"JSONDecodeError : {activity_metadata_path}.{e}.")
+    configuration = (
+        "Activity generated using the snakemake rule "
+        f"'{activity_metadata['rule_name']}'."
+    )
+    activity_type = (
+        activity_metadata["rule_name"].replace("_", " ").title().replace(" ", "")
+    )
+    try:
+        activity_resource = forge.retrieve(activity_metadata["activity_id"])
+    except RegistrationError:
+        pass
+    if activity_resource:
+        if isinstance(activity_resource, list):
+            activity_resource = activity_resource[0]
+        else:
+            activity_resource = activity_resource
+    else:
+        try:
+            softwareagent_resource = return_softwareagent(forge, activity_metadata)
+        except Exception as e:
+            raise Exception(f"{e}.")
+
+        try:
+            used = []
+            for i in range(0, len(activity_metadata["input_dataset_used"])):
+                used_resource = forge.retrieve(
+                    activity_metadata["input_dataset_used"][i]
+                )
+                if not used_resource:
+                    raise Exception(
+                        "Could not retrieve the 'input_dataset_used' "
+                        "Resource with id "
+                        f"{activity_metadata['input_dataset_used'][i]}."
+                    )
+                entity = {"@id": used_resource.id, "@type": used_resource.type}
+                if (
+                    isinstance(entity["@type"], list)
+                    and "Entity" not in entity["@type"]
+                ):
+                    entity["@type"].append("Entity")
+                if (
+                    not isinstance(entity["@type"], list)
+                    and entity["@type"] != "Entity"
+                ):
+                    entity["@type"] = [entity["@type"], "Entity"]
+                used.append(entity)
+        except Exception as e:
+            raise Exception(
+                "Error when trying to retrieve the 'input_dataset_used' "
+                f"Resource. {e}."
+            )
+        softwareSourceCode = softwareagent_resource.softwareSourceCode
+        wasAssociatedWith = [
+            {
+                "@type": softwareagent_resource.type,
+                "@id": softwareagent_resource.id,
+                "description": softwareagent_resource.description,
+                "name": softwareagent_resource.name,
+                "softwareSourceCode": {
+                    "@type": softwareagent_resource.softwareSourceCode.type,
+                    "codeRepository": softwareSourceCode.codeRepository,
+                    "programmingLanguage": softwareSourceCode.programmingLanguage,
+                    "version": activity_metadata["software_version"],
+                    "runtimePlatform": activity_metadata["runtime_platform"],
+                },
+            }
+        ]
+        startedAtTime = {
+            "@type": "xsd:dateTime",
+            "@value": f"{activity_metadata['start_time']}",
+        }
+        activity_resource = Resource(
+            id=activity_metadata["activity_id"],
+            type=["Activity"],
+            startedAtTime=startedAtTime,
+            wasAssociatedWith=wasAssociatedWith,
+            used=used,
+        )
+        try:
+            activity_resource.type.append(activity_type)
+            activity_resource.wasAssociatedWith[0]["configuration"] = configuration
+        except Exception as e:
+            raise Exception(
+                "The Activity Resource payload does not contain all the "
+                f"expected properties. {e}."
+            )
+
+    return activity_resource
 
 
 def return_atlasrelease(

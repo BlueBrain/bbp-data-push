@@ -9,6 +9,7 @@ https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 """
 import logging
 import click
+from datetime import datetime
 from kgforge.core import KnowledgeGraphForge
 
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
@@ -30,14 +31,15 @@ def _push_to_Nexus(datasets, forge, schema_id):
     try:
         L.info(
             "\n-------------- Registration & Validation Status ---------------"
-            "\nRegistering the constructed payload along the input dataset in Nexus..."
+            "\nRegistering the constructed resource payload along the input dataset in "
+            "Nexus..."
         )
-        forge.register(datasets, schema_id)  # schema_id
+        forge.register(datasets, schema_id)
         L.info(
             f"<<Resource synchronization status>>: {str(datasets[-1]._synchronized)}"
         )
     except Exception as e:
-        L.error(f"Error when registering resource. {e}")
+        L.error(f"Error when registering the resource. {e}")
 
 
 @click.group()
@@ -135,11 +137,7 @@ def base_ressource(f):
         help="Strings containing the name and version of the module that generated the "
         "dataset. They must follow the form '<module_name>:<anything> <version>'.",
     )(f)
-    # f = click.option("--activity-id", required=True, type=str, help="string which "
-    #                   "corresponds to the Nexus identifier of the Activity Resource. "
-    #                   "If the Activity Resource already exists in Nexus it will be "
-    #                   "linked to the datasets to be pushed else the Activity will be "
-    #                   "created and pushed too. ")(f)
+
     return f
 
 
@@ -174,6 +172,12 @@ def base_ressource(f):
     "push-regionsummary. If the file already exists it will be annoted else it will be "
     "created.",
 )
+@click.option(
+    "--activity-metadata-path",
+    type=click.Path(exists=True),
+    help="Optional json file containing metadata to create Activity and SoftwareAgent "
+    "resources.",
+)
 @click.pass_context
 @log_args(L)
 def push_volumetric(
@@ -185,13 +189,14 @@ def push_volumetric(
     new_atlasrelease_hierarchy_path,
     hierarchy_path,
     link_regions_path,
+    activity_metadata_path,
 ):
     """Create a VolumetricDataLayer resource payload and push it along with the "
     corresponding volumetric input dataset files into Nexus.\n
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the volumetric payloads...")
-    datasets, atlasreleases = create_volumetric_resources(
+    resources_dict = create_volumetric_resources(
         ctx.obj["forge"],
         dataset_path,
         voxels_resolution,
@@ -200,36 +205,67 @@ def push_volumetric(
         new_atlasrelease_hierarchy_path,
         hierarchy_path,
         link_regions_path,
+        activity_metadata_path,
         ctx.obj["verbose"],
     )
-    if atlasreleases["atlas_releases"]:
+    if resources_dict["atlasreleases"]:
         try:
             L.info(
-                "\nRegistering the constructed BrainAtlasRelease payloads in Nexus..."
+                "\nRegistering the constructed BrainAtlasRelease resources in Nexus..."
             )
             ctx.obj["forge"].register(
-                atlasreleases["atlas_releases"],
+                resources_dict["atlasreleases"],
                 "https://neuroshapes.org/dash/atlasrelease",
             )
         except Exception as e:
-            L.error(f"Error when registering resource. {e}")
+            L.error(f"Error when registering the resource. {e}")
             exit(1)
-    if atlasreleases["hierarchy"]:
+    if resources_dict["hierarchy"]:
         try:
-            L.info(
-                "\nRegistering the constructed Parcellation ontology payload in "
-                "Nexus..."
-            )
+            L.info("\nRegistering the constructed Parcellation ontology in Nexus...")
             ctx.obj["forge"].register(
-                atlasreleases["hierarchy"], "https://neuroshapes.org/dash/ontology"
+                resources_dict["hierarchy"], "https://neuroshapes.org/dash/ontology"
             )
         except Exception as e:
-            L.error(f"Error when registering resource. {e}")
+            L.error(f"Error when registering the resource. {e}")
             exit(1)
 
-    if datasets:
+    if resources_dict["activity"]:
+        endedAtTime = {
+            "@type": "xsd:dateTime",
+            "@value": f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}",
+        }
+        if resources_dict["activity"]._store_metadata:
+            try:
+                resources_dict["activity"].endedAtTime = ctx.obj["forge"].from_json(
+                    {
+                        "@type": resources_dict["activity"].endedAtTime.type,
+                        "@value": endedAtTime["@value"],
+                    }
+                )
+                for dataset in resources_dict["datasets"]:
+                    dataset.generation["activity"]["endedAtTime"] = resources_dict[
+                        "activity"
+                    ].endedAtTime
+                L.info("\nUpdating the Activity Resource in Nexus...")
+                ctx.obj["forge"].update(resources_dict["activity"])
+            except Exception as e:
+                L.error(f"Error when updating the resource. {e}")
+                exit(1)
+        else:
+            try:
+                resources_dict["activity"].endedAtTime = endedAtTime
+                L.info("\nRegistering the constructed Activity Resource in Nexus...")
+                ctx.obj["forge"].register(
+                    resources_dict["activity"], "https://neuroshapes.org/dash/activity"
+                )
+            except Exception as e:
+                L.error(f"Error when registering the resource. {e}")
+                exit(1)
+
+    if resources_dict["datasets"]:
         _push_to_Nexus(
-            datasets,
+            resources_dict["datasets"],
             ctx.obj["forge"],
             "https://neuroshapes.org/dash/volumetricdatalayer",
         )
@@ -285,14 +321,14 @@ def push_meshes(
     if atlasreleases["atlas_releases"]:
         try:
             L.info(
-                "\nRegistering the constructed BrainAtlasRelease payloads in Nexus..."
+                "\nRegistering the constructed BrainAtlasRelease resources in Nexus..."
             )
             ctx.obj["forge"].register(
                 atlasreleases["atlas_releases"],
                 "https://neuroshapes.org/dash/atlasrelease",
             )
         except Exception as e:
-            L.error(f"Error when registering resource. {e}")
+            L.error(f"Error when registering the resource. {e}")
             exit(1)
 
     if datasets:

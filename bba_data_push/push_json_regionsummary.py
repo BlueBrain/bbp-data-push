@@ -14,7 +14,7 @@ from kgforge.specializations.stores.demo_store import DemoStore
 from bba_data_push.commons import (
     get_brain_region_prop,
     get_hierarchy_file,
-    add_contribution,
+    return_contribution,
 )
 from bba_data_push.logging import create_log_handler
 
@@ -82,7 +82,7 @@ def create_regionsummary_resources(
         contribution = []
     else:
         try:
-            contribution, log_info = add_contribution(forge)
+            contribution, log_info = return_contribution(forge)
             L.info("\n".join(log_info))
         except Exception as e:
             L.error(f"Error: {e}")

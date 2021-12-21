@@ -22,9 +22,10 @@ from kgforge.specializations.stores.demo_store import DemoStore
 from bba_data_push.commons import (
     get_voxel_type,
     get_brain_region_prop,
-    add_contribution,
+    return_contribution,
     append_provenance_to_description,
     return_atlasrelease,
+    return_activity_payload,
 )
 from bba_data_push.logging import create_log_handler
 
@@ -40,6 +41,7 @@ def create_volumetric_resources(
     new_atlasrelease_hierarchy_path,
     input_hierarchy,
     link_regions_path,
+    activity_metadata_path,
     verbose,
 ) -> list:
     """
@@ -154,18 +156,11 @@ def create_volumetric_resources(
         contribution = []
     else:
         try:
-            contribution, log_info = add_contribution(forge)
+            contribution, log_info = return_contribution(forge)
             L.info("\n".join(log_info))
         except Exception as e:
             L.error(f"Error: {e}")
             exit(1)
-
-    # Generation property:
-    # "atTime": "{date time}",
-    # generation = {
-    #     "@type": "Generation",
-    #     "activity": {"@id": "ggg", "@type": ["Activity", "pipelinerule"]},
-    # }
 
     # Config constants
     default_sampling_period = 30
@@ -494,11 +489,16 @@ def create_volumetric_resources(
     }
 
     # Constructs the Resource properties payloads with the dictionary of properties
-    datasets = []
-    atlasreleases = {"atlas_releases": [], "hierarchy": []}
+    ressources_dict = {
+        "datasets": [],
+        "activity": [],
+        "atlasreleases": [],
+        "hierarchy": [],
+    }
     atlasrelease_dict = {"atlasrelease_choice": False, "hierarchy": False}
     atlasRelease = {}
     dict_ids = {}
+    generation = {}
     for filepath in inputpath:
         file_found = False
         isFolder = False
@@ -595,8 +595,12 @@ def create_volumetric_resources(
                                         inputdata,
                                     ):
                                         derivation_data_found = True
-                                        for r in range(0, len(datasets)):
-                                            distrib = datasets[r].distribution.args[0]
+                                        for r in range(
+                                            0, len(ressources_dict["datasets"])
+                                        ):
+                                            distrib = ressources_dict["datasets"][
+                                                r
+                                            ].distribution.args[0]
                                             if isinstance(
                                                 volumetric_data["cell_densities"][
                                                     dataset
@@ -610,7 +614,9 @@ def create_volumetric_resources(
                                                 # Check if the previous resource
                                                 # already an id
                                                 try:
-                                                    if datasets[r].id:
+                                                    if ressources_dict["datasets"][
+                                                        r
+                                                    ].id:
                                                         pass
                                                 except AttributeError:
                                                     dataset_id = forge.format(
@@ -618,7 +624,9 @@ def create_volumetric_resources(
                                                         "celldensity",
                                                         str(uuid4()),
                                                     )
-                                                    datasets[r].id = f"{dataset_id}"
+                                                    ressources_dict["datasets"][
+                                                        r
+                                                    ].id = f"{dataset_id}"
                                                 derivation = copy.deepcopy(
                                                     deriv_celldensities_template
                                                 )
@@ -719,10 +727,12 @@ def create_volumetric_resources(
                                             inputdata,
                                         ):
                                             derivation_data_found = True
-                                            for r in range(0, len(datasets)):
-                                                distrib = datasets[r].distribution.args[
-                                                    0
-                                                ]
+                                            for r in range(
+                                                0, len(ressources_dict["datasets"])
+                                            ):
+                                                distrib = ressources_dict["datasets"][
+                                                    r
+                                                ].distribution.args[0]
                                                 if isinstance(
                                                     volumetric_data["cell_densities"][
                                                         dataset
@@ -734,10 +744,14 @@ def create_volumetric_resources(
                                                     data_deriv, distrib
                                                 ):
                                                     try:
-                                                        if datasets[r].id:
+                                                        if ressources_dict["datasets"][
+                                                            r
+                                                        ].id:
                                                             pass
                                                     except AttributeError:
-                                                        datasets[r].id = forge.format(
+                                                        ressources_dict["datasets"][
+                                                            r
+                                                        ].id = forge.format(
                                                             "identifier",
                                                             "celldensity",
                                                             str(uuid4()),
@@ -747,7 +761,9 @@ def create_volumetric_resources(
                                                     )
                                                     derivation["entity"][
                                                         "@id"
-                                                    ] = datasets[r].id
+                                                    ] = ressources_dict["datasets"][
+                                                        r
+                                                    ].id
                                                     break
                                             if not derivation:
                                                 dict_ids[
@@ -1160,10 +1176,10 @@ def create_volumetric_resources(
                 if atlasrelease_dict["create_new"]:
                     atlasrelease_dict["atlas_release"][0].contribution = contribution
                     atlasrelease_dict["atlas_release"][1].contribution = contribution
-                    atlasreleases["atlas_releases"].append(
+                    ressources_dict["atlasreleases"].append(
                         atlasrelease_dict["atlas_release"][0]
                     )
-                    atlasreleases["atlas_releases"].append(
+                    ressources_dict["atlasreleases"].append(
                         atlasrelease_dict["atlas_release"][1]
                     )
             else:
@@ -1171,6 +1187,54 @@ def create_volumetric_resources(
                     "@id": atlasrelease_dict["atlas_release"].id,
                     "@type": ["AtlasRelease", "BrainAtlasRelease"],
                 }
+
+        if activity_metadata_path:
+            try:
+                activity_resource = return_activity_payload(
+                    forge, activity_metadata_path
+                )
+            except Exception as e:
+                L.error(f"Error: {e}")
+                exit(1)
+            except json.decoder.JSONDecodeError as e:
+                L.error(f"Error: {e}")
+                exit(1)
+            # if activity has been created and not fetched from Nexus
+            if not activity_resource._store_metadata:
+                # add contributors to Activity payload as Association
+                for contrib in contribution:
+                    agent = contrib.agent
+                    association = {"@type": agent["@type"], "@id": agent["@id"]}
+                    if (
+                        isinstance(association["@type"], list)
+                        and "Agent" not in association["@type"]
+                    ):
+                        association["@type"].append("Agent")
+                    if (
+                        not isinstance(association["@type"], list)
+                        and association["@type"] != "Agent"
+                    ):
+                        association["@type"] = [association["@type"], "Agent"]
+                    activity_resource.wasAssociatedWith.append(association)
+            else:
+                if hasattr(activity_resource, "startedAtTime"):
+                    activity_resource.startedAtTime = forge.from_json(
+                        {
+                            "type": activity_resource.startedAtTime.type,
+                            "@value": activity_resource.startedAtTime.value,
+                        }
+                    )
+
+            generation = {
+                "@type": "Generation",
+                "activity": {
+                    "@id": activity_resource.id,
+                    "@type": activity_resource.type,
+                    "endedAtTime": activity_resource.endedAtTime,
+                    "startedAtTime": activity_resource.startedAtTime,
+                    "wasAssociatedWith": activity_resource.wasAssociatedWith,
+                },
+            }
 
         name = filename_noext.replace("_", " ").title()
 
@@ -1206,6 +1270,9 @@ def create_volumetric_resources(
             nrrd_resource.id = dict_ids[dataset]
         if dimension_name:
             nrrd_resource.dimension[0]["name"] = dimension_name
+
+        if generation:
+            nrrd_resource.generation = generation
 
         if action_summary_file:
             atlasrelease_link = {"atlasRelease": {"@id": atlasRelease["@id"]}}
@@ -1253,11 +1320,11 @@ def create_volumetric_resources(
                             ],
                         }
                         atlasrelease_dict["atlas_release"].contribution = contribution
-                        atlasreleases["atlas_releases"].append(
+                        ressources_dict["atlasreleases"].append(
                             atlasrelease_dict["atlas_release"]
                         )
                         atlasrelease_dict["hierarchy"].contribution = contribution
-                        atlasreleases["hierarchy"].append(
+                        ressources_dict["hierarchy"].append(
                             atlasrelease_dict["hierarchy"]
                         )
                 except FileNotFoundError:
@@ -1275,13 +1342,13 @@ def create_volumetric_resources(
                             "@type": "BrainParcellationDataLayer",
                         }
                         atlasrelease_dict["atlas_release"].contribution = contribution
-                        atlasreleases["atlas_releases"].append(
+                        ressources_dict["atlasreleases"].append(
                             atlasrelease_dict["atlas_release"]
                         )
                 except FileNotFoundError:
                     pass
 
-        datasets.append(nrrd_resource)
+        ressources_dict["datasets"].append(nrrd_resource)
 
         # If the input is a folder containing the cell density file to push
         if isFolder:
@@ -1453,6 +1520,9 @@ def create_volumetric_resources(
                 if derivation:
                     nrrd_resources.derivation = nrrd_resource.derivation
 
+                if generation:
+                    nrrd_resources.generation = nrrd_resource.generation
+
                 if isPH:
                     if 5 < f < 8:
                         try:
@@ -1480,9 +1550,10 @@ def create_volumetric_resources(
                     if action_summary_file:
                         nrrd_resources.id = mask_id
 
-                datasets.append(nrrd_resources)
+                ressources_dict["datasets"].append(nrrd_resources)
 
-    return datasets, atlasreleases
+    ressources_dict["activity"] = activity_resource
+    return ressources_dict
 
 
 def add_nrrd_props(resource, nrrd_header, config, voxel_type):
