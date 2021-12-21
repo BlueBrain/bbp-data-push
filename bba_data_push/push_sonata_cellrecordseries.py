@@ -13,7 +13,11 @@ import h5py
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
 
-from bba_data_push.commons import return_contribution, append_provenance_to_description
+from bba_data_push.commons import (
+    return_contribution,
+    append_provenance_to_description,
+    return_activity_payload,
+)
 from bba_data_push.logging import create_log_handler
 
 L = create_log_handler(__name__, "./push_cellrecord.log")
@@ -25,6 +29,7 @@ def create_cell_record_resources(
     voxels_resolution: int,
     config_path,
     provenances: list,
+    activity_metadata_path,
     verbose,
 ) -> list:
     """
@@ -123,6 +128,14 @@ def create_cell_record_resources(
             exit(1)
 
     # If multiple files and multiple Atlas
+    ressources_dict = {
+        "datasets": [],
+        "activity": [],
+        "atlasreleases": [],
+        "hierarchy": [],
+    }
+    generation = {}
+    activity_resource = []
     for filepath in inputpath:
         try:
             if os.path.samefile(filepath, sonata_path["cell_records_sonata"]):
@@ -216,6 +229,54 @@ def create_cell_record_resources(
             )
             exit(1)
 
+        if activity_metadata_path:
+            try:
+                activity_resource = return_activity_payload(
+                    forge, activity_metadata_path
+                )
+            except Exception as e:
+                L.error(f"Error: {e}")
+                exit(1)
+            except json.decoder.JSONDecodeError as e:
+                L.error(f"Error: {e}")
+                exit(1)
+            # if activity has been created and not fetched from Nexus
+            if not activity_resource._store_metadata:
+                # add contributors to Activity payload as Association
+                for contrib in contribution:
+                    agent = contrib.agent
+                    association = {"@type": agent["@type"], "@id": agent["@id"]}
+                    if (
+                        isinstance(association["@type"], list)
+                        and "Agent" not in association["@type"]
+                    ):
+                        association["@type"].append("Agent")
+                    if (
+                        not isinstance(association["@type"], list)
+                        and association["@type"] != "Agent"
+                    ):
+                        association["@type"] = [association["@type"], "Agent"]
+                    activity_resource.wasAssociatedWith.append(association)
+            else:
+                if hasattr(activity_resource, "startedAtTime"):
+                    activity_resource.startedAtTime = forge.from_json(
+                        {
+                            "type": activity_resource.startedAtTime.type,
+                            "@value": activity_resource.startedAtTime.value,
+                        }
+                    )
+
+            generation = {
+                "@type": "Generation",
+                "activity": {
+                    "@id": activity_resource.id,
+                    "@type": activity_resource.type,
+                    "endedAtTime": activity_resource.endedAtTime,
+                    "startedAtTime": activity_resource.startedAtTime,
+                    "wasAssociatedWith": activity_resource.wasAssociatedWith,
+                },
+            }
+
         # add personalised content_type = "application/" + extension (according to
         # mime convention)
         distribution_file = forge.attach(filepath)
@@ -240,6 +301,11 @@ def create_cell_record_resources(
         # dataSampleModality=["parcellationId", "cellTypeId", "position3D",
         # "eulerAngle"],
 
-        datasets = [cellrecord_resource]
+        if generation:
+            cellrecord_resource.generation = generation
 
-    return datasets
+        ressources_dict["datasets"].append(cellrecord_resource)
+
+    ressources_dict["activity"] = activity_resource
+
+    return ressources_dict

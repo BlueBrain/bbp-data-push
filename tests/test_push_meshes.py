@@ -135,8 +135,9 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[None],
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
-        )[0][-1]
+        )["datasets"][-1]
     )
 
     for key in mesh_resource_simple:
@@ -159,12 +160,13 @@ def test_create_mesh_resources():
         voxels_resolution=25,
         provenances=[provenance],
         link_regions_path=None,
+        activity_metadata_path=None,
         verbose=1,
-    )
+    )["datasets"]
 
     # Search for the hybrid mesh dataset to compare with (if multiple results returned)
     hybrid_v2v3_dataset = None
-    for dataset in result[0]:
+    for dataset in result:
         if vars(dataset)["name"] == "Region_1 Mesh Hybrid L23split":
             hybrid_v2v3_dataset = vars(dataset)
 
@@ -183,6 +185,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert str(e.value) == "'brain_region_meshes_hybrid'"
@@ -197,6 +200,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -211,6 +215,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -225,6 +230,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -239,6 +245,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -253,6 +260,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -267,6 +275,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -281,6 +290,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[wrong_provenance],
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1

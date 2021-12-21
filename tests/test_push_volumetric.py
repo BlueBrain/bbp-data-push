@@ -218,8 +218,9 @@ def test_create_volumetric_resources():
             new_atlasrelease_hierarchy_path=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
-        )[0][-1]
+        )["datasets"][-1]
     )
     for key in volumetric_dict_simple:
         assert result[key] == volumetric_dict_simple[key]
@@ -243,8 +244,9 @@ def test_create_volumetric_resources():
         new_atlasrelease_hierarchy_path=None,
         input_hierarchy=hierarchy_path,
         link_regions_path=None,
+        activity_metadata_path=None,
         verbose=1,
-    )[0]
+    )["datasets"]
 
     # Search for the excitatory neuron dataset to compare with (if multiple results
     # returned)
@@ -270,6 +272,7 @@ def test_create_volumetric_resources():
             new_atlasrelease_hierarchy_path=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert str(e.value) == "'annotation_hybrid'"
@@ -285,6 +288,7 @@ def test_create_volumetric_resources():
             new_atlasrelease_hierarchy_path=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -300,6 +304,7 @@ def test_create_volumetric_resources():
             new_atlasrelease_hierarchy_path=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -315,6 +320,7 @@ def test_create_volumetric_resources():
             new_atlasrelease_hierarchy_path=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -330,6 +336,7 @@ def test_create_volumetric_resources():
             new_atlasrelease_hierarchy_path=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -345,6 +352,7 @@ def test_create_volumetric_resources():
             new_atlasrelease_hierarchy_path=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -360,6 +368,7 @@ def test_create_volumetric_resources():
             new_atlasrelease_hierarchy_path=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -375,6 +384,7 @@ def test_create_volumetric_resources():
             new_atlasrelease_hierarchy_path=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
+            activity_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1

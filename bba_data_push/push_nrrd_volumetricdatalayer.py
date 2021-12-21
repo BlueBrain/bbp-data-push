@@ -499,6 +499,7 @@ def create_volumetric_resources(
     atlasRelease = {}
     dict_ids = {}
     generation = {}
+    activity_resource = []
     for filepath in inputpath:
         file_found = False
         isFolder = False

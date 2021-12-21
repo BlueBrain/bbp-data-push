@@ -19,6 +19,7 @@ from bba_data_push.commons import (
     return_contribution,
     append_provenance_to_description,
     return_atlasrelease,
+    return_activity_payload,
 )
 from bba_data_push.logging import create_log_handler
 
@@ -33,6 +34,7 @@ def create_mesh_resources(
     voxels_resolution: int,
     provenances: list,
     link_regions_path,
+    activity_metadata_path,
     verbose,
 ) -> list:
     """
@@ -71,7 +73,6 @@ def create_mesh_resources(
         exit(1)
 
     # Constants
-    datasets = []
     module_prov = "parcellationexport"
     spatial_unit = "µm"
     atlas_reference_system_id = (
@@ -117,9 +118,16 @@ def create_mesh_resources(
 
     # Constructs the Resource properties payloads accordingly to the input atlas Mesh
     # datasets
-    atlasreleases = {"atlas_releases": [], "hierarchy": []}
+    ressources_dict = {
+        "datasets": [],
+        "activity": [],
+        "atlasreleases": [],
+        "hierarchy": [],
+    }
     atlasrelease_dict = {"atlasrelease_choice": False, "hierarchy": False}
     atlasRelease = {}
+    generation = {}
+    activity_resource = []
     for filepath in inputpath:
         file_found = False
         flat_tree = {}
@@ -285,10 +293,10 @@ def create_mesh_resources(
                 if atlasrelease_dict["create_new"]:
                     atlasrelease_dict["atlas_release"][0].contribution = contribution
                     atlasrelease_dict["atlas_release"][1].contribution = contribution
-                    atlasreleases["atlas_releases"].append(
+                    ressources_dict["atlasreleases"].append(
                         atlasrelease_dict["atlas_release"][0]
                     )
-                    atlasreleases["atlas_releases"].append(
+                    ressources_dict["atlasreleases"].append(
                         atlasrelease_dict["atlas_release"][1]
                     )
             else:
@@ -296,6 +304,54 @@ def create_mesh_resources(
                     "@id": atlasrelease_dict["atlas_release"].id,
                     "@type": ["AtlasRelease", "BrainAtlasRelease"],
                 }
+
+        if activity_metadata_path:
+            try:
+                activity_resource = return_activity_payload(
+                    forge, activity_metadata_path
+                )
+            except Exception as e:
+                L.error(f"Error: {e}")
+                exit(1)
+            except json.decoder.JSONDecodeError as e:
+                L.error(f"Error: {e}")
+                exit(1)
+            # if activity has been created and not fetched from Nexus
+            if not activity_resource._store_metadata:
+                # add contributors to Activity payload as Association
+                for contrib in contribution:
+                    agent = contrib.agent
+                    association = {"@type": agent["@type"], "@id": agent["@id"]}
+                    if (
+                        isinstance(association["@type"], list)
+                        and "Agent" not in association["@type"]
+                    ):
+                        association["@type"].append("Agent")
+                    if (
+                        not isinstance(association["@type"], list)
+                        and association["@type"] != "Agent"
+                    ):
+                        association["@type"] = [association["@type"], "Agent"]
+                    activity_resource.wasAssociatedWith.append(association)
+            else:
+                if hasattr(activity_resource, "startedAtTime"):
+                    activity_resource.startedAtTime = forge.from_json(
+                        {
+                            "type": activity_resource.startedAtTime.type,
+                            "@value": activity_resource.startedAtTime.value,
+                        }
+                    )
+
+            generation = {
+                "@type": "Generation",
+                "activity": {
+                    "@id": activity_resource.id,
+                    "@type": activity_resource.type,
+                    "endedAtTime": activity_resource.endedAtTime,
+                    "startedAtTime": activity_resource.startedAtTime,
+                    "wasAssociatedWith": activity_resource.wasAssociatedWith,
+                },
+            }
 
         mesh_resource = Resource(
             type=["BrainParcellationMesh", "Mesh", "Dataset"],
@@ -310,6 +366,9 @@ def create_mesh_resources(
             contribution=contribution,
         )
         # dataset = Dataset.from_resource(forge, mesh_resource, store_metadata=True)
+
+        if generation:
+            mesh_resource.generation = generation
 
         if link_regions_path:
             mesh_id = forge.format("identifier", "BrainParcellationMesh", str(uuid4()))
@@ -333,7 +392,7 @@ def create_mesh_resources(
                 region_summary = {f"{region_id}": {"mesh": {"@id": mesh_id}}}
                 link_summary_content.update(region_summary)
 
-        datasets = [mesh_resource]
+        ressources_dict["datasets"].append(mesh_resource)
 
         for f in range(1, len(files_mesh)):  # start at the 2nd file
 
@@ -386,6 +445,9 @@ def create_mesh_resources(
                 subject=mesh_resource.subject,
             )
 
+            if generation:
+                mesh_resources.generation = mesh_resource.generation
+
             if link_summary_content:
                 mesh_id = forge.format(
                     "identifier", "BrainParcellationMesh", str(uuid4())
@@ -414,6 +476,7 @@ def create_mesh_resources(
 
             # dataset = Dataset.from_resource(forge, mesh_resources,
             # store_metadata=True)
-            datasets.append(mesh_resources)
+            ressources_dict["datasets"].append(mesh_resources)
 
-    return datasets, atlasreleases
+    ressources_dict["activity"] = activity_resource
+    return ressources_dict

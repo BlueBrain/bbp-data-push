@@ -15,6 +15,7 @@ from bba_data_push.commons import (
     get_brain_region_prop,
     get_hierarchy_file,
     return_contribution,
+    return_activity_payload,
 )
 from bba_data_push.logging import create_log_handler
 
@@ -28,6 +29,7 @@ def create_regionsummary_resources(
     input_hierarchy: list,
     provenances: list,
     link_regions_path,
+    activity_metadata_path,
     verbose,
 ) -> list:
     """
@@ -64,7 +66,15 @@ def create_regionsummary_resources(
         exit(1)
 
     # Constants
-    datasets = []
+    ressources_dict = {
+        "datasets": [],
+        "activity": [],
+        "atlasreleases": [],
+        "hierarchy": [],
+    }
+    atlasRelease = {}
+    generation = {}
+    activity_resource = []
     # module_prov = "parcellationexport"
     atlas_reference_system_id = (
         "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -87,8 +97,6 @@ def create_regionsummary_resources(
         except Exception as e:
             L.error(f"Error: {e}")
             exit(1)
-
-    atlasRelease = {}
 
     try:
         if os.path.samefile(
@@ -199,6 +207,54 @@ def create_regionsummary_resources(
 
         L.info(f"Creating the RegionSummary payload for region {region_id}...")
 
+        if activity_metadata_path:
+            try:
+                activity_resource = return_activity_payload(
+                    forge, activity_metadata_path
+                )
+            except Exception as e:
+                L.error(f"Error: {e}")
+                exit(1)
+            except json.decoder.JSONDecodeError as e:
+                L.error(f"Error: {e}")
+                exit(1)
+            # if activity has been created and not fetched from Nexus
+            if not activity_resource._store_metadata:
+                # add contributors to Activity payload as Association
+                for contrib in contribution:
+                    agent = contrib.agent
+                    association = {"@type": agent["@type"], "@id": agent["@id"]}
+                    if (
+                        isinstance(association["@type"], list)
+                        and "Agent" not in association["@type"]
+                    ):
+                        association["@type"].append("Agent")
+                    if (
+                        not isinstance(association["@type"], list)
+                        and association["@type"] != "Agent"
+                    ):
+                        association["@type"] = [association["@type"], "Agent"]
+                    activity_resource.wasAssociatedWith.append(association)
+            else:
+                if hasattr(activity_resource, "startedAtTime"):
+                    activity_resource.startedAtTime = forge.from_json(
+                        {
+                            "type": activity_resource.startedAtTime.type,
+                            "@value": activity_resource.startedAtTime.value,
+                        }
+                    )
+
+            generation = {
+                "@type": "Generation",
+                "activity": {
+                    "@id": activity_resource.id,
+                    "@type": activity_resource.type,
+                    "endedAtTime": activity_resource.endedAtTime,
+                    "startedAtTime": activity_resource.startedAtTime,
+                    "wasAssociatedWith": activity_resource.wasAssociatedWith,
+                },
+            }
+
         summary_resource = Resource(
             type="RegionSummary",
             name=f"{region_name.title()} Summary {annotation_name}",
@@ -216,6 +272,11 @@ def create_regionsummary_resources(
             mask=mask,
         )
 
-        datasets.append(summary_resource)
+        if generation:
+            summary_resource.generation = generation
 
-    return datasets
+        ressources_dict["datasets"].append(summary_resource)
+
+    ressources_dict["activity"] = activity_resource
+
+    return ressources_dict

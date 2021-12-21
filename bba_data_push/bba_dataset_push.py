@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
 
-def _push_to_Nexus(datasets, forge, schema_id):
+def _push_datasets_to_Nexus(datasets, forge, schema_id):
     L.info(
         "\n----------------------- Resource content ----------------------"
         f"\n{datasets[-1]}"
@@ -40,6 +40,41 @@ def _push_to_Nexus(datasets, forge, schema_id):
         )
     except Exception as e:
         L.error(f"Error when registering the resource. {e}")
+
+
+def _push_activity_to_Nexus(resources_dict, forge):
+
+    endedAtTime = {
+        "@type": "xsd:dateTime",
+        "@value": f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}",
+    }
+    if resources_dict["activity"]._store_metadata:
+        try:
+            resources_dict["activity"].endedAtTime = forge.from_json(
+                {
+                    "@type": resources_dict["activity"].endedAtTime.type,
+                    "@value": endedAtTime["@value"],
+                }
+            )
+            for dataset in resources_dict["datasets"]:
+                dataset.generation["activity"]["endedAtTime"] = resources_dict[
+                    "activity"
+                ].endedAtTime
+            L.info("\nUpdating the Activity Resource in Nexus...")
+            forge.update(resources_dict["activity"])
+        except Exception as e:
+            L.error(f"Error when updating the resource. {e}")
+            exit(1)
+    else:
+        try:
+            resources_dict["activity"].endedAtTime = endedAtTime
+            L.info("\nRegistering the constructed Activity Resource in Nexus...")
+            forge.register(
+                resources_dict["activity"], "https://neuroshapes.org/dash/activity"
+            )
+        except Exception as e:
+            L.error(f"Error when registering the resource. {e}")
+            exit(1)
 
 
 @click.group()
@@ -137,7 +172,12 @@ def base_ressource(f):
         help="Strings containing the name and version of the module that generated the "
         "dataset. They must follow the form '<module_name>:<anything> <version>'.",
     )(f)
-
+    f = click.option(
+        "--activity-metadata-path",
+        type=click.Path(exists=True),
+        help="Optional json file containing metadata to create Activity and SoftwareAgent "
+        "resources.",
+    )(f)
     return f
 
 
@@ -171,12 +211,6 @@ def base_ressource(f):
     "mask, mesh and atlas release resources) to be extracted by the CLI "
     "push-regionsummary. If the file already exists it will be annoted else it will be "
     "created.",
-)
-@click.option(
-    "--activity-metadata-path",
-    type=click.Path(exists=True),
-    help="Optional json file containing metadata to create Activity and SoftwareAgent "
-    "resources.",
 )
 @click.pass_context
 @log_args(L)
@@ -231,40 +265,10 @@ def push_volumetric(
             exit(1)
 
     if resources_dict["activity"]:
-        endedAtTime = {
-            "@type": "xsd:dateTime",
-            "@value": f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}",
-        }
-        if resources_dict["activity"]._store_metadata:
-            try:
-                resources_dict["activity"].endedAtTime = ctx.obj["forge"].from_json(
-                    {
-                        "@type": resources_dict["activity"].endedAtTime.type,
-                        "@value": endedAtTime["@value"],
-                    }
-                )
-                for dataset in resources_dict["datasets"]:
-                    dataset.generation["activity"]["endedAtTime"] = resources_dict[
-                        "activity"
-                    ].endedAtTime
-                L.info("\nUpdating the Activity Resource in Nexus...")
-                ctx.obj["forge"].update(resources_dict["activity"])
-            except Exception as e:
-                L.error(f"Error when updating the resource. {e}")
-                exit(1)
-        else:
-            try:
-                resources_dict["activity"].endedAtTime = endedAtTime
-                L.info("\nRegistering the constructed Activity Resource in Nexus...")
-                ctx.obj["forge"].register(
-                    resources_dict["activity"], "https://neuroshapes.org/dash/activity"
-                )
-            except Exception as e:
-                L.error(f"Error when registering the resource. {e}")
-                exit(1)
+        _push_activity_to_Nexus(resources_dict, ctx.obj["forge"])
 
     if resources_dict["datasets"]:
-        _push_to_Nexus(
+        _push_datasets_to_Nexus(
             resources_dict["datasets"],
             ctx.obj["forge"],
             "https://neuroshapes.org/dash/volumetricdatalayer",
@@ -302,13 +306,14 @@ def push_meshes(
     voxels_resolution,
     provenances,
     link_regions_path,
+    activity_metadata_path,
 ):
     """Create a Mesh resource payload and push it along with the corresponding brain
     .OBJ mesh folder input dataset files into Nexus.\n
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the mesh payloads...")
-    datasets, atlasreleases = create_mesh_resources(
+    resources_dict = create_mesh_resources(
         ctx.obj["forge"],
         dataset_path,
         config_path,
@@ -316,24 +321,28 @@ def push_meshes(
         voxels_resolution,
         provenances,
         link_regions_path,
+        activity_metadata_path,
         ctx.obj["verbose"],
     )
-    if atlasreleases["atlas_releases"]:
+    if resources_dict["atlasreleases"]:
         try:
             L.info(
                 "\nRegistering the constructed BrainAtlasRelease resources in Nexus..."
             )
             ctx.obj["forge"].register(
-                atlasreleases["atlas_releases"],
+                resources_dict["atlasreleases"],
                 "https://neuroshapes.org/dash/atlasrelease",
             )
         except Exception as e:
             L.error(f"Error when registering the resource. {e}")
             exit(1)
 
-    if datasets:
-        _push_to_Nexus(
-            datasets,
+    if resources_dict["activity"]:
+        _push_activity_to_Nexus(resources_dict, ctx.obj["forge"])
+
+    if resources_dict["datasets"]:
+        _push_datasets_to_Nexus(
+            resources_dict["datasets"],
             ctx.obj["forge"],
             "https://neuroshapes.org/dash/brainparcellationmesh",
         )
@@ -343,23 +352,37 @@ def push_meshes(
 @base_ressource
 @click.pass_context
 @log_args(L)
-def push_cellrecords(ctx, dataset_path, voxels_resolution, config_path, provenances):
+def push_cellrecords(
+    ctx,
+    dataset_path,
+    voxels_resolution,
+    config_path,
+    provenances,
+    activity_metadata_path,
+):
     """Create a CellRecordSerie resource payload and push it along with the
     corresponding Sonata hdf5 file input dataset files into Nexus.\n
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the CellRecord payloads...")
-    datasets = create_cell_record_resources(
+    resources_dict = create_cell_record_resources(
         ctx.obj["forge"],
         dataset_path,
         voxels_resolution,
         config_path,
         provenances,
+        activity_metadata_path,
         ctx.obj["verbose"],
     )
-    if datasets:
-        _push_to_Nexus(
-            datasets, ctx.obj["forge"], "https://neuroshapes.org/dash/cellrecordseries"
+
+    if resources_dict["activity"]:
+        _push_activity_to_Nexus(resources_dict, ctx.obj["forge"])
+
+    if resources_dict["datasets"]:
+        _push_datasets_to_Nexus(
+            resources_dict["datasets"],
+            ctx.obj["forge"],
+            "https://neuroshapes.org/dash/cellrecordseries",
         )
 
 
@@ -381,14 +404,20 @@ def push_cellrecords(ctx, dataset_path, voxels_resolution, config_path, provenan
 @click.pass_context
 @log_args(L)
 def push_regionsummary(
-    ctx, dataset_path, config_path, hierarchy_path, provenances, link_regions_path
+    ctx,
+    dataset_path,
+    config_path,
+    hierarchy_path,
+    provenances,
+    link_regions_path,
+    activity_metadata_path,
 ):
     """Create a RegionSummary resource payload and push it along with the corresponding
     brain region metadata json input dataset files into Nexus.\n
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the RegionSummary payload...")
-    datasets = create_regionsummary_resources(
+    resources_dict = create_regionsummary_resources(
         ctx.obj["forge"],
         dataset_path,
         config_path,
@@ -398,9 +427,12 @@ def push_regionsummary(
         ctx.obj["verbose"],
     )
 
-    if datasets:
-        _push_to_Nexus(
-            datasets,
+    if resources_dict["activity"]:
+        _push_activity_to_Nexus(resources_dict, ctx.obj["forge"])
+
+    if resources_dict["datasets"]:
+        _push_datasets_to_Nexus(
+            resources_dict["datasets"],
             ctx.obj["forge"],
             "",
         )  # https://neuroshapes.org/dash/entity
