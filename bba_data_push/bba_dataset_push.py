@@ -175,8 +175,8 @@ def base_ressource(f):
     f = click.option(
         "--activity-metadata-path",
         type=click.Path(exists=True),
-        help="Optional json file containing metadata to create Activity and SoftwareAgent "
-        "resources.",
+        help="Optional json file containing metadata to create Activity and "
+        "SoftwareAgent resources.",
     )(f)
     return f
 

@@ -8,6 +8,7 @@ https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 """
 
 import os
+import json
 import yaml
 import h5py
 from kgforge.core import Resource
