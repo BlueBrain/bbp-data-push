@@ -1,6 +1,6 @@
 include:
   - project: dke/apps/templates/job-templates
-    ref: develop
+    #ref: develop
     file: job-templates.yml
 
 
