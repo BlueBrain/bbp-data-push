@@ -48,6 +48,7 @@ def _push_activity_to_Nexus(resources_dict, forge):
         "@type": "xsd:dateTime",
         "@value": f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}",
     }
+
     if resources_dict["activity"]._store_metadata:
         try:
             resources_dict["activity"].endedAtTime = forge.from_json(
@@ -68,6 +69,10 @@ def _push_activity_to_Nexus(resources_dict, forge):
     else:
         try:
             resources_dict["activity"].endedAtTime = endedAtTime
+            for dataset in resources_dict["datasets"]:
+                dataset.generation["activity"]["endedAtTime"] = resources_dict[
+                    "activity"
+                ].endedAtTime
             L.info("\nRegistering the constructed Activity Resource in Nexus...")
             forge.register(
                 resources_dict["activity"], "https://neuroshapes.org/dash/activity"
