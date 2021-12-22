@@ -1231,7 +1231,6 @@ def create_volumetric_resources(
                 "activity": {
                     "@id": activity_resource.id,
                     "@type": activity_resource.type,
-                    "endedAtTime": activity_resource.endedAtTime,
                     "startedAtTime": activity_resource.startedAtTime,
                     "wasAssociatedWith": activity_resource.wasAssociatedWith,
                 },
