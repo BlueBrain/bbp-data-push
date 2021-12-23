@@ -918,12 +918,12 @@ def create_volumetric_resources(
                                     "[PH]y.nrrd volumetric files."
                                 )
                                 exit(1)
-                            pattern = "*problematic_volume.nrrd"
+                            pattern = "*problematic_voxel_mask.nrrd"
                             mask_error = fnmatch.filter(files, pattern)
                             if not mask_error:
                                 L.error(
                                     f"Error: '{filepath}' do not contain the "
-                                    "problematic volume file."
+                                    "problematic_voxel_mask file."
                                 )
                                 exit(1)
                             pattern = "*report.json"
