@@ -100,13 +100,16 @@ def create_volumetric_resources(
                     volumes["annotation_realigned_l23split"], inputdata
                 ):
                     parcellation_found.append("annotation_realigned_l23split")
+                if os.path.samefile(volumes["annotation_ccfv3_l23split"], inputdata):
+                    parcellation_found.append("annotation_ccfv3_l23split")
             if not parcellation_found:
                 L.error(
                     "Error: The argument 'new-atlasrelease-hierarchy-path' has been "
                     "provided but no parcellation volume corresponding to an atlas "
-                    "Release (aka 'annotation_hybrid_l23split' or "
-                    "'annotation_realigned_l23split' in the dataset configuration "
-                    "file) has been found among the input datasets."
+                    "Release (aka 'annotation_hybrid_l23split', "
+                    "'annotation_realigned_l23split' or 'annotation_ccfv3_l23split' in "
+                    "the dataset configuration file) has been found among the input "
+                    "datasets."
                 )
                 exit(1)
         except FileNotFoundError as error:
@@ -115,6 +118,7 @@ def create_volumetric_resources(
                 "to be provided with the right hierarchy file and right parcellation "
                 "volume that are listed in the dataset configuration file."
             )
+            exit(1)
 
     # Mutual resource properties
 
@@ -1135,12 +1139,12 @@ def create_volumetric_resources(
                 "831a626a-c0ae-4691-8ce8-cfb7491345d9",
                 "@type": ["AtlasRelease", "BrainAtlasRelease"],
             }
-        elif atlasrelease_choice == "atlasrelease_ccfv3split":
-            atlasRelease = {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
-                "5149d239-8b4d-43bb-97b7-8841a12d85c4",
-                "@type": ["AtlasRelease", "BrainAtlasRelease"],
-            }
+        # elif atlasrelease_choice == "atlasrelease_ccfv3split":
+        #     atlasRelease = {
+        #         "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
+        #         "5149d239-8b4d-43bb-97b7-8841a12d85c4",
+        #         "@type": ["AtlasRelease", "BrainAtlasRelease"],
+        #     }
         elif not isinstance(forge._store, DemoStore):
             if not atlasrelease_dict["atlasrelease_choice"] or (
                 atlasrelease_choice != atlasrelease_dict["atlasrelease_choice"]
@@ -1329,11 +1333,25 @@ def create_volumetric_resources(
                         )
                 except FileNotFoundError:
                     pass
-
                 try:
                     if os.path.samefile(
                         volumes["annotation_realigned_l23split"], dataset
                     ):
+                        nrrd_resource.id = forge.format(
+                            "identifier", "brainparcellationdatalayer", str(uuid4())
+                        )
+                        atlasrelease_dict["atlas_release"].parcellationVolume = {
+                            "@id": nrrd_resource.id,
+                            "@type": "BrainParcellationDataLayer",
+                        }
+                        atlasrelease_dict["atlas_release"].contribution = contribution
+                        ressources_dict["atlasreleases"].append(
+                            atlasrelease_dict["atlas_release"]
+                        )
+                except FileNotFoundError:
+                    pass
+                try:
+                    if os.path.samefile(volumes["annotation_ccfv3_l23split"], dataset):
                         nrrd_resource.id = forge.format(
                             "identifier", "brainparcellationdatalayer", str(uuid4())
                         )

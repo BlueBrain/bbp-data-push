@@ -716,6 +716,47 @@ def return_atlasrelease(
             )
             exit(1)
 
+    # Atlas Releases ccfv3 layer23 split volume
+    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_ccfv3split":
+        if not new_atlasrelease_hierarchy_path:
+            try:
+                filters = {"name": "Allen Mouse CCF v3 l2-l3 split"}
+                atlasrelease_resource = forge.search(filters, limit=1)[0]
+                atlasrelease_dict["atlas_release"] = atlasrelease_resource
+            except Exception as e:
+                raise Exception(
+                    "Error when searching the BrainAtlasRelease Resource 'Allen Mouse "
+                    "CCF v3 l2-l3 split' in the destination project "
+                    f"'{forge._store.bucket}'. {e}"
+                )
+                exit(1)
+        elif "annotation_ccfv3_l23split" in parcellation_found:
+            description = (
+                "This atlas release uses the brain parcellation of CCFv3 (2017) with "
+                "the isocortex layer 2 and 3 split. The average brain template and the "
+                "ontology is common across CCFv2 and CCFv3."
+            )
+            atlasrelease_resource = Resource(
+                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
+                type=["AtlasRelease", "BrainAtlasRelease"],
+                name="Allen Mouse CCF v3 l2-l3 split",
+                description=description,
+                brainTemplateDataLayer=brainTemplateDataLayer,
+                spatialReferenceSystem=spatialReferenceSystem,
+                subject=subject,
+                releaseDate=releaseDate,
+            )
+            link_to_hierarchy = True
+        if not atlasrelease_resource:
+            raise Exception(
+                "No BrainAtlasRelease 'Allen Mouse CCF v3 l2-l3 split  resource found "
+                f"in the destination project '{forge._store.bucket}'. Please provide "
+                "the argument --new-atlasrelease-hierarchy-path and the right "
+                "parcellation volume to first generate and push a new atlas release "
+                "resource into your project."
+            )
+            exit(1)
+
     # Old Atlas Releases ccfv2 and ccfv3
     elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_ccfv2v3":
         try:
