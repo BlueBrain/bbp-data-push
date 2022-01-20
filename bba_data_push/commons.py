@@ -7,7 +7,7 @@ import jwt
 from uuid import uuid4
 from datetime import datetime
 from kgforge.core import Resource
-from kgforge.core.commons.exceptions import RegistrationError
+from kgforge.core.commons.exceptions import RegistrationError, RetrievalError
 
 
 # Simplify it ? resolve automatically the voxel_type ?
@@ -321,6 +321,8 @@ def return_contribution(forge):
             "correspond to an agent registered in the 'agents' project in Nexus."
         )
         try:
+            # filters = {"name": "user_name"}
+            # user_resource = forge.search(filters, limit=1)
             p = forge.paths("Dataset")
             user_resource = forge.search(p.name == user_name, limit=1)
         except Exception as e:
@@ -368,7 +370,7 @@ def return_contribution(forge):
 
     agent = {"@id": contributor.id, "@type": contributor.type}
     hadRole = {
-        "@id": "BrainAtlasPipelineExecutionRole",
+        "@id": "nsg:BrainAtlasPipelineExecutionRole",
         "label": "Brain Atlas Pipeline Executor role",
     }
     contribution_contributor = Resource(
@@ -392,7 +394,10 @@ def return_contribution(forge):
         )
     if not institution:
         try:
-            filters = {"name": "École Polytechnique Fédérale de Lausanne"}
+            filters = {
+                "type": "Organization",
+                "name": "École Polytechnique Fédérale de Lausanne",
+            }
             institution = forge.search(filters, limit=1)
         except Exception as e:
             raise Exception(
@@ -463,10 +468,11 @@ def return_softwareagent(forge, metadata_dict):
         softwareagent_resource = softwareagent_resources[0]
     else:
         try:
-            p = forge.paths("Dataset")
-            softwareagent_resources = forge.search(
-                p.name == metadata_dict["softwareagent_name"], limit=1
-            )
+            filters = {
+                "type": "SoftwareAgent",
+                "name": f"{metadata_dict['softwareagent_name']}",
+            }
+            softwareagent_resources = forge.search(filters, limit=1)
         except Exception as e:
             raise Exception(
                 "Error when searching the SoftwareAgent Resource in the destination "
@@ -503,14 +509,9 @@ def return_softwareagent(forge, metadata_dict):
 
 def return_activity_payload(
     forge,
-    activity_metadata_path,
+    activity_metadata,
 ):
 
-    try:
-        with open(activity_metadata_path, "r") as f:
-            activity_metadata = json.loads(f.read())
-    except json.decoder.JSONDecodeError as e:
-        raise (f"JSONDecodeError : {activity_metadata_path}.{e}.")
     configuration = (
         "Activity generated using the snakemake rule "
         f"'{activity_metadata['rule_name']}'."
@@ -521,6 +522,8 @@ def return_activity_payload(
     try:
         activity_resource = forge.retrieve(activity_metadata["activity_id"])
     except RegistrationError:
+        pass
+    except RetrievalError:
         pass
     if activity_resource:
         if isinstance(activity_resource, list):
@@ -535,15 +538,15 @@ def return_activity_payload(
 
         try:
             used = []
-            for i in range(0, len(activity_metadata["input_dataset_used"])):
+            for key in activity_metadata["input_dataset_used"]:
                 used_resource = forge.retrieve(
-                    activity_metadata["input_dataset_used"][i]
+                    activity_metadata["input_dataset_used"][key]
                 )
                 if not used_resource:
                     raise Exception(
                         "Could not retrieve the 'input_dataset_used' "
                         "Resource with id "
-                        f"{activity_metadata['input_dataset_used'][i]}."
+                        f"{activity_metadata['input_dataset_used'][key]}."
                     )
                 entity = {"@id": used_resource.id, "@type": used_resource.type}
                 if (
@@ -558,9 +561,11 @@ def return_activity_payload(
                     entity["@type"] = [entity["@type"], "Entity"]
                 used.append(entity)
         except Exception as e:
-            raise Exception(
-                "Error when trying to retrieve the 'input_dataset_used' "
-                f"Resource. {e}."
+            raise Exception(f"Error: {e}.")
+        except RetrievalError as e:
+            raise RetrievalError(
+                f"Error when trying to retrieve the Resources contained in "
+                f" 'input_dataset_used'. {e}."
             )
         softwareSourceCode = softwareagent_resource.softwareSourceCode
         wasAssociatedWith = [
@@ -604,9 +609,10 @@ def return_activity_payload(
 def return_atlasrelease(
     forge,
     config_content,
-    new_atlasrelease_hierarchy_path,
+    atlasrelease_id,
     atlasrelease_dict,
-    parcellation_found,
+    atlasrelease_parcellation,
+    atlasrelease_hierarchy,
     atlas_reference_system_id,
     subject,
 ):
@@ -631,11 +637,12 @@ def return_atlasrelease(
     link_to_hierarchy = False
     atlasrelease_resource = []
     if atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_hybridsplit":
-        if not new_atlasrelease_hierarchy_path:
+        if atlasrelease_id:
             # Atlas release hybrid v2-v3 L2L3 split
             try:
-                filters = {"name": "Allen Mouse CCF v2-v3 hybrid l2-l3 split"}
-                atlasrelease_resource = forge.search(filters, limit=1)[0]
+                # filters = {"name": "Allen Mouse CCF v2-v3 hybrid l2-l3 split"}
+                # atlasrelease_resource = forge.search(filters, limit=1)[0]
+                atlasrelease_resource = forge.retrieve(atlasrelease_id)
                 atlasrelease_dict["atlas_release"] = atlasrelease_resource
             except Exception as e:
                 raise Exception(
@@ -644,7 +651,7 @@ def return_atlasrelease(
                     f"project '{forge._store.bucket}'. {e}"
                 )
                 exit(1)
-        elif "annotation_hybrid_l23split" in parcellation_found:
+        elif atlasrelease_parcellation == "annotation_hybrid_l23split":
             description = (
                 "This atlas release uses the brain parcellation resulting of the "
                 "hybridation between CCFv2 and CCFv3 and integrating the splitting of "
@@ -664,21 +671,21 @@ def return_atlasrelease(
             link_to_hierarchy = True
         if not atlasrelease_resource:
             raise Exception(
-                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 hybrid l2-l3 "
-                "split' resource found in the destination project "
-                f"'{forge._store.bucket}'. Please provide the argument "
-                "--new-atlasrelease-hierarchy-path and the right parcellation volume "
-                "to first generate and push a new atlas release resource into your "
-                "project ."
+                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 hybrid l2-l3 split'"
+                f"in the destination project '{forge._store.bucket}'. Please provide "
+                "the argument --atlasrelease-id and the right parcellation volume to "
+                "first generate and push a new atlas release resource into your "
+                "project."
             )
             exit(1)
 
     # Atlas Releases realigned split volume
     elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_realignedsplit":
-        if not new_atlasrelease_hierarchy_path:
+        if atlasrelease_id:
             try:
-                filters = {"name": "Allen Mouse CCF v2-v3 realigned l2-l3 split"}
-                atlasrelease_resource = forge.search(filters, limit=1)[0]
+                # filters = {"name": "Allen Mouse CCF v2-v3 realigned l2-l3 split"}
+                # atlasrelease_resource = forge.search(filters, limit=1)[0]
+                atlasrelease_resource = forge.retrieve(atlasrelease_id)
                 atlasrelease_dict["atlas_release"] = atlasrelease_resource
             except Exception as e:
                 raise Exception(
@@ -687,7 +694,7 @@ def return_atlasrelease(
                     f"project '{forge._store.bucket}'. {e}"
                 )
                 exit(1)
-        elif "annotation_realigned_l23split" in parcellation_found:
+        elif atlasrelease_parcellation == "annotation_realigned_l23split":
             description = (
                 "This atlas release uses the brain parcellation resulting of the "
                 "realignment of CCFv2 over CCFv3 and integrating the splitting of "
@@ -707,21 +714,21 @@ def return_atlasrelease(
             link_to_hierarchy = True
         if not atlasrelease_resource:
             raise Exception(
-                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 realigned l2-l3 "
-                "split' resource found in the destination project "
-                f"'{forge._store.bucket}'. Please provide the argument "
-                "--new-atlasrelease-hierarchy-path and the right parcellation volume "
-                "to first generate and push a new atlas release resource into your "
+                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 realigned l2-l3 split'"
+                f"in the destination project '{forge._store.bucket}'. Please provide "
+                "the argument --atlasrelease-id and the right parcellation volume to "
+                "first generate and push a new atlas release resource into your "
                 "project."
             )
             exit(1)
 
     # Atlas Releases ccfv3 layer23 split volume
     elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_ccfv3split":
-        if not new_atlasrelease_hierarchy_path:
+        if atlasrelease_id:
             try:
-                filters = {"name": "Allen Mouse CCF v3 l2-l3 split"}
-                atlasrelease_resource = forge.search(filters, limit=1)[0]
+                # filters = {"name": "Allen Mouse CCF v3 l2-l3 split"}
+                # atlasrelease_resource = forge.search(filters, limit=1)[0]
+                atlasrelease_resource = forge.retrieve(atlasrelease_id)
                 atlasrelease_dict["atlas_release"] = atlasrelease_resource
             except Exception as e:
                 raise Exception(
@@ -730,7 +737,7 @@ def return_atlasrelease(
                     f"'{forge._store.bucket}'. {e}"
                 )
                 exit(1)
-        elif "annotation_ccfv3_l23split" in parcellation_found:
+        elif atlasrelease_parcellation == "annotation_ccfv3_l23split":
             description = (
                 "This atlas release uses the brain parcellation of CCFv3 (2017) with "
                 "the isocortex layer 2 and 3 split. The average brain template and the "
@@ -751,19 +758,26 @@ def return_atlasrelease(
             raise Exception(
                 "No BrainAtlasRelease 'Allen Mouse CCF v3 l2-l3 split  resource found "
                 f"in the destination project '{forge._store.bucket}'. Please provide "
-                "the argument --new-atlasrelease-hierarchy-path and the right "
-                "parcellation volume to first generate and push a new atlas release "
-                "resource into your project."
+                "the argument --atlasrelease-id and the right parcellation volume to "
+                "first generate and push a new atlas release resource into your "
+                "project."
             )
             exit(1)
-
     # Old Atlas Releases ccfv2 and ccfv3
     elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_ccfv2v3":
         try:
-            filters = {"name": "Allen Mouse CCF v2"}
-            atlasreleasev2_resource = forge.search(filters, limit=1)[0]
-            filters = {"name": "Allen Mouse CCF v3"}
-            atlasreleasev3_resource = forge.search(filters, limit=1)[0]
+            # filters = {"name": "Allen Mouse CCF v2"}
+            # atlasreleasev2_resource = forge.search(filters, limit=1)[0]
+            # filters = {"name": "Allen Mouse CCF v3"}
+            # atlasreleasev3_resource = forge.search(filters, limit=1)[0]
+            atlasreleasev2_resource = forge.retrieve(
+                "https://bbp.epfl.ch/neurosciencegraph/data/"
+                "7f85cd66-d212-4799-bb4c-0732b8534442"
+            )
+            atlasreleasev3_resource = forge.retrieve(
+                "https://bbp.epfl.ch/neurosciencegraph/data/"
+                "e238a1f6-0b30-48df-ac8b-6185efe10a59"
+            )
             atlasrelease_dict["atlas_release"] = [
                 atlasreleasev2_resource,
                 atlasreleasev3_resource,
@@ -834,11 +848,11 @@ def return_atlasrelease(
             atlasrelease_dict["create_new"] = True
 
     # Link the new atlas release to the hierarchy file
-    if new_atlasrelease_hierarchy_path and link_to_hierarchy:
+    if link_to_hierarchy:
         if not atlasrelease_dict["hierarchy"]:
             try:
                 if os.path.samefile(
-                    new_atlasrelease_hierarchy_path,
+                    atlasrelease_hierarchy,
                     config_content["HierarchyJson"]["hierarchy_l23split"],
                 ):
                     pass
@@ -866,37 +880,25 @@ def return_atlasrelease(
                     "@type": "Entity",
                 },
             }
-            file_extension = os.path.splitext(
-                os.path.basename(new_atlasrelease_hierarchy_path)
-            )[1][1:]
+            file_extension = os.path.splitext(os.path.basename(atlasrelease_hierarchy))[
+                1
+            ][1:]
 
             content_type = f"application/{file_extension}"
-            distribution_file = forge.attach(
-                new_atlasrelease_hierarchy_path, content_type
-            )
+            distribution_file = forge.attach(atlasrelease_hierarchy, content_type)
 
             hierarchy_resource = Resource(
                 id=forge.format("identifier", "parcellationontology", str(uuid4())),
                 type=["Entity", "Ontology", "ParcellationOntology"],
-                name="AIBS Mouse CCF Atlas parcellation ontology L2L3 split",
+                label="AIBS Mouse CCF Atlas parcellation ontology L2L3 split",
                 distribution=distribution_file,
                 description=description,
                 derivation=derivation,
                 subject=subject,
             )
 
-            hierarchy_resource.label = hierarchy_resource.name
-            atlasrelease_resource.parcellationOntology = {
-                "@id": hierarchy_resource.id,
-                "@type": ["Entity", "ParcellationOntology", "Ontology"],
-            }
-            atlasrelease_dict["atlas_release"] = atlasrelease_resource
             atlasrelease_dict["hierarchy"] = hierarchy_resource
-        else:
-            atlasrelease_resource.parcellationOntology = {
-                "@id": atlasrelease_dict["hierarchy"].id,
-                "@type": ["Entity", "ParcellationOntology", "Ontology"],
-            }
-            atlasrelease_dict["atlas_release"] = atlasrelease_resource
+
+        atlasrelease_dict["atlas_release"] = atlasrelease_resource
 
     return atlasrelease_dict

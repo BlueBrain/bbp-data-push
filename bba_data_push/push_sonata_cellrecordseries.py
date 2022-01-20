@@ -30,7 +30,7 @@ def create_cell_record_resources(
     voxels_resolution: int,
     config_path,
     provenances: list,
-    activity_metadata_path,
+    provenance_metadata_path,
     verbose,
 ) -> list:
     """
@@ -64,6 +64,16 @@ def create_cell_record_resources(
             "is not found in the dataset configuration file"
         )
         exit(1)
+
+    if provenance_metadata_path:
+        try:
+            with open(provenance_metadata_path, "r") as f:
+                provenance_metadata = json.loads(f.read())
+        except ValueError as error:
+            L.error(f"{error} : {provenance_metadata_path}.")
+            exit(1)
+    else:
+        provenance_metadata = None
 
     # Constructs the Resource properties payloads accordingly to the input atlas cell
     # record datasets
@@ -230,11 +240,9 @@ def create_cell_record_resources(
             )
             exit(1)
 
-        if activity_metadata_path:
+        if provenance_metadata:
             try:
-                activity_resource = return_activity_payload(
-                    forge, activity_metadata_path
-                )
+                activity_resource = return_activity_payload(forge, provenance_metadata)
             except Exception as e:
                 L.error(f"Error: {e}")
                 exit(1)

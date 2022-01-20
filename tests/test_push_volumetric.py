@@ -40,21 +40,23 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
         "derivation": [
             {
                 "@type": "Derivation",
-                "description": "The ccfv3 (2017) has smoother region borders, without "
-                "jaggies. The enveloppe or most regions was used in this volume",
+                "description": (
+                    "The original AIBS ccfv3 (2017) has smoother region borders, "
+                    "without jaggies, compared to the original AIBS ccfv2."
+                ),
                 "entity": {
-                    "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                    "025eef5f-2a9a-4119-b53f-338452c72f2a",
+                    "@id": "brain_parcellation_ccfv3",
                     "@type": "Dataset",
                 },
             },
             {
                 "@type": "Derivation",
-                "description": "The ccfv2 (2011) has a finer granularity than ccfv3 in "
-                "term of leaf nodes, these were imported in this volume",
+                "description": (
+                    "The original AIBS ccfv2 (2011) has a finer granularity than the "
+                    "original AIBS ccfv3 in term of leaf nodes"
+                ),
                 "entity": {
-                    "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                    "7b4b36ad-911c-4758-8686-2bf7943e10fb",
+                    "@id": "brain_parcellation_ccfv2",
                     "@type": "Dataset",
                 },
             },
@@ -215,10 +217,10 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_path,
             provenances=[None],
-            new_atlasrelease_hierarchy_path=None,
+            atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )["datasets"][-1]
     )
@@ -241,10 +243,10 @@ def test_create_volumetric_resources():
         voxel_resolution,
         config_path,
         provenances=provenance,
-        new_atlasrelease_hierarchy_path=None,
+        atlasrelease_id=None,
         input_hierarchy=hierarchy_path,
         link_regions_path=None,
-        activity_metadata_path=None,
+        provenance_metadata_path=None,
         verbose=1,
     )["datasets"]
 
@@ -269,10 +271,10 @@ def test_create_volumetric_resources():
             voxel_resolution,
             wrong_config_key,
             provenances=[provenance],
-            new_atlasrelease_hierarchy_path=None,
+            atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert str(e.value) == "'annotation_hybrid'"
@@ -285,10 +287,10 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_data_emptydata,
             provenances=[provenance],
-            new_atlasrelease_hierarchy_path=None,
+            atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -301,10 +303,10 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_path,
             provenances=[provenance],
-            new_atlasrelease_hierarchy_path=None,
+            atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -317,10 +319,10 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_data_notfound,
             provenances=[provenance],
-            new_atlasrelease_hierarchy_path=None,
+            atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -333,10 +335,10 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_wrongdatatype,
             provenances=[provenance],
-            new_atlasrelease_hierarchy_path=None,
+            atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -349,10 +351,10 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_wrongdatatype,
             provenances=[provenance],
-            new_atlasrelease_hierarchy_path=None,
+            atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -365,10 +367,10 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_corruptedData,
             provenances=[provenance],
-            new_atlasrelease_hierarchy_path=None,
+            atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -381,10 +383,10 @@ def test_create_volumetric_resources():
             voxel_resolution,
             config_path,
             provenances=[wrong_provenance],
-            new_atlasrelease_hierarchy_path=None,
+            atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1

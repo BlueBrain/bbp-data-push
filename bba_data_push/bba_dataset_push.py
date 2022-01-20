@@ -57,10 +57,6 @@ def _push_activity_to_Nexus(resources_dict, forge):
                     "@value": endedAtTime["@value"],
                 }
             )
-            for dataset in resources_dict["datasets"]:
-                dataset.generation["activity"]["endedAtTime"] = resources_dict[
-                    "activity"
-                ].endedAtTime
             L.info("\nUpdating the Activity Resource in Nexus...")
             forge.update(resources_dict["activity"])
         except Exception as e:
@@ -69,10 +65,6 @@ def _push_activity_to_Nexus(resources_dict, forge):
     else:
         try:
             resources_dict["activity"].endedAtTime = endedAtTime
-            for dataset in resources_dict["datasets"]:
-                dataset.generation["activity"]["endedAtTime"] = resources_dict[
-                    "activity"
-                ].endedAtTime
             L.info("\nRegistering the constructed Activity Resource in Nexus...")
             forge.register(
                 resources_dict["activity"], "https://neuroshapes.org/dash/activity"
@@ -178,10 +170,10 @@ def base_ressource(f):
         "dataset. They must follow the form '<module_name>:<anything> <version>'.",
     )(f)
     f = click.option(
-        "--activity-metadata-path",
+        "--provenance-metadata-path",
         type=click.Path(exists=True),
-        help="Optional json file containing metadata to create Activity and "
-        "SoftwareAgent resources.",
+        help="Json file containing metadata for the derivation properties as well as "
+        "the Activity and SoftwareAgent resources.",
     )(f)
     return f
 
@@ -189,16 +181,10 @@ def base_ressource(f):
 @initialize_pusher_cli.command()
 @base_ressource
 @click.option(
-    "--new-atlasrelease-hierarchy-path",
-    type=click.Path(exists=True),
-    help="The path to the json hierarchy file containing an AIBS hierarchy "
-    "structure corresponding to the new Atlas Release payload to push."
-    "In fact, if provided, a new AtlasRelease resource payload will be created as well "
-    "as a ParcellationOntology resource with the input hierarchy file attached. The "
-    "AtlasRelease payload will then be linked to the  ParcellationOntology resource "
-    "created and will itself be referenced by the others resources created from the "
-    "input datasets. Finally the atlas release and the hierarchy file will be pushed "
-    "along the others resources.",
+    "--atlasrelease-id",
+    type=str,
+    help="The @id for the Atlasrelease resource. If empty, the @id will be "
+    "automaticaly generated.",
 )
 @click.option(
     "--hierarchy-path",
@@ -225,10 +211,10 @@ def push_volumetric(
     voxels_resolution,
     config_path,
     provenances,
-    new_atlasrelease_hierarchy_path,
+    atlasrelease_id,
     hierarchy_path,
     link_regions_path,
-    activity_metadata_path,
+    provenance_metadata_path,
 ):
     """Create a VolumetricDataLayer resource payload and push it along with the "
     corresponding volumetric input dataset files into Nexus.\n
@@ -241,13 +227,14 @@ def push_volumetric(
         voxels_resolution,
         config_path,
         provenances,
-        new_atlasrelease_hierarchy_path,
+        atlasrelease_id,
         hierarchy_path,
         link_regions_path,
-        activity_metadata_path,
+        provenance_metadata_path,
         ctx.obj["verbose"],
     )
     if resources_dict["atlasreleases"]:
+        print(resources_dict["atlasreleases"])
         try:
             L.info(
                 "\nRegistering the constructed BrainAtlasRelease resources in Nexus..."
@@ -259,6 +246,7 @@ def push_volumetric(
         except Exception as e:
             L.error(f"Error when registering the resource. {e}")
             exit(1)
+
     if resources_dict["hierarchy"]:
         try:
             L.info("\nRegistering the constructed Parcellation ontology in Nexus...")
@@ -311,7 +299,7 @@ def push_meshes(
     voxels_resolution,
     provenances,
     link_regions_path,
-    activity_metadata_path,
+    provenance_metadata_path,
 ):
     """Create a Mesh resource payload and push it along with the corresponding brain
     .OBJ mesh folder input dataset files into Nexus.\n
@@ -326,7 +314,7 @@ def push_meshes(
         voxels_resolution,
         provenances,
         link_regions_path,
-        activity_metadata_path,
+        provenance_metadata_path,
         ctx.obj["verbose"],
     )
     if resources_dict["atlasreleases"]:
@@ -363,7 +351,7 @@ def push_cellrecords(
     voxels_resolution,
     config_path,
     provenances,
-    activity_metadata_path,
+    provenance_metadata_path,
 ):
     """Create a CellRecordSerie resource payload and push it along with the
     corresponding Sonata hdf5 file input dataset files into Nexus.\n
@@ -376,7 +364,7 @@ def push_cellrecords(
         voxels_resolution,
         config_path,
         provenances,
-        activity_metadata_path,
+        provenance_metadata_path,
         ctx.obj["verbose"],
     )
 
@@ -415,7 +403,7 @@ def push_regionsummary(
     hierarchy_path,
     provenances,
     link_regions_path,
-    activity_metadata_path,
+    provenance_metadata_path,
 ):
     """Create a RegionSummary resource payload and push it along with the corresponding
     brain region metadata json input dataset files into Nexus.\n
@@ -429,6 +417,7 @@ def push_regionsummary(
         hierarchy_path,
         provenances,
         link_regions_path,
+        provenance_metadata_path,
         ctx.obj["verbose"],
     )
 

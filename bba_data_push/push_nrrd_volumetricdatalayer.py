@@ -18,6 +18,7 @@ from uuid import uuid4
 import copy
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
+from kgforge.core.commons.exceptions import RetrievalError
 
 from bba_data_push.commons import (
     get_voxel_type,
@@ -38,10 +39,10 @@ def create_volumetric_resources(
     voxels_resolution: int,
     config_path,
     provenances: list,
-    new_atlasrelease_hierarchy_path,
+    atlasrelease_id,
     input_hierarchy,
     link_regions_path,
-    activity_metadata_path,
+    provenance_metadata_path,
     verbose,
 ) -> list:
     """
@@ -73,50 +74,98 @@ def create_volumetric_resources(
         L.error(f"KeyError: {error} is not found in the dataset configuration file.")
         exit(1)
 
-    # For a new atlas release creation verify that the right parcellation volume and
-    # hierarchy file have been provided
-    hierarchy_found = False
-    parcellation_found = []
-    if new_atlasrelease_hierarchy_path:
+    if provenance_metadata_path:
         try:
-            for hierarchy_dataset in config_content["HierarchyJson"]:
-                if os.path.samefile(
-                    new_atlasrelease_hierarchy_path,
-                    config_content["HierarchyJson"][hierarchy_dataset],
-                ):
-                    hierarchy_found = True
-                    break
-            if not hierarchy_found:
-                L.error(
-                    "Error: The hierarchy file provided with the argument "
-                    "'new-atlasrelease-hierarchy-path' does not correspond to one of "
-                    "the hierarchy files listed in the dataset configuration file."
-                )
-                exit(1)
-            for inputdata in inputpath:
-                if os.path.samefile(volumes["annotation_hybrid_l23split"], inputdata):
-                    parcellation_found.append("annotation_hybrid_l23split")
-                if os.path.samefile(
-                    volumes["annotation_realigned_l23split"], inputdata
-                ):
-                    parcellation_found.append("annotation_realigned_l23split")
-                if os.path.samefile(volumes["annotation_ccfv3_l23split"], inputdata):
-                    parcellation_found.append("annotation_ccfv3_l23split")
-            if not parcellation_found:
-                L.error(
-                    "Error: The argument 'new-atlasrelease-hierarchy-path' has been "
-                    "provided but no parcellation volume corresponding to an atlas "
-                    "Release (aka 'annotation_hybrid_l23split', "
-                    "'annotation_realigned_l23split' or 'annotation_ccfv3_l23split' in "
-                    "the dataset configuration file) has been found among the input "
-                    "datasets."
-                )
-                exit(1)
-        except FileNotFoundError as error:
+            with open(provenance_metadata_path, "r") as f:
+                provenance_metadata = json.loads(f.read())
+        except ValueError as error:
+            L.error(f"{error} : {provenance_metadata_path}.")
+            exit(1)
+    else:
+        provenance_metadata = None
+
+    # Builds a dictionary with the form :
+    # {
+    #     derivation_name1 : { "id" : "{id_value}"
+    #                        "datasets" : [{derivative_dataset}]
+    #                        }
+    #     derivation_name2 : { "id" : "{id_value}"
+    #                        "datasets" : [{derivative_dataset}]
+    #                        }
+    #     }
+    deriv_dict_id = {}
+    if provenance_metadata:
+        try:
+            for dataset in volumes.keys():
+                for key_dataset, val_dataset in provenance_metadata[
+                    "derivations"
+                ].items():
+                    if key_dataset == dataset:
+                        if isinstance(val_dataset, list):
+                            for val in val_dataset:
+                                id_val = forge.format(
+                                    "identifier", "dataset", str(uuid4())
+                                )
+                                if val not in deriv_dict_id.keys():
+                                    deriv_dict_id[val] = {
+                                        "id": f"{id_val}",
+                                        "datasets": [key_dataset],
+                                    }
+                                else:
+                                    deriv_dict_id[val]["datasets"].append(key_dataset)
+                        else:
+                            if val_dataset not in deriv_dict_id.keys():
+                                id_val = forge.format(
+                                    "identifier", "dataset", str(uuid4())
+                                )
+                                deriv_dict_id[val_dataset] = {
+                                    "id": f"{id_val}",
+                                    "datasets": [key_dataset],
+                                }
+                            else:
+                                deriv_dict_id[val_dataset]["datasets"].append(
+                                    key_dataset
+                                )
+        except KeyError as error:
             L.error(
-                f"Error: {error}. The argument 'new-atlasrelease-hierarchy-path' need "
-                "to be provided with the right hierarchy file and right parcellation "
-                "volume that are listed in the dataset configuration file."
+                f"KeyError: {error} is not found in the dataset configuration file."
+            )
+            exit(1)
+
+        try:
+            for dataset in config_content["HierarchyJson"].keys():
+                for key_dataset, val_dataset in provenance_metadata[
+                    "derivations"
+                ].items():
+                    if key_dataset == dataset:
+                        if isinstance(val_dataset, list):
+                            for val in val_dataset:
+                                id_val = forge.format(
+                                    "identifier", "dataset", str(uuid4())
+                                )
+                                if val not in deriv_dict_id.keys():
+                                    deriv_dict_id[val] = {
+                                        "id": f"{id_val}",
+                                        "datasets": [key_dataset],
+                                    }
+                                else:
+                                    deriv_dict_id[val]["datasets"].append(key_dataset)
+                        else:
+                            if val_dataset not in deriv_dict_id.keys():
+                                id_val = forge.format(
+                                    "identifier", "dataset", str(uuid4())
+                                )
+                                deriv_dict_id[val_dataset] = {
+                                    "id": f"{id_val}",
+                                    "datasets": [key_dataset],
+                                }
+                            else:
+                                deriv_dict_id[val_dataset]["datasets"].append(
+                                    key_dataset
+                                )
+        except KeyError as error:
+            L.error(
+                f"KeyError: {error} is not found in the dataset configuration file."
             )
             exit(1)
 
@@ -163,7 +212,7 @@ def create_volumetric_resources(
             contribution, log_info = return_contribution(forge)
             L.info("\n".join(log_info))
         except Exception as e:
-            L.error(f"Error: {e}")
+            L.error(f"{e}")
             exit(1)
 
     # Config constants
@@ -237,24 +286,46 @@ def create_volumetric_resources(
     # )
 
     #  "@type": ["VolumetricDataLayer", "BrainParcellationDataLayer"],
+
+    # derivation_descriptions = {
+    #     "brain_parcellation_ccfv2": (
+    #         "The original AIBS ccfv2 (2011) has a finer granularity than the "
+    #         "original AIBS ccfv3 in term of leaf nodes"
+    #         ),
+    #     "brain_parcellation_ccfv3": (
+    #         "The original AIBS ccfv3 (2017) has smoother region borders, without "
+    #         "jaggies, compared to the original AIBS ccfv2."
+    #         ),
+    #     "annotation_hybrid_l23split": (
+    #         "The separation between layer 2 and layer 3 was performed on the CCF "
+    #         "v2-v3 hybrid volume."
+    #         ),
+    #     "annotation_ccfv3_l23split": (
+    #         "The separation between layer 2 and layer 3 was performed on the "
+    #         "original AIBS ccfv3 volume."
+    #         ),
+    # }
+
     derivation_ccfv2v3 = [
         {
             "@type": "Derivation",
-            "description": "The ccfv3 (2017) has smoother region borders, without "
-            "jaggies. The enveloppe or most regions was used in this volume",
+            "description": (
+                "The original AIBS ccfv3 (2017) has smoother region borders, without "
+                "jaggies, compared to the original AIBS ccfv2."
+            ),
             "entity": {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                "025eef5f-2a9a-4119-b53f-338452c72f2a",
+                "@id": "brain_parcellation_ccfv3",
                 "@type": "Dataset",
             },
         },
         {
             "@type": "Derivation",
-            "description": "The ccfv2 (2011) has a finer granularity than ccfv3 in "
-            "term of leaf nodes, these were imported in this volume",
+            "description": (
+                "The original AIBS ccfv2 (2011) has a finer granularity than the "
+                "original AIBS ccfv3 in term of leaf nodes"
+            ),
             "entity": {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                "7b4b36ad-911c-4758-8686-2bf7943e10fb",
+                "@id": "brain_parcellation_ccfv2",
                 "@type": "Dataset",
             },
         },
@@ -263,51 +334,43 @@ def create_volumetric_resources(
     derivation_hybrid = {
         "@type": "Derivation",
         "entity": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-            "7b2f498d-a20f-4992-8410-d8b44ec72c9a",
+            "@id": "annotation_v2v3_hybrid",
             "@type": "Dataset",
         },
     }
     derivation_hybrid_split = copy.deepcopy(derivation_hybrid)
-    derivation_hybrid_split[
-        "description"
-    ] = "The separation between layer 2 and layer 3 was performed on the source volume."
-    derivation_hybrid_split["entity"][
-        "@id"
-    ] = "https://bbp.epfl.ch/neurosciencegraph/data/"
-    "0b14f764-8f8d-4de9-84fa-a59f3308d64d"
+    derivation_hybrid_split["description"] = (
+        "The separation between layer 2 and layer 3 was performed on the CCF v2-v3 "
+        "hybrid volume."
+    )
+    derivation_hybrid_split["entity"]["@id"] = "annotation_hybrid_l23split"
 
-    derivation_ccfv3 = {
-        "@type": "Derivation",
-        "entity": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-            "025eef5f-2a9a-4119-b53f-338452c72f2a",
-            "@type": "Dataset",
-        },
-    }
-    derivation_ccfv3_split = copy.deepcopy(derivation_hybrid)
-    derivation_ccfv3_split[
-        "description"
-    ] = "The separation between layer 2 and layer 3 was performed on the source volume."
-    derivation_ccfv3_split["entity"][
-        "@id"
-    ] = "https://bbp.epfl.ch/neurosciencegraph/data/"
-    "c4d189a0-67ec-4d5f-87f6-0bc61cf8e579"
+    # derivation_ccfv3 = {
+    #     "@type": "Derivation",
+    #     "entity": {
+    #         "@id": "brain_parcellation_ccfv3",
+    #         "@type": "Dataset",
+    #     },
+    # }
+    # derivation_ccfv3_split = copy.deepcopy(derivation_hybrid)
+    # derivation_ccfv3_split["description"] = (
+    #     "The separation between layer 2 and layer 3 was performed on the original "
+    #     "AIBS ccfv3 volume."
+    # )
+    # derivation_ccfv3_split["entity"]["@id"] = "annotation_ccfv3_l23split"
 
     derivation_realigned = {
         "@type": "Derivation",
         "description": "AIBS volume CCFv2 realigned to the AIBS volume CCFv3",
         "entity": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-            "d318062c-b24e-4eab-830c-37d2b0ec4c00",
+            "@id": "annotation_realigned",
             "@type": "Dataset",
         },
     }
     derivation_correctednissl = {
         "@type": "Derivation",
         "entity": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-            "35cb6642-db10-49e9-8f9c-46be17a9c376",
+            "@id": "nissl_corrected_volume",  # “name_derivation”
             "@type": "Dataset",
         },
     }
@@ -318,6 +381,16 @@ def create_volumetric_resources(
             "@type": "Dataset",
         },
     }
+
+    atlasrelease_ccfv2_id = (
+        "https://bbp.epfl.ch/neurosciencegraph/data/"
+        "dd114f81-ba1f-47b1-8900-e497597f06ac"
+    )
+
+    atlasrelease_ccfv3_id = (
+        "https://bbp.epfl.ch/neurosciencegraph/data/"
+        "831a626a-c0ae-4691-8ce8-cfb7491345d9"
+    )
 
     # Dictionary containing the possible volumetric dataset to push
     refined_inhib = "inhibitory_neuron_densities_preserveprop_ccfv2_correctednissl"
@@ -342,7 +415,7 @@ def create_volumetric_resources(
             f"{volumes['annotation_ccfv3_l23split']}": [
                 "split-isocortex-layer-23",
                 description_ccfv3_split,
-                derivation_ccfv3_split,
+                None,
                 "atlasrelease_ccfv3split",
                 "parcellationId",
             ],
@@ -358,7 +431,7 @@ def create_volumetric_resources(
             f"{volumes['cell_orientations_ccfv3']}": [
                 "orientation-field",
                 description_orientation_ccfv3,
-                derivation_ccfv3_split,
+                None,
                 "atlasrelease_ccfv3",
                 "quaternion",
             ],
@@ -388,7 +461,7 @@ def create_volumetric_resources(
             f"{volumes['placement_hints_ccfv3_l23split']}": [
                 "placement-hints isocortex",
                 description_PH_ccfv3_split,
-                derivation_ccfv3,
+                None,
                 "atlasrelease_ccfv3split",
                 "distance",
             ],
@@ -499,7 +572,8 @@ def create_volumetric_resources(
         "atlasreleases": [],
         "hierarchy": [],
     }
-    atlasrelease_dict = {"atlasrelease_choice": False, "hierarchy": False}
+    atlasrelease_dict = {"atlasrelease_choice": None, "hierarchy": False}
+    atlasrelease_choosen = []
     atlasRelease = {}
     dict_ids = {}
     generation = {}
@@ -516,6 +590,7 @@ def create_volumetric_resources(
         flat_tree = {}
         action_summary_file = False
         link_summary_content = {}
+        different_atlasrelease = False
         for dataset in volumetric_data["cell_densities"]:
             try:
                 if os.path.samefile(filepath, dataset):
@@ -616,8 +691,8 @@ def create_volumetric_resources(
                                             # check if a previous resource is the one
                                             # from which it derives
                                             if os.path.samefile(data_deriv, distrib):
-                                                # Check if the previous resource
-                                                # already an id
+                                                # Check if the previous resource has
+                                                # an id already
                                                 try:
                                                     if ressources_dict["datasets"][
                                                         r
@@ -666,8 +741,8 @@ def create_volumetric_resources(
                                 derivation = volumetric_data["cell_densities"][dataset][
                                     2
                                 ]
-                        dataSampleModality = [
-                            volumetric_data["cell_densities"][dataset][4]
+                        dataSampleModality = volumetric_data["cell_densities"][dataset][
+                            4
                         ]
                         break
                     else:
@@ -714,7 +789,6 @@ def create_volumetric_resources(
                                         volumetric_data["cell_densities"][dataset][2],
                                         tuple,
                                     ):
-
                                         data_deriv = volumetric_data["cell_densities"][
                                             dataset
                                         ][2][0]
@@ -797,9 +871,9 @@ def create_volumetric_resources(
                                     derivation = volumetric_data["cell_densities"][
                                         dataset
                                     ][2]
-                            dataSampleModality = [
-                                volumetric_data["cell_densities"][dataset][4]
-                            ]
+                            dataSampleModality = volumetric_data["cell_densities"][
+                                dataset
+                            ][4]
                             break
                         else:
                             L.error(
@@ -830,9 +904,9 @@ def create_volumetric_resources(
                             atlasrelease_choice = volumetric_data["parcellations"][
                                 dataset
                             ][3]
-                            dataSampleModality = [
-                                volumetric_data["parcellations"][dataset][4]
-                            ]
+                            dataSampleModality = volumetric_data["parcellations"][
+                                dataset
+                            ][4]
                             # this is going ot be the "name" of the resource
                             filename_noext = os.path.splitext(
                                 os.path.basename(filepath)
@@ -870,9 +944,9 @@ def create_volumetric_resources(
                             atlasrelease_choice = volumetric_data["cell_orientations"][
                                 dataset
                             ][3]
-                            dataSampleModality = [
-                                volumetric_data["cell_orientations"][dataset][4]
-                            ]
+                            dataSampleModality = volumetric_data["cell_orientations"][
+                                dataset
+                            ][4]
                             dimension_name = "quaternion"
                             # this is going ot be the "name" of the resource
                             filename_noext = os.path.splitext(
@@ -959,9 +1033,9 @@ def create_volumetric_resources(
                             atlasrelease_choice = volumetric_data["placement_hints"][
                                 dataset
                             ][3]
-                            dataSampleModality = [
-                                volumetric_data["placement_hints"][dataset][4]
-                            ]
+                            dataSampleModality = volumetric_data["placement_hints"][
+                                dataset
+                            ][4]
                             suffixe = "CCFv3 L23 Split"
                             annotation_description = description_ccfv3_split
                             # if (
@@ -1054,9 +1128,9 @@ def create_volumetric_resources(
                             atlasrelease_choice = volumetric_data["volume_mask"][
                                 dataset
                             ][3]
-                            dataSampleModality = [
-                                volumetric_data["volume_mask"][dataset][4]
-                            ]
+                            dataSampleModality = volumetric_data["volume_mask"][
+                                dataset
+                            ][4]
                             # this is going ot be the "name" of the resource
                             filename_noext = os.path.splitext(
                                 os.path.basename(filepath)
@@ -1102,6 +1176,66 @@ def create_volumetric_resources(
             )
             exit(1)
 
+        # Useful variable for derivation and atlasrelease parcellation/ontology linking
+        if isFolder:
+            dataset_name = os.path.basename(directory)
+        else:
+            dataset_name = filename_noext
+
+        # Add Derivation
+        if not derivation:
+            if not isCellDensity:
+                derivation = []
+                for deriv_key, deriv_value in deriv_dict_id.items():
+                    if dataset_name in deriv_value["datasets"]:
+                        deriv = {
+                            "@type": "Derivation",
+                            "entity": {
+                                "@id": deriv_value["id"],
+                                "@type": "Dataset",
+                            },
+                        }
+                        derivation.append(deriv)
+                if len(derivation) == 1:
+                    derivation = derivation[0]
+                if not derivation:
+                    # By default, add datasets 'input_dataset_used' as derivation
+                    try:
+                        for identifiant in provenance_metadata[
+                            "input_dataset_used"
+                        ].values():
+                            # Check that these resources exist and take their @type
+                            # values
+                            # used_resource = forge.retrieve(
+                            #     provenance_metadata["input_dataset_used"][key]
+                            # )
+                            # if not used_resource:
+                            #     raise Exception(
+                            #         "Could not retrieve the 'input_dataset_used' "
+                            #         "Resource with id "
+                            #         f"{provenance_metadata['input_dataset_used'][key]}."
+                            #     )
+                            deriv = {
+                                "@type": "Derivation",
+                                "entity": {
+                                    "@id": identifiant,
+                                    "@type": "Dataset",
+                                },
+                            }
+                            if len(provenance_metadata["input_dataset_used"]) == 1:
+                                derivation = deriv
+                            else:
+                                derivation.append(deriv)
+                    except Exception as error:
+                        L.error(f"Error: {error}.")
+                        exit(1)
+                    except RetrievalError as error:
+                        L.error(
+                            f"Error when trying to retrieve the Resources contained in "
+                            f" 'input_dataset_used'. {error}."
+                        )
+                        exit(1)
+
         if provenances[0]:
             try:
                 prov_description = append_provenance_to_description(
@@ -1127,16 +1261,15 @@ def create_volumetric_resources(
             "sampling_period": default_sampling_period,
             "sampling_time_unit": default_sampling_time_unit,
         }
+
         if atlasrelease_choice == "atlasrelease_ccfv2":
             atlasRelease = {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                "dd114f81-ba1f-47b1-8900-e497597f06ac",
+                "@id": f"{atlasrelease_ccfv2_id}",
                 "@type": ["AtlasRelease", "BrainAtlasRelease"],
             }
         elif atlasrelease_choice == "atlasrelease_ccfv3":
             atlasRelease = {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-                "831a626a-c0ae-4691-8ce8-cfb7491345d9",
+                "@id": f"{atlasrelease_ccfv3_id}",
                 "@type": ["AtlasRelease", "BrainAtlasRelease"],
             }
         # elif atlasrelease_choice == "atlasrelease_ccfv3split":
@@ -1145,18 +1278,55 @@ def create_volumetric_resources(
         #         "5149d239-8b4d-43bb-97b7-8841a12d85c4",
         #         "@type": ["AtlasRelease", "BrainAtlasRelease"],
         #     }
+
+        # For a new atlas release creation verify first that the right parcellation
+        # volume and hierarchy file have been provided
         elif not isinstance(forge._store, DemoStore):
+            # Check that the same atlasrelease is not treated again
             if not atlasrelease_dict["atlasrelease_choice"] or (
-                atlasrelease_choice != atlasrelease_dict["atlasrelease_choice"]
+                atlasrelease_choice not in atlasrelease_choosen
             ):
+                different_atlasrelease = True
+                atlasrelease_choosen.append(atlasrelease_choice)
+                if atlasrelease_choice == "atlasrelease_ccfv2v3":
+                    hierarchy_choice = config_content["HierarchyJson"]["hierarchy"]
+                    atlasrelease_parcellation = "annotation_ccfv3_l23split"
+                elif atlasrelease_choice == "atlasrelease_hybridsplit":
+                    hierarchy_choice = config_content["HierarchyJson"][
+                        "hierarchy_l23split"
+                    ]
+                    atlasrelease_parcellation = "annotation_hybrid_l23split"
+                elif atlasrelease_choice == "atlasrelease_ccfv3split":
+                    hierarchy_choice = config_content["HierarchyJson"][
+                        "hierarchy_l23split"
+                    ]
+                    atlasrelease_parcellation = "annotation_ccfv3_l23split"
+                try:
+                    if os.path.samefile(
+                        hierarchy_choice,
+                        input_hierarchy,
+                    ):
+                        atlasrelease_hierarchy = input_hierarchy
+                except FileNotFoundError as error:
+                    L.error(
+                        f"FileNotFoundError: {error}.  The atlasrelease corresponding "
+                        f"to some of the input datasets is '{atlasrelease_choice}'. "
+                        f"Thus, the hierarchy file '{hierarchy_choice}' and the "
+                        f"parcellation file '{atlasrelease_parcellation}' need to be "
+                        "respectively provided by the arguments '--input-hierarchy' "
+                        "and '--dataset-path'"
+                    )
+                    exit(1)
+
                 atlasrelease_dict["atlasrelease_choice"] = atlasrelease_choice
                 try:
                     atlasrelease_dict = return_atlasrelease(
                         forge,
                         config_content,
-                        new_atlasrelease_hierarchy_path,
+                        atlasrelease_id,
                         atlasrelease_dict,
-                        parcellation_found,
+                        atlasrelease_parcellation,
+                        atlasrelease_hierarchy,
                         atlas_reference_system_id,
                         subject,
                     )
@@ -1166,62 +1336,81 @@ def create_volumetric_resources(
                 except FileNotFoundError as e:
                     L.error(f"FileNotFoundError: {e}")
                     exit(1)
-            # if atlasrelease are ccfv2 and ccfv3
-            if isinstance(atlasrelease_dict["atlas_release"], list):
-                atlasRelease = [
-                    {
-                        "@id": atlasrelease_dict["atlas_release"][0].id,
+                # if atlasrelease are ccfv2 and ccfv3
+                if isinstance(atlasrelease_dict["atlas_release"], list):
+                    atlasRelease = [
+                        {
+                            "@id": atlasrelease_dict["atlas_release"][0].id,
+                            "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                        },
+                        {
+                            "@id": atlasrelease_dict["atlas_release"][1].id,
+                            "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                        },
+                    ]
+                    if atlasrelease_dict["create_new"]:
+                        atlasrelease_dict["atlas_release"][
+                            0
+                        ].contribution = contribution
+                        atlasrelease_dict["atlas_release"][
+                            1
+                        ].contribution = contribution
+                        ressources_dict["atlasreleases"].append(
+                            atlasrelease_dict["atlas_release"][0]
+                        )
+                        ressources_dict["atlasreleases"].append(
+                            atlasrelease_dict["atlas_release"][1]
+                        )
+                else:
+                    atlasRelease = {
+                        "@id": atlasrelease_dict["atlas_release"].id,
                         "@type": ["AtlasRelease", "BrainAtlasRelease"],
-                    },
-                    {
-                        "@id": atlasrelease_dict["atlas_release"][1].id,
-                        "@type": ["AtlasRelease", "BrainAtlasRelease"],
-                    },
-                ]
-                if atlasrelease_dict["create_new"]:
-                    atlasrelease_dict["atlas_release"][0].contribution = contribution
-                    atlasrelease_dict["atlas_release"][1].contribution = contribution
-                    ressources_dict["atlasreleases"].append(
-                        atlasrelease_dict["atlas_release"][0]
-                    )
-                    ressources_dict["atlasreleases"].append(
-                        atlasrelease_dict["atlas_release"][1]
-                    )
-            else:
-                atlasRelease = {
-                    "@id": atlasrelease_dict["atlas_release"].id,
-                    "@type": ["AtlasRelease", "BrainAtlasRelease"],
-                }
+                    }
+                # Annotate ontology id and derivation + link the atlasrelease to the
+                # ontology
+                hierarchy_name = os.path.splitext(
+                    os.path.basename(atlasrelease_hierarchy)
+                )[0]
+                if hierarchy_name in deriv_dict_id.keys():
+                    atlasrelease_dict["hierarchy"].id = deriv_dict_id[hierarchy_name][
+                        "id"
+                    ]
 
-        if activity_metadata_path:
+                hierarchy_deriv = []
+                for deriv_key, deriv_value in deriv_dict_id.items():
+                    if hierarchy_name in deriv_value["datasets"]:
+                        deriv = {
+                            "@type": "Derivation",
+                            "entity": {
+                                "@id": deriv_value["id"],
+                                "@type": "Dataset",
+                            },
+                        }
+                        hierarchy_deriv.append(deriv)
+                if len(hierarchy_deriv) == 1:
+                    hierarchy_deriv = derivation[0]
+
+                atlasrelease_dict["atlas_release"].parcellationOntology = {
+                    "@id": atlasrelease_dict["hierarchy"].id,
+                    "@type": ["Entity", "ParcellationOntology", "Ontology"],
+                }
+                atlasrelease_dict["hierarchy"].contribution = contribution
+                atlasrelease_dict["atlas_release"].derivation = []
+                # No need because Parcellation derivation already include the ontology
+                # atlasrelease_dict["atlas_release"].derivation = [
+                #     atlasrelease_dict["hierarchy"].derivation
+                # ]
+                ressources_dict["hierarchy"].append(atlasrelease_dict["hierarchy"])
+
+        if provenance_metadata:
             try:
-                activity_resource = return_activity_payload(
-                    forge, activity_metadata_path
-                )
+                activity_resource = return_activity_payload(forge, provenance_metadata)
             except Exception as e:
-                L.error(f"Error: {e}")
+                L.error(f"{e}")
                 exit(1)
-            except json.decoder.JSONDecodeError as e:
-                L.error(f"Error: {e}")
-                exit(1)
+
             # if activity has been created and not fetched from Nexus
-            if not activity_resource._store_metadata:
-                # add contributors to Activity payload as Association
-                for contrib in contribution:
-                    agent = contrib.agent
-                    association = {"@type": agent["@type"], "@id": agent["@id"]}
-                    if (
-                        isinstance(association["@type"], list)
-                        and "Agent" not in association["@type"]
-                    ):
-                        association["@type"].append("Agent")
-                    if (
-                        not isinstance(association["@type"], list)
-                        and association["@type"] != "Agent"
-                    ):
-                        association["@type"] = [association["@type"], "Agent"]
-                    activity_resource.wasAssociatedWith.append(association)
-            else:
+            if activity_resource._store_metadata:
                 if hasattr(activity_resource, "startedAtTime"):
                     activity_resource.startedAtTime = forge.from_json(
                         {
@@ -1235,8 +1424,6 @@ def create_volumetric_resources(
                 "activity": {
                     "@id": activity_resource.id,
                     "@type": activity_resource.type,
-                    "startedAtTime": activity_resource.startedAtTime,
-                    "wasAssociatedWith": activity_resource.wasAssociatedWith,
                 },
             }
 
@@ -1272,6 +1459,9 @@ def create_volumetric_resources(
 
         if dataset in dict_ids:
             nrrd_resource.id = dict_ids[dataset]
+        elif dataset_name in deriv_dict_id.keys():
+            nrrd_resource.id = deriv_dict_id[dataset_name]["id"]
+
         if dimension_name:
             nrrd_resource.dimension[0]["name"] = dimension_name
 
@@ -1307,68 +1497,26 @@ def create_volumetric_resources(
                 }
                 link_summary_content.update(region_summary)
 
-        # Link the atlasrelease to its parcellation
+        # Link the atlasrelease to its parcellation and supplement its linked ontology
+        # Resource
         if not isinstance(forge._store, DemoStore):
-            if new_atlasrelease_hierarchy_path:
-                try:
-                    if os.path.samefile(volumes["annotation_hybrid_l23split"], dataset):
-                        nrrd_resource.id = forge.format(
-                            "identifier", "brainparcellationdatalayer", str(uuid4())
-                        )
-                        atlasrelease_dict["atlas_release"].parcellationVolume = {
-                            "@id": nrrd_resource.id,
-                            "@type": [
-                                "Dataset",
-                                "VolumetricDataLayer",
-                                "BrainParcellationDataLayer",
-                            ],
-                        }
-                        atlasrelease_dict["atlas_release"].contribution = contribution
-                        ressources_dict["atlasreleases"].append(
-                            atlasrelease_dict["atlas_release"]
-                        )
-                        atlasrelease_dict["hierarchy"].contribution = contribution
-                        ressources_dict["hierarchy"].append(
-                            atlasrelease_dict["hierarchy"]
-                        )
-                except FileNotFoundError:
-                    pass
-                try:
-                    if os.path.samefile(
-                        volumes["annotation_realigned_l23split"], dataset
-                    ):
-                        nrrd_resource.id = forge.format(
-                            "identifier", "brainparcellationdatalayer", str(uuid4())
-                        )
-                        atlasrelease_dict["atlas_release"].parcellationVolume = {
-                            "@id": nrrd_resource.id,
-                            "@type": "BrainParcellationDataLayer",
-                        }
-                        atlasrelease_dict["atlas_release"].contribution = contribution
-                        ressources_dict["atlasreleases"].append(
-                            atlasrelease_dict["atlas_release"]
-                        )
-                except FileNotFoundError:
-                    pass
-                try:
-                    if os.path.samefile(volumes["annotation_ccfv3_l23split"], dataset):
-                        nrrd_resource.id = forge.format(
-                            "identifier", "brainparcellationdatalayer", str(uuid4())
-                        )
-                        atlasrelease_dict["atlas_release"].parcellationVolume = {
-                            "@id": nrrd_resource.id,
-                            "@type": "BrainParcellationDataLayer",
-                        }
-                        atlasrelease_dict["atlas_release"].contribution = contribution
-                        ressources_dict["atlasreleases"].append(
-                            atlasrelease_dict["atlas_release"]
-                        )
-                except FileNotFoundError:
-                    pass
+            try:
+                if os.path.samefile(volumes[atlasrelease_parcellation], dataset):
+                    atlasrelease_dict["atlas_release"].parcellationVolume = {
+                        "@id": nrrd_resource.id,
+                        "@type": "BrainParcellationDataLayer",
+                    }
+                    atlasrelease_dict["atlas_release"].contribution = contribution
+                    atlasrelease_dict["atlas_release"].derivation.append(derivation)
+            except FileNotFoundError:
+                pass
+
+        if different_atlasrelease:
+            ressources_dict["atlasreleases"].append(atlasrelease_dict["atlas_release"])
 
         ressources_dict["datasets"].append(nrrd_resource)
 
-        # If the input is a folder containing the cell density file to push
+        # If the input is a folder containing several dataset to push
         if isFolder:
             for f in range(1, len(files_list)):  # start at the 2nd file
                 filepath = os.path.join(directory, files_list[f])
@@ -1538,6 +1686,9 @@ def create_volumetric_resources(
                 if derivation:
                     nrrd_resources.derivation = nrrd_resource.derivation
 
+                if dataset_name in deriv_dict_id.keys():
+                    nrrd_resource.id = deriv_dict_id[dataset_name]["id"]
+
                 if generation:
                     nrrd_resources.generation = nrrd_resource.generation
 
@@ -1557,7 +1708,7 @@ def create_volumetric_resources(
                             nrrd_resources, header, config, voxel_type
                         )
                     if f >= 7:
-                        nrrd_resources.dataSampleModality = ["mask"]
+                        nrrd_resources.dataSampleModality = "mask"
                         nrrd_resources.type = [
                             "VolumetricDataLayer",
                             "PlacementHintsDataReport",

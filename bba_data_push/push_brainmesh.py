@@ -34,7 +34,7 @@ def create_mesh_resources(
     voxels_resolution: int,
     provenances: list,
     link_regions_path,
-    activity_metadata_path,
+    provenance_metadata_path,
     verbose,
 ) -> list:
     """
@@ -71,6 +71,16 @@ def create_mesh_resources(
             "found in the dataset configuration file"
         )
         exit(1)
+
+    if provenance_metadata_path:
+        try:
+            with open(provenance_metadata_path, "r") as f:
+                provenance_metadata = json.loads(f.read())
+        except ValueError as error:
+            L.error(f"{error} : {provenance_metadata_path}.")
+            exit(1)
+    else:
+        provenance_metadata = None
 
     # Constants
     module_prov = "parcellationexport"
@@ -124,7 +134,7 @@ def create_mesh_resources(
         "atlasreleases": [],
         "hierarchy": [],
     }
-    atlasrelease_dict = {"atlasrelease_choice": False, "hierarchy": False}
+    atlasrelease_dict = {"atlasrelease_choice": None, "hierarchy": False}
     atlasRelease = {}
     generation = {}
     activity_resource = []
@@ -251,12 +261,14 @@ def create_mesh_resources(
                 L.error(f"Value Error in provenance content: {e}")
                 exit(1)
 
-        if atlasrelease_choice == "atlasrelease_ccfv3split":
-            atlasRelease = {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
-                "5149d239-8b4d-43bb-97b7-8841a12d85c4",
-                "@type": ["AtlasRelease", "BrainAtlasRelease"],
-            }
+        # if atlasrelease_choice == "atlasrelease_ccfv3split":
+        #     atlasRelease = {
+        #         "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
+        #         "5149d239-8b4d-43bb-97b7-8841a12d85c4",
+        #         "@type": ["AtlasRelease", "BrainAtlasRelease"],
+        #     }
+        if link_regions_path:
+            pass
         elif not isinstance(forge._store, DemoStore):
             if not atlasrelease_dict["atlasrelease_choice"] or (
                 atlasrelease_choice != atlasrelease_dict["atlasrelease_choice"]
@@ -305,11 +317,9 @@ def create_mesh_resources(
                     "@type": ["AtlasRelease", "BrainAtlasRelease"],
                 }
 
-        if activity_metadata_path:
+        if provenance_metadata:
             try:
-                activity_resource = return_activity_payload(
-                    forge, activity_metadata_path
-                )
+                activity_resource = return_activity_payload(forge, provenance_metadata)
             except Exception as e:
                 L.error(f"Error: {e}")
                 exit(1)
@@ -380,6 +390,13 @@ def create_mesh_resources(
                     link_summary_content = json.loads(link_summary_file.read())
                 try:
                     new_summary_file = True
+                    atlasrelease_id = link_summary_content[f"{region_id}"][
+                        "atlasRelease"
+                    ]["@id"]
+                    atlasRelease = {
+                        "@id": f"{atlasrelease_id}",
+                        "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                    }
                     if "mesh" not in link_summary_content[f"{region_id}"].keys():
                         link_summary_content[f"{region_id}"].update(mesh_link)
                 except KeyError as error:

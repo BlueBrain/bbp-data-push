@@ -193,7 +193,7 @@ def test_create_cell_record_resources():
             voxel_resolution,
             config_path,
             provenances=[None],
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )["datasets"][-1]
     )
@@ -216,7 +216,7 @@ def test_create_cell_record_resources():
         voxel_resolution,
         config_path,
         provenances=[provenance],
-        activity_metadata_path=None,
+        provenance_metadata_path=None,
         verbose=0,
     )["datasets"]
 
@@ -239,7 +239,7 @@ def test_create_cell_record_resources():
             voxel_resolution,
             wrong_config_key,
             provenances=[provenance],
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert str(e.value) == "'cell_records_sonata'"
@@ -252,7 +252,7 @@ def test_create_cell_record_resources():
             voxel_resolution,
             config_data_corrupted,
             provenances=[provenance],
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -265,7 +265,7 @@ def test_create_cell_record_resources():
             voxel_resolution,
             config_data_wrongdataset,
             provenances=[provenance],
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -278,7 +278,7 @@ def test_create_cell_record_resources():
             voxel_resolution,
             config_data_notfound,
             provenances=[provenance],
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -291,7 +291,7 @@ def test_create_cell_record_resources():
             voxel_resolution,
             config_wrongdatatype,
             provenances=[provenance],
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -304,7 +304,7 @@ def test_create_cell_record_resources():
             voxel_resolution,
             config_data_emptydata,
             provenances=[provenance],
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -317,7 +317,7 @@ def test_create_cell_record_resources():
             voxel_resolution,
             config_path,
             provenances=[wrong_provenance],
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1

@@ -29,7 +29,7 @@ def create_regionsummary_resources(
     input_hierarchy: list,
     provenances: list,
     link_regions_path,
-    activity_metadata_path,
+    provenance_metadata_path,
     verbose,
 ) -> list:
     """
@@ -64,6 +64,16 @@ def create_regionsummary_resources(
             "not found in the dataset configuration file"
         )
         exit(1)
+
+    if provenance_metadata_path:
+        try:
+            with open(provenance_metadata_path, "r") as f:
+                provenance_metadata = json.loads(f.read())
+        except ValueError as error:
+            L.error(f"{error} : {provenance_metadata_path}.")
+            exit(1)
+    else:
+        provenance_metadata = None
 
     # Constants
     ressources_dict = {
@@ -207,11 +217,9 @@ def create_regionsummary_resources(
 
         L.info(f"Creating the RegionSummary payload for region {region_id}...")
 
-        if activity_metadata_path:
+        if provenance_metadata:
             try:
-                activity_resource = return_activity_payload(
-                    forge, activity_metadata_path
-                )
+                activity_resource = return_activity_payload(forge, provenance_metadata)
             except Exception as e:
                 L.error(f"Error: {e}")
                 exit(1)

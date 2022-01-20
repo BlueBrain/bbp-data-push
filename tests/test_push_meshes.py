@@ -135,7 +135,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[None],
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )["datasets"][-1]
     )
@@ -160,7 +160,7 @@ def test_create_mesh_resources():
         voxels_resolution=25,
         provenances=[provenance],
         link_regions_path=None,
-        activity_metadata_path=None,
+        provenance_metadata_path=None,
         verbose=1,
     )["datasets"]
 
@@ -185,7 +185,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert str(e.value) == "'brain_region_meshes_hybrid'"
@@ -200,7 +200,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -215,7 +215,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -230,7 +230,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -245,7 +245,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -260,7 +260,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -275,7 +275,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[provenance],
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -290,7 +290,7 @@ def test_create_mesh_resources():
             voxels_resolution=25,
             provenances=[wrong_provenance],
             link_regions_path=None,
-            activity_metadata_path=None,
+            provenance_metadata_path=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
