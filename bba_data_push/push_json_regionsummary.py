@@ -27,7 +27,6 @@ def create_regionsummary_resources(
     inputpath: list,
     config_path,
     input_hierarchy: list,
-    provenances: list,
     link_regions_path,
     provenance_metadata_path,
     verbose,
@@ -44,7 +43,6 @@ def create_regionsummary_resources(
                       the atlas-pipeline generated datasets.
         input_hierarchy : path to the input hierarchy json file containing input
                           dataset brain regions hierarchy.
-        provenances : string name of the module that generated input datasets.
 
     Returns:
         datasets : list containing as much Resource object as input datasets. Each
@@ -159,45 +157,52 @@ def create_regionsummary_resources(
         region_name = region_infos["name"]
         acronym = region_infos["acronym"]
         color = region_infos["color_hex_triplet"]
-
-        volume = {
-            "total": {
-                "size": metadata_content[region_id]["regionVolume"],
-                "unitCode": "cubic micrometer",
-            },
-            "ratio": metadata_content[region_id]["regionVolumeRatioToWholeBrain"],
-        }
-        layers = metadata_content[region_id]["layers"]
-        adjacentTo = list(
-            map(
-                lambda region: {
-                    "@id": f"mba:{region}",
-                    "ratio": metadata_content[region_id]["adjacentTo"][region],
+        try:
+            volume = {
+                "total": {
+                    "size": metadata_content[region_id]["regionVolume"],
+                    "unitCode": "cubic micrometer",
                 },
-                metadata_content[region_id]["adjacentTo"],
+                "ratio": metadata_content[region_id]["regionVolumeRatioToWholeBrain"],
+            }
+            layers = metadata_content[region_id]["layers"]
+            adjacentTo = list(
+                map(
+                    lambda region: {
+                        "@id": f"mba:{region}",
+                        "ratio": metadata_content[region_id]["adjacentTo"][region],
+                    },
+                    metadata_content[region_id]["adjacentTo"],
+                )
             )
-        )
-        continuousWith = list(
-            map(
-                lambda region: {"@id": f"mba:{region}"},
-                metadata_content[region_id]["continuousWith"],
+            continuousWith = list(
+                map(
+                    lambda region: {"@id": f"mba:{region}"},
+                    metadata_content[region_id]["continuousWith"],
+                )
             )
-        )
+        except KeyError as error:
+            L.error(f"KeyError: {error} not found in the region metadata file")
+            exit(1)
+        try:
+            print(link_summary_content)
+            atlasRelease = {
+                "@id": link_summary_content[region_id]["atlasRelease"]["@id"],
+                "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
+            }
 
-        atlasRelease = {
-            "@id": link_summary_content[region_id]["atlasRelease"]["@id"],
-            "@type": ["AtlasRelease", "BrainAtlasRelease"],
-        }
+            mesh = {
+                "@id": link_summary_content[region_id]["mesh"]["@id"],
+                "@type": ["BrainParcellationMesh", "Mesh", "Dataset"],
+            }
 
-        mesh = {
-            "@id": link_summary_content[region_id]["mesh"]["@id"],
-            "@type": ["BrainParcellationMesh", "Mesh", "Dataset"],
-        }
-
-        mask = {
-            "@id": link_summary_content[region_id]["mask"]["@id"],
-            "@type": ["BrainParcellationMask", "Dataset"],
-        }
+            mask = {
+                "@id": link_summary_content[region_id]["mask"]["@id"],
+                "@type": ["BrainParcellationMask", "Volumetricdatalayer", "Dataset"],
+            }
+        except KeyError as error:
+            L.error(f"KeyError: {error} not found in the link_region_path file")
+            exit(1)
 
         brainLocation = {
             "brainRegion": {"@id": f"mba:{region_id}", "label": region_name},
@@ -223,27 +228,9 @@ def create_regionsummary_resources(
             except Exception as e:
                 L.error(f"Error: {e}")
                 exit(1)
-            except json.decoder.JSONDecodeError as e:
-                L.error(f"Error: {e}")
-                exit(1)
+
             # if activity has been created and not fetched from Nexus
-            if not activity_resource._store_metadata:
-                # add contributors to Activity payload as Association
-                for contrib in contribution:
-                    agent = contrib.agent
-                    association = {"@type": agent["@type"], "@id": agent["@id"]}
-                    if (
-                        isinstance(association["@type"], list)
-                        and "Agent" not in association["@type"]
-                    ):
-                        association["@type"].append("Agent")
-                    if (
-                        not isinstance(association["@type"], list)
-                        and association["@type"] != "Agent"
-                    ):
-                        association["@type"] = [association["@type"], "Agent"]
-                    activity_resource.wasAssociatedWith.append(association)
-            else:
+            if activity_resource._store_metadata:
                 if hasattr(activity_resource, "startedAtTime"):
                     activity_resource.startedAtTime = forge.from_json(
                         {
@@ -257,14 +244,11 @@ def create_regionsummary_resources(
                 "activity": {
                     "@id": activity_resource.id,
                     "@type": activity_resource.type,
-                    "endedAtTime": activity_resource.endedAtTime,
-                    "startedAtTime": activity_resource.startedAtTime,
-                    "wasAssociatedWith": activity_resource.wasAssociatedWith,
                 },
             }
 
         summary_resource = Resource(
-            type="RegionSummary",
+            type=["RegionSummary", "Entity"],
             name=f"{region_name.title()} Summary {annotation_name}",
             description=description,
             brainLocation=brainLocation,

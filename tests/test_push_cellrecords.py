@@ -21,9 +21,7 @@ def test_create_cell_record_resources():
 
     dataset_path = str(Path(TEST_PATH, "tests/tests_data/cell_records_sonata.h5"))
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
-    provenance = (
-        "brainbuilder cells positions-and-orientations:brainbuilder, version 0.15.0"
-    )
+
     voxel_resolution = "25"
 
     # Arguments wrong
@@ -78,8 +76,6 @@ def test_create_cell_record_resources():
             "wrongdataset_push_dataset_config.yaml",
         )
     )
-
-    wrong_provenance = "wrong_provenance"
 
     cellrecords_resource_simple = {
         "type": ["CellRecordSeries", "Dataset"],
@@ -192,7 +188,6 @@ def test_create_cell_record_resources():
             [dataset_path],
             voxel_resolution,
             config_path,
-            provenances=[None],
             provenance_metadata_path=None,
             verbose=0,
         )["datasets"][-1]
@@ -205,9 +200,7 @@ def test_create_cell_record_resources():
     cellrecords_resource_fulloptions = copy.deepcopy(cellrecords_resource_simple)
     cellrecords_resource_fulloptions["description"] = (
         "Sonata .h5 file storing the 3D cell positions and orientations of the Mouse "
-        "ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 µm). Generated "
-        "in the Atlas Pipeline by the module 'brainbuilder cells "
-        "positions-and-orientations' version 0.15.0."
+        "ccfv2-ccfv3 Hybrid annotation volume (spatial resolution of 25 µm)."
     )
 
     result = create_cell_record_resources(
@@ -215,7 +208,6 @@ def test_create_cell_record_resources():
         [dataset_path],
         voxel_resolution,
         config_path,
-        provenances=[provenance],
         provenance_metadata_path=None,
         verbose=0,
     )["datasets"]
@@ -238,7 +230,6 @@ def test_create_cell_record_resources():
             dataset_path,
             voxel_resolution,
             wrong_config_key,
-            provenances=[provenance],
             provenance_metadata_path=None,
             verbose=0,
         )[-1]
@@ -251,7 +242,6 @@ def test_create_cell_record_resources():
             [corrupted_dataset],
             voxel_resolution,
             config_data_corrupted,
-            provenances=[provenance],
             provenance_metadata_path=None,
             verbose=0,
         )[-1]
@@ -264,7 +254,6 @@ def test_create_cell_record_resources():
             [wrong_dataset],
             voxel_resolution,
             config_data_wrongdataset,
-            provenances=[provenance],
             provenance_metadata_path=None,
             verbose=0,
         )[-1]
@@ -277,7 +266,6 @@ def test_create_cell_record_resources():
             [dataset_path],
             voxel_resolution,
             config_data_notfound,
-            provenances=[provenance],
             provenance_metadata_path=None,
             verbose=0,
         )[-1]
@@ -290,7 +278,6 @@ def test_create_cell_record_resources():
             [empty_folder],
             voxel_resolution,
             config_wrongdatatype,
-            provenances=[provenance],
             provenance_metadata_path=None,
             verbose=0,
         )[-1]
@@ -303,20 +290,6 @@ def test_create_cell_record_resources():
             [nocelltype_data],
             voxel_resolution,
             config_data_emptydata,
-            provenances=[provenance],
-            provenance_metadata_path=None,
-            verbose=0,
-        )[-1]
-    assert e.value.code == 1
-
-    # provenance is wrong
-    with pytest.raises(SystemExit) as e:
-        create_cell_record_resources(
-            forge,
-            [wrong_config_key],
-            voxel_resolution,
-            config_path,
-            provenances=[wrong_provenance],
             provenance_metadata_path=None,
             verbose=0,
         )[-1]

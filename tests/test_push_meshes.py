@@ -28,7 +28,6 @@ def test_create_mesh_resources():
         str(Path(TEST_PATH, "tests/tests_data/hierarchy.json")),
         str(Path(TEST_PATH, "tests/tests_data/hierarchy_l23split.json")),
     ]
-    provenance = "parcellationexport:parcellationexport, version 0.0.1"
 
     # Arguments wrong
     empty_folder = str(
@@ -86,7 +85,6 @@ def test_create_mesh_resources():
     wrong_hierarchy = str(
         Path(TEST_PATH, "tests/tests_data/wrong_data/wrongkey_hierarchy.json")
     )
-    wrong_provenance = "wrong_provenance"
 
     mesh_resource_simple = {
         "type": ["BrainParcellationMesh", "Mesh", "Dataset"],
@@ -133,7 +131,6 @@ def test_create_mesh_resources():
             config_path,
             [hierarchy_path[0]],
             voxels_resolution=25,
-            provenances=[None],
             link_regions_path=None,
             provenance_metadata_path=None,
             verbose=0,
@@ -148,8 +145,7 @@ def test_create_mesh_resources():
     mesh_resource_fulloptions["name"] = "Region_1 Mesh Hybrid L23split"
     mesh_resource_fulloptions["description"] = (
         "Brain region mesh - Region_1 (ID: 1) - for the Hybrid annotation volume from "
-        "ccfv2 and ccfv3 at 25 µm with the isocortex layer 2 and 3 split. Generated in "
-        "the Atlas Pipeline by the module 'parcellationexport' version 0.0.1."
+        "ccfv2 and ccfv3 at 25 µm with the isocortex layer 2 and 3 split."
     )
 
     result = create_mesh_resources(
@@ -158,7 +154,6 @@ def test_create_mesh_resources():
         config_path,
         hierarchy_path,
         voxels_resolution=25,
-        provenances=[provenance],
         link_regions_path=None,
         provenance_metadata_path=None,
         verbose=1,
@@ -183,7 +178,6 @@ def test_create_mesh_resources():
             wrong_config_key,
             [hierarchy_path[0]],
             voxels_resolution=25,
-            provenances=[provenance],
             link_regions_path=None,
             provenance_metadata_path=None,
             verbose=0,
@@ -198,7 +192,6 @@ def test_create_mesh_resources():
             config_path,
             [hierarchy_path[0]],
             voxels_resolution=25,
-            provenances=[provenance],
             link_regions_path=None,
             provenance_metadata_path=None,
             verbose=0,
@@ -213,7 +206,6 @@ def test_create_mesh_resources():
             config_wrongdatatype,
             [hierarchy_path[0]],
             voxels_resolution=25,
-            provenances=[provenance],
             link_regions_path=None,
             provenance_metadata_path=None,
             verbose=0,
@@ -228,7 +220,6 @@ def test_create_mesh_resources():
             config_data_notfound,
             [hierarchy_path[0]],
             voxels_resolution=25,
-            provenances=[provenance],
             link_regions_path=None,
             provenance_metadata_path=None,
             verbose=0,
@@ -243,7 +234,6 @@ def test_create_mesh_resources():
             config_data_emptydata,
             [hierarchy_path[0]],
             voxels_resolution=25,
-            provenances=[provenance],
             link_regions_path=None,
             provenance_metadata_path=None,
             verbose=0,
@@ -258,7 +248,6 @@ def test_create_mesh_resources():
             config_data_emptyhierarchy,
             [empty_hierarchy],
             voxels_resolution=25,
-            provenances=[provenance],
             link_regions_path=None,
             provenance_metadata_path=None,
             verbose=0,
@@ -273,22 +262,6 @@ def test_create_mesh_resources():
             config_data_wronghierarchy,
             [wrong_hierarchy],
             voxels_resolution=25,
-            provenances=[provenance],
-            link_regions_path=None,
-            provenance_metadata_path=None,
-            verbose=0,
-        )[-1]
-    assert e.value.code == 1
-
-    # provenance is wrong
-    with pytest.raises(SystemExit) as e:
-        create_mesh_resources(
-            forge,
-            [dataset_path[0]],
-            config_path,
-            [hierarchy_path[0]],
-            voxels_resolution=25,
-            provenances=[wrong_provenance],
             link_regions_path=None,
             provenance_metadata_path=None,
             verbose=0,

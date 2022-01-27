@@ -144,16 +144,6 @@ def test_create_volumetric_resources():
     ]
     hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
-    provenance = [
-        "atlas-building-tools combination combine-annotations:atlas-building-tools, "
-        "version 1.0.0,",
-        "atlas-building-tools region-splitter split-isocortex-layer-23:"
-        "atlas-building-tools, version 1.0.0",
-        "atlas-building-tools cell-densities glia-cell-densities:atlas-building-tools, "
-        "version 1.0.0",
-        "atlas-building-tools cell-densities inhibitory-and-excitatory-neuron-densities"
-        ":atlas-building-tools, version 1.0.0",
-    ]
 
     voxel_resolution = "25"
 
@@ -206,8 +196,6 @@ def test_create_volumetric_resources():
         )
     )
 
-    wrong_provenance = "wrong_provenance"
-
     volumetric_dict_simple = volumetric_dict(cell_density=False, nrrd_props=True)
 
     result = vars(
@@ -216,7 +204,6 @@ def test_create_volumetric_resources():
             [dataset_path[0]],
             voxel_resolution,
             config_path,
-            provenances=[None],
             atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
@@ -232,9 +219,7 @@ def test_create_volumetric_resources():
 
     cell_density_dict_fulloptions["description"] = (
         "Excitatory neuron density volume for the Hybrid annotation volume from ccfv2 "
-        "and ccfv3 at 25 microns. Generated in the Atlas Pipeline by the module "
-        "'atlas-building-tools cell-densities inhibitory-and-excitatory-neuron-"
-        "densities' version 1.0.0."
+        "and ccfv3 at 25 microns."
     )
 
     result = create_volumetric_resources(
@@ -242,7 +227,6 @@ def test_create_volumetric_resources():
         dataset_path,
         voxel_resolution,
         config_path,
-        provenances=provenance,
         atlasrelease_id=None,
         input_hierarchy=hierarchy_path,
         link_regions_path=None,
@@ -270,7 +254,6 @@ def test_create_volumetric_resources():
             [dataset_path[0]],
             voxel_resolution,
             wrong_config_key,
-            provenances=[provenance],
             atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
@@ -286,7 +269,6 @@ def test_create_volumetric_resources():
             [empty_folder],
             voxel_resolution,
             config_data_emptydata,
-            provenances=[provenance],
             atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
@@ -302,7 +284,6 @@ def test_create_volumetric_resources():
             [wrong_dataset_name],
             voxel_resolution,
             config_path,
-            provenances=[provenance],
             atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
@@ -318,7 +299,6 @@ def test_create_volumetric_resources():
             [dataset_path[0]],
             voxel_resolution,
             config_data_notfound,
-            provenances=[provenance],
             atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
@@ -334,7 +314,6 @@ def test_create_volumetric_resources():
             [folder_annotation],
             voxel_resolution,
             config_wrongdatatype,
-            provenances=[provenance],
             atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
@@ -350,7 +329,6 @@ def test_create_volumetric_resources():
             [neuron_density_file],
             voxel_resolution,
             config_wrongdatatype,
-            provenances=[provenance],
             atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,
@@ -366,23 +344,6 @@ def test_create_volumetric_resources():
             [corrupted_data_header],
             voxel_resolution,
             config_corruptedData,
-            provenances=[provenance],
-            atlasrelease_id=None,
-            input_hierarchy=hierarchy_path,
-            link_regions_path=None,
-            provenance_metadata_path=None,
-            verbose=0,
-        )[-1]
-    assert e.value.code == 1
-
-    # provenance is wrong
-    with pytest.raises(SystemExit) as e:
-        create_volumetric_resources(
-            forge,
-            [dataset_path[0]],
-            voxel_resolution,
-            config_path,
-            provenances=[wrong_provenance],
             atlasrelease_id=None,
             input_hierarchy=hierarchy_path,
             link_regions_path=None,

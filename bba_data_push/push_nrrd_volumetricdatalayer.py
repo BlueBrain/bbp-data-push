@@ -24,7 +24,6 @@ from bba_data_push.commons import (
     get_voxel_type,
     get_brain_region_prop,
     return_contribution,
-    append_provenance_to_description,
     return_atlasrelease,
     return_activity_payload,
 )
@@ -38,7 +37,6 @@ def create_volumetric_resources(
     inputpath: list,
     voxels_resolution: int,
     config_path,
-    provenances: list,
     atlasrelease_id,
     input_hierarchy,
     link_regions_path,
@@ -56,7 +54,6 @@ def create_volumetric_resources(
         voxels_resolution : voxel resolution value.
         config_path : configuration yaml file path containing the names and paths of
                       the atlas-pipeline generated datasets.
-        provenances : string name of the module that generated input datasets.
 
     Returns:
         dataset : list containing as much Resource object as input datasets. Each
@@ -104,7 +101,7 @@ def create_volumetric_resources(
                         if isinstance(val_dataset, list):
                             for val in val_dataset:
                                 id_val = forge.format(
-                                    "identifier", "dataset", str(uuid4())
+                                    "identifier", "volumetricdatalayer", str(uuid4())
                                 )
                                 if val not in deriv_dict_id.keys():
                                     deriv_dict_id[val] = {
@@ -116,7 +113,7 @@ def create_volumetric_resources(
                         else:
                             if val_dataset not in deriv_dict_id.keys():
                                 id_val = forge.format(
-                                    "identifier", "dataset", str(uuid4())
+                                    "identifier", "volumetricdatalayer", str(uuid4())
                                 )
                                 deriv_dict_id[val_dataset] = {
                                     "id": f"{id_val}",
@@ -141,7 +138,7 @@ def create_volumetric_resources(
                         if isinstance(val_dataset, list):
                             for val in val_dataset:
                                 id_val = forge.format(
-                                    "identifier", "dataset", str(uuid4())
+                                    "identifier", "ontologies", str(uuid4())
                                 )
                                 if val not in deriv_dict_id.keys():
                                     deriv_dict_id[val] = {
@@ -153,7 +150,7 @@ def create_volumetric_resources(
                         else:
                             if val_dataset not in deriv_dict_id.keys():
                                 id_val = forge.format(
-                                    "identifier", "dataset", str(uuid4())
+                                    "identifier", "ontologies", str(uuid4())
                                 )
                                 deriv_dict_id[val_dataset] = {
                                     "id": f"{id_val}",
@@ -163,6 +160,12 @@ def create_volumetric_resources(
                                 deriv_dict_id[val_dataset]["datasets"].append(
                                     key_dataset
                                 )
+                # Assign to every ontology resource an id with the right format
+                for deriv_dataset, deriv_metadata in deriv_dict_id.items():
+                    if deriv_dataset == dataset:
+                        deriv_metadata["id"] = forge.format(
+                            "identifier", "ontologies", str(uuid4())
+                        )
         except KeyError as error:
             L.error(
                 f"KeyError: {error} is not found in the dataset configuration file."
@@ -176,24 +179,10 @@ def create_volumetric_resources(
         "allen_ccfv3_spatial_reference_system"
     )
 
-    region_id = 997  # default: 997 --> root, whole brain
-    region_name = "root"
-
     # Link to the spatial ref system
     isRegisteredIn = {
         "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
         "@id": atlas_reference_system_id,
-    }
-
-    brainLocation = {
-        "brainRegion": {"@id": f"mba:{region_id}", "label": region_name},
-        "atlasSpatialReferenceSystem": {
-            "@type": [
-                "BrainAtlasSpatialReferenceSystem",
-                "AtlasSpatialReferenceSystem",
-            ],
-            "@id": atlas_reference_system_id,
-        },
     }
 
     subject = {
@@ -397,7 +386,7 @@ def create_volumetric_resources(
     volumetric_data = {
         "parcellations": {
             f"{volumes['annotation_hybrid']}": [
-                "combine-annotations",
+                "BrainParcellationDataLayer",
                 f"{description_hybrid}. The version "
                 "replaces the leaf regions in ccfv3 with the leaf region of "
                 "ccfv2, which have additional levels of hierarchy.",
@@ -406,21 +395,21 @@ def create_volumetric_resources(
                 "parcellationId",
             ],
             f"{volumes['annotation_hybrid_l23split']}": [
-                "split-isocortex-layer-23",
+                "BrainParcellationDataLayer",
                 description_hybrid_split,
                 derivation_hybrid,
                 "atlasrelease_hybridsplit",
                 "parcellationId",
             ],
             f"{volumes['annotation_ccfv3_l23split']}": [
-                "split-isocortex-layer-23",
+                "BrainParcellationDataLayer",
                 description_ccfv3_split,
                 None,
                 "atlasrelease_ccfv3split",
                 "parcellationId",
             ],
             f"{volumes['annotation_realigned_l23split']}": [
-                "split-isocortex-layer-23",
+                "BrainParcellationDataLayer",
                 description_realigned_split,
                 derivation_realigned,
                 "atlasrelease_realignedsplit",
@@ -429,21 +418,21 @@ def create_volumetric_resources(
         },
         "cell_orientations": {
             f"{volumes['cell_orientations_ccfv3']}": [
-                "orientation-field",
+                "CellOrientationField",
                 description_orientation_ccfv3,
                 None,
                 "atlasrelease_ccfv3",
                 "quaternion",
             ],
             f"{volumes['cell_orientations_hybrid']}": [
-                "orientation-field",
+                "CellOrientationField",
                 description_orientation_hybrid,
                 derivation_hybrid_split,
                 "atlasrelease_ccfv2v3",
                 "quaternion",
             ],
             f"{volumes['cell_orientations_realigned']}": [
-                "orientation-field",
+                "CellOrientationField",
                 description_orientation_realigned,
                 derivation_realigned,
                 "atlasrelease_realignedsplit",
@@ -452,13 +441,13 @@ def create_volumetric_resources(
         },
         "placement_hints": {
             # f"{volumes['placement_hints_hybrid_l23split']}": [
-            #     "placement-hints isocortex",
             #     description_PH_hybrid_split,
             #     derivation_hybrid_split,
             #     "atlasrelease_hybridsplit",
             #     "distance",
             # ],
             f"{volumes['placement_hints_ccfv3_l23split']}": [
+                "PlacementHintsDataLayer",
                 "placement-hints isocortex",
                 description_PH_ccfv3_split,
                 None,
@@ -466,7 +455,6 @@ def create_volumetric_resources(
                 "distance",
             ],
             # f"{volumes['placement_hints_realigned_l23split']}": [
-            #     "placement-hints isocortex",
             #     description_PH_realigned_split,
             #     derivation_realigned,
             #     "atlasrelease_realignedsplit",
@@ -475,7 +463,7 @@ def create_volumetric_resources(
         },
         "volume_mask": {
             f"{volumes['brain_region_mask_ccfv3_l23split']}": [
-                "",
+                "BrainParcellationMask",
                 description_ccfv3_split,
                 None,
                 "atlasrelease_ccfv3split",
@@ -484,21 +472,21 @@ def create_volumetric_resources(
         },
         "cell_densities": {
             f"{volumes['cell_densities_hybrid']}": [
-                "glia-cell-densities",
+                "CellDensityDataLayer",
                 description_hybrid,
                 None,
                 "atlasrelease_hybridsplit",
                 "quantity",
             ],
             f"{volumes['neuron_densities_hybrid']}": [
-                "inhibitory-and-excitatory-neuron-densities",
+                "CellDensityDataLayer",
                 description_hybrid,
                 None,
                 "atlasrelease_hybridsplit",
                 "quantity",
             ],
             f"{volumes['overall_cell_density_ccfv2_correctednissl']}": [
-                "",
+                "CellDensityDataLayer",
                 f"{description_ccfv2}. It has been generated using the corrected nissl "
                 "volume",
                 derivation_correctednissl,
@@ -506,7 +494,7 @@ def create_volumetric_resources(
                 "quantity",
             ],
             f"{volumes['cell_densities_ccfv2_correctednissl']}": [
-                "glia-cell-densities",
+                "CellDensityDataLayer",
                 f"{description_ccfv2}. It has been generated using the corrected nissl "
                 "volume",
                 f"{volumes['overall_cell_density_ccfv2_correctednissl']}",
@@ -514,7 +502,7 @@ def create_volumetric_resources(
                 "quantity",
             ],
             f"{volumes['neuron_densities_ccfv2_correctednissl']}": [
-                "inhibitory-and-excitatory-neuron-densities",
+                "CellDensityDataLayer",
                 f"{description_ccfv2}. It has been generated using the corrected nissl "
                 "volume",
                 (
@@ -525,7 +513,7 @@ def create_volumetric_resources(
                 "quantity",
             ],
             f"{volumes['inhibitory_neuron_densities_linprog_ccfv2_correctednissl']}": [
-                "",
+                "CellDensityDataLayer",
                 f"{description_ccfv2}. It has been generated with the corrected nissl "
                 "volume and using the algorithm linprog",
                 (
@@ -536,7 +524,7 @@ def create_volumetric_resources(
                 "quantity",
             ],
             f"{volumes[refined_inhib]}": [
-                "",
+                "CellDensityDataLayer",
                 f"{description_ccfv2}. It has been generated with the corrected nissl "
                 "volume and using the algorithm keep-proportions",
                 (
@@ -547,7 +535,7 @@ def create_volumetric_resources(
                 "quantity",
             ],
             f"{volumes['mtypes_densities_profile_ccfv2_correctednissl']}": [
-                "",
+                "CellDensityDataLayer",
                 f"{description_ccfv2}. It has been generated from density profiles and "
                 "using the corrected nissl volume",
                 None,
@@ -555,7 +543,7 @@ def create_volumetric_resources(
                 "quantity",
             ],
             f"{volumes['mtypes_densities_probability_map_ccfv2_correctednissl']}": [
-                "",
+                "CellDensityDataLayer",
                 f"{description_ccfv2}. It has been generated from a probability mapping"
                 " and using the corrected nissl volume",
                 None,
@@ -591,6 +579,18 @@ def create_volumetric_resources(
         action_summary_file = False
         link_summary_content = {}
         different_atlasrelease = False
+        region_id = 997  # default: 997 --> root, whole brain
+        region_name = "root"
+        brainLocation = {
+            "brainRegion": {"@id": f"mba:{region_id}", "label": f"{region_name}"},
+            "atlasSpatialReferenceSystem": {
+                "@type": [
+                    "BrainAtlasSpatialReferenceSystem",
+                    "AtlasSpatialReferenceSystem",
+                ],
+                "@id": atlas_reference_system_id,
+            },
+        }
         for dataset in volumetric_data["cell_densities"]:
             try:
                 if os.path.samefile(filepath, dataset):
@@ -647,7 +647,6 @@ def create_volumetric_resources(
                             "GliaCellDensity",
                             "CellDensityDataLayer",
                         ]
-                        module_tag = volumetric_data["cell_densities"][dataset][0]
                         # Derivation
                         if volumetric_data["cell_densities"][dataset][2]:
                             if not isinstance(
@@ -701,7 +700,7 @@ def create_volumetric_resources(
                                                 except AttributeError:
                                                     dataset_id = forge.format(
                                                         "identifier",
-                                                        "celldensity",
+                                                        "volumetricdatalayer",
                                                         str(uuid4()),
                                                     )
                                                     ressources_dict["datasets"][
@@ -719,7 +718,7 @@ def create_volumetric_resources(
                                         if not derivation:
                                             dict_ids[f"{data_deriv}"] = forge.format(
                                                 "identifier",
-                                                "celldensity",
+                                                "volumetricdatalayer",
                                                 str(uuid4()),
                                             )
                                             derivation = copy.deepcopy(
@@ -776,7 +775,6 @@ def create_volumetric_resources(
                                 "GliaCellDensity",
                                 "CellDensityDataLayer",
                             ]
-                            module_tag = volumetric_data["cell_densities"][dataset][0]
                             # Derivation
                             if volumetric_data["cell_densities"][dataset][2]:
                                 if not isinstance(
@@ -832,7 +830,7 @@ def create_volumetric_resources(
                                                             r
                                                         ].id = forge.format(
                                                             "identifier",
-                                                            "celldensity",
+                                                            "volumetricdatalayer",
                                                             str(uuid4()),
                                                         )
                                                     derivation = copy.deepcopy(
@@ -849,7 +847,7 @@ def create_volumetric_resources(
                                                     f"{data_deriv}"
                                                 ] = forge.format(
                                                     "identifier",
-                                                    "celldensity",
+                                                    "volumetricdatalayer",
                                                     str(uuid4()),
                                                 )
                                                 derivation = copy.deepcopy(
@@ -899,7 +897,6 @@ def create_volumetric_resources(
                             description = (
                                 f"{volumetric_data['parcellations'][dataset][1]}"
                             )
-                            module_tag = volumetric_data["parcellations"][dataset][0]
                             derivation = volumetric_data["parcellations"][dataset][2]
                             atlasrelease_choice = volumetric_data["parcellations"][
                                 dataset
@@ -935,9 +932,6 @@ def create_volumetric_resources(
                             description = (
                                 f"{volumetric_data['cell_orientations'][dataset][1]}"
                             )
-                            module_tag = volumetric_data["cell_orientations"][dataset][
-                                0
-                            ]
                             derivation = volumetric_data["cell_orientations"][dataset][
                                 2
                             ]
@@ -1029,7 +1023,6 @@ def create_volumetric_resources(
                             )
                             description = volumetric_data["placement_hints"][dataset][1]
                             description = description.replace("XX", layer_number[0])
-                            module_tag = volumetric_data["placement_hints"][dataset][0]
                             atlasrelease_choice = volumetric_data["placement_hints"][
                                 dataset
                             ][3]
@@ -1116,14 +1109,17 @@ def create_volumetric_resources(
                             except ValueError as e:
                                 L.error(f"ValueError: {e}")
                                 exit(1)
-
+                            L.info(
+                                f"Creating the Mask payload for region {region_id}..."
+                            )
                             description = (
                                 f"Binary mask volume - {region_name.title()} (ID: "
                                 f"{region_id}) - for the "
                                 f"{volumetric_data['volume_mask'][dataset][1]}."
                             )
-
-                            module_tag = volumetric_data["volume_mask"][dataset][0]
+                            brainLocation["brainRegion"]["@id"] = f"mba:{region_id}"
+                            brainLocation["brainRegion"]["label"] = region_name
+                            print(brainLocation)
                             derivation = volumetric_data["volume_mask"][dataset][2]
                             atlasrelease_choice = volumetric_data["volume_mask"][
                                 dataset
@@ -1156,6 +1152,8 @@ def create_volumetric_resources(
                                     action_summary_file = "append"
                                 except json.decoder.JSONDecodeError:
                                     action_summary_file = "write"
+                                except FileNotFoundError:
+                                    action_summary_file = "write"
                             break
                         else:
                             L.error(
@@ -1182,44 +1180,59 @@ def create_volumetric_resources(
         else:
             dataset_name = filename_noext
 
-        # Add Derivation
+        # Create the Derivation link
         if not derivation:
             if not isCellDensity:
                 derivation = []
                 for deriv_key, deriv_value in deriv_dict_id.items():
                     if dataset_name in deriv_value["datasets"]:
+                        deriv_type = []
+                        for volumetric_type, content in volumetric_data.items():
+                            try:
+                                deriv_type = content[f"{volumes[deriv_key]}"][0]
+                                if deriv_type not in resource_types:
+                                    # deriv_type = ["Dataset", deriv_type]
+                                    deriv_type = "Dataset"
+                                else:
+                                    deriv_type = "Dataset"
+                            except KeyError:
+                                pass
+                        # if the derivation is not a known volumetric dataset then
+                        # it is an ontology
+                        if not deriv_type:
+                            deriv_type = ["Entity", "ParcellationOntology"]
                         deriv = {
                             "@type": "Derivation",
                             "entity": {
                                 "@id": deriv_value["id"],
-                                "@type": "Dataset",
+                                "@type": deriv_type,
                             },
                         }
                         derivation.append(deriv)
+                # If only 1 item no need for it to be a list
                 if len(derivation) == 1:
                     derivation = derivation[0]
                 if not derivation:
-                    # By default, add datasets 'input_dataset_used' as derivation
+                    # Default derivation for everything = 'input_dataset_used'
                     try:
-                        for identifiant in provenance_metadata[
+                        for metadata in provenance_metadata[
                             "input_dataset_used"
                         ].values():
-                            # Check that these resources exist and take their @type
-                            # values
-                            # used_resource = forge.retrieve(
-                            #     provenance_metadata["input_dataset_used"][key]
-                            # )
-                            # if not used_resource:
-                            #     raise Exception(
-                            #         "Could not retrieve the 'input_dataset_used' "
-                            #         "Resource with id "
-                            #         f"{provenance_metadata['input_dataset_used'][key]}."
-                            #     )
+                            # Use types different from the Resource type
+                            if metadata["type"] == "ParcellationOntology":
+                                deriv_type = ["Entity", metadata["type"]]
+                            else:
+                                deriv_type = metadata["type"]
+                                if deriv_type not in resource_types:
+                                    # deriv_type = ["Dataset", deriv_type]
+                                    deriv_type = "Dataset"
+                                else:
+                                    deriv_type = "Dataset"
                             deriv = {
                                 "@type": "Derivation",
                                 "entity": {
-                                    "@id": identifiant,
-                                    "@type": "Dataset",
+                                    "@id": metadata["id"],
+                                    "@type": deriv_type,
                                 },
                             }
                             if len(provenance_metadata["input_dataset_used"]) == 1:
@@ -1235,16 +1248,6 @@ def create_volumetric_resources(
                             f" 'input_dataset_used'. {error}."
                         )
                         exit(1)
-
-        if provenances[0]:
-            try:
-                prov_description = append_provenance_to_description(
-                    provenances, module_tag
-                )
-                description = f"{description} {prov_description}"
-            except ValueError as e:
-                L.error(f"ValueError in provenance content. {e}")
-                exit(1)
 
         # Parsing the header of the NRRD file
         header = None
@@ -1262,21 +1265,22 @@ def create_volumetric_resources(
             "sampling_time_unit": default_sampling_time_unit,
         }
 
+        # Create and add the AtlasRelease link
         if atlasrelease_choice == "atlasrelease_ccfv2":
             atlasRelease = {
                 "@id": f"{atlasrelease_ccfv2_id}",
-                "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
             }
         elif atlasrelease_choice == "atlasrelease_ccfv3":
             atlasRelease = {
                 "@id": f"{atlasrelease_ccfv3_id}",
-                "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
             }
         # elif atlasrelease_choice == "atlasrelease_ccfv3split":
         #     atlasRelease = {
         #         "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
         #         "5149d239-8b4d-43bb-97b7-8841a12d85c4",
-        #         "@type": ["AtlasRelease", "BrainAtlasRelease"],
+        #         "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
         #     }
 
         # For a new atlas release creation verify first that the right parcellation
@@ -1341,11 +1345,11 @@ def create_volumetric_resources(
                     atlasRelease = [
                         {
                             "@id": atlasrelease_dict["atlas_release"][0].id,
-                            "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                            "@type": atlasrelease_dict["atlas_release"][0].type,
                         },
                         {
                             "@id": atlasrelease_dict["atlas_release"][1].id,
-                            "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                            "@type": atlasrelease_dict["atlas_release"][1].type,
                         },
                     ]
                     if atlasrelease_dict["create_new"]:
@@ -1364,7 +1368,7 @@ def create_volumetric_resources(
                 else:
                     atlasRelease = {
                         "@id": atlasrelease_dict["atlas_release"].id,
-                        "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                        "@type": atlasrelease_dict["atlas_release"].type,
                     }
                 # Annotate ontology id and derivation + link the atlasrelease to the
                 # ontology
@@ -1379,14 +1383,29 @@ def create_volumetric_resources(
                 hierarchy_deriv = []
                 for deriv_key, deriv_value in deriv_dict_id.items():
                     if hierarchy_name in deriv_value["datasets"]:
+                        deriv_type = []
+                        for volumetric_type, content in volumetric_data.items():
+                            try:
+                                deriv_type = content[f"{volumes[deriv_key]}"][0]
+                                if deriv_type not in resource_types:
+                                    deriv_type = ["Dataset", deriv_type]
+                                else:
+                                    deriv_type = "Dataset"
+                            except KeyError:
+                                pass
+                        # if the derivation is not a known volumetric dataset then
+                        # it is an ontology
+                        if not deriv_type:
+                            deriv_type = ["Entity", "ParcellationOntology"]
                         deriv = {
                             "@type": "Derivation",
                             "entity": {
                                 "@id": deriv_value["id"],
-                                "@type": "Dataset",
+                                "@type": deriv_type,
                             },
                         }
                         hierarchy_deriv.append(deriv)
+                # If only 1 item no need for it to be a list
                 if len(hierarchy_deriv) == 1:
                     hierarchy_deriv = derivation[0]
 
@@ -1395,11 +1414,6 @@ def create_volumetric_resources(
                     "@type": ["Entity", "ParcellationOntology", "Ontology"],
                 }
                 atlasrelease_dict["hierarchy"].contribution = contribution
-                atlasrelease_dict["atlas_release"].derivation = []
-                # No need because Parcellation derivation already include the ontology
-                # atlasrelease_dict["atlas_release"].derivation = [
-                #     atlasrelease_dict["hierarchy"].derivation
-                # ]
                 ressources_dict["hierarchy"].append(atlasrelease_dict["hierarchy"])
 
         if provenance_metadata:
@@ -1451,6 +1465,8 @@ def create_volumetric_resources(
             subject=subject,
             contribution=contribution,
         )
+        print("first")
+        print(nrrd_resource.brainLocation)
 
         nrrd_resource = add_nrrd_props(nrrd_resource, header, config, voxel_type)
 
@@ -1470,8 +1486,19 @@ def create_volumetric_resources(
 
         if action_summary_file:
             atlasrelease_link = {"atlasRelease": {"@id": atlasRelease["@id"]}}
-            mask_id = forge.format("identifier", "BrainParcellationMask", str(uuid4()))
-            nrrd_resource.id = mask_id
+            try:
+                if nrrd_resource.id:
+                    mask_id = nrrd_resource.id
+                else:
+                    mask_id = forge.format(
+                        "identifier", "volumetricdatalayer", str(uuid4())
+                    )
+                    nrrd_resource.id = mask_id
+            except AttributeError:
+                mask_id = forge.format(
+                    "identifier", "volumetricdatalayer", str(uuid4())
+                )
+                nrrd_resource.id = mask_id
             mask_link = {"mask": {"@id": mask_id}}
             if action_summary_file == "append":
                 try:
@@ -1480,12 +1507,16 @@ def create_volumetric_resources(
                         not in link_summary_content[f"{region_id}"].keys()
                     ):
                         link_summary_content[f"{region_id}"].update(atlasrelease_link)
+                    else:
+                        link_summary_content[f"{region_id}"] = atlasrelease_link
                     if "mask" not in link_summary_content[f"{region_id}"].keys():
                         link_summary_content[f"{region_id}"].update(mask_link)
+                    else:
+                        link_summary_content[f"{region_id}"] = mask_link
                 except KeyError as error:
                     L.error(
-                        f"KeyError: The region whose region id is '{error}' can "
-                        "not be found in the input link region json file"
+                        f"KeyError: The region whose region id is {error} cannot be "
+                        "found in the input link region json file"
                     )
                     exit(1)
             else:
@@ -1501,17 +1532,19 @@ def create_volumetric_resources(
         # Resource
         if not isinstance(forge._store, DemoStore):
             try:
-                if os.path.samefile(volumes[atlasrelease_parcellation], dataset):
+                if os.path.samefile(volumes[atlasrelease_parcellation], filepath):
                     atlasrelease_dict["atlas_release"].parcellationVolume = {
                         "@id": nrrd_resource.id,
-                        "@type": "BrainParcellationDataLayer",
+                        "@type": ["Dataset", "BrainParcellationDataLayer"],
                     }
                     atlasrelease_dict["atlas_release"].contribution = contribution
-                    atlasrelease_dict["atlas_release"].derivation.append(derivation)
             except FileNotFoundError:
                 pass
 
         if different_atlasrelease:
+            if generation:
+                atlasrelease_dict["hierarchy"].generation = generation
+                atlasrelease_dict["atlas_release"].generation = generation
             ressources_dict["atlasreleases"].append(atlasrelease_dict["atlas_release"])
 
         ressources_dict["datasets"].append(nrrd_resource)
@@ -1602,22 +1635,29 @@ def create_volumetric_resources(
                     except KeyError as e:
                         L.error(f"KeyError: {e}")
                         exit(1)
-
+                    L.info(f"Creating the Mask payload for region {region_id}...")
                     description = (
                         f"Binary mask volume - {region_name.title()} (ID: "
                         f"{region_id}) - for the "
                         f"{volumetric_data['volume_mask'][dataset][1]}."
                     )
                     name = f"{region_name.title()} Mask"
+                    brainLocation["brainRegion"]["@id"] = f"mba:{region_id}"
+                    brainLocation["brainRegion"]["label"] = region_name
+                    print("brainLocation")
+                    print(brainLocation)
                     if atlasrelease_choice == "atlasrelease_ccfv3split":
                         name = f"{name} Ccfv2 L23split"
                     if action_summary_file:
                         atlasrelease_link = {
                             "atlasRelease": {"@id": atlasRelease["@id"]}
                         }
-                        mask_id = forge.format(
-                            "identifier", "BrainParcellationMask", str(uuid4())
-                        )
+                        if dataset_name in deriv_dict_id.keys():
+                            mask_id = deriv_dict_id[dataset_name]["id"]
+                        else:
+                            mask_id = forge.format(
+                                "identifier", "volumetricdatalayer", str(uuid4())
+                            )
                         mask_link = {"mask": {"@id": mask_id}}
                         if action_summary_file == "append":
                             try:
@@ -1628,6 +1668,10 @@ def create_volumetric_resources(
                                     link_summary_content[f"{region_id}"].update(
                                         atlasrelease_link
                                     )
+                                else:
+                                    link_summary_content[
+                                        f"{region_id}"
+                                    ] = atlasrelease_link
                                 if (
                                     "mask"
                                     not in link_summary_content[f"{region_id}"].keys()
@@ -1635,6 +1679,8 @@ def create_volumetric_resources(
                                     link_summary_content[f"{region_id}"].update(
                                         mask_link
                                     )
+                                else:
+                                    link_summary_content[f"{region_id}"] = mask_link
                             except KeyError as error:
                                 L.error(
                                     "KeyError: The region whose region id is "
@@ -1659,8 +1705,6 @@ def create_volumetric_resources(
                         )
                         link_summary_file.close()
 
-                if provenances[0]:
-                    description = f"{description} {prov_description}"
                 # Use forge.reshape instead ?
                 nrrd_resources = Resource(
                     type=nrrd_resource.type,
@@ -1669,7 +1713,7 @@ def create_volumetric_resources(
                     description=description,
                     contribution=nrrd_resource.contribution,
                     isRegisteredIn=nrrd_resource.isRegisteredIn,
-                    brainLocation=nrrd_resource.brainLocation,
+                    brainLocation=brainLocation,
                     atlasRelease=nrrd_resource.atlasRelease,
                     componentEncoding=nrrd_resource.componentEncoding,
                     fileExtension=nrrd_resource.fileExtension,
@@ -1682,16 +1726,7 @@ def create_volumetric_resources(
                     dataSampleModality=nrrd_resource.dataSampleModality,
                     subject=nrrd_resource.subject,
                 )
-
-                if derivation:
-                    nrrd_resources.derivation = nrrd_resource.derivation
-
-                if dataset_name in deriv_dict_id.keys():
-                    nrrd_resource.id = deriv_dict_id[dataset_name]["id"]
-
-                if generation:
-                    nrrd_resources.generation = nrrd_resource.generation
-
+                print(nrrd_resources.name)
                 if isPH:
                     if 5 < f < 8:
                         try:
@@ -1716,12 +1751,24 @@ def create_volumetric_resources(
                         ]
                         f = len(files_list)
 
-                    if action_summary_file:
-                        nrrd_resources.id = mask_id
+                if derivation:
+                    nrrd_resources.derivation = nrrd_resource.derivation
 
+                if dataset_name in deriv_dict_id.keys():
+                    nrrd_resource.id = deriv_dict_id[dataset_name]["id"]
+
+                if generation:
+                    nrrd_resources.generation = nrrd_resource.generation
+
+                if action_summary_file:
+                    nrrd_resources.id = mask_id
+                print("just before dict")
+                print(nrrd_resources.name)
+                print(nrrd_resources.brainLocation)
                 ressources_dict["datasets"].append(nrrd_resources)
-
+        print(ressources_dict["datasets"][-1])
     ressources_dict["activity"] = activity_resource
+
     return ressources_dict
 
 

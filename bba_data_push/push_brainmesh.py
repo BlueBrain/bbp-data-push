@@ -17,7 +17,6 @@ from bba_data_push.commons import (
     get_brain_region_prop,
     get_hierarchy_file,
     return_contribution,
-    append_provenance_to_description,
     return_atlasrelease,
     return_activity_payload,
 )
@@ -32,7 +31,6 @@ def create_mesh_resources(
     config_path,
     input_hierarchy: list,
     voxels_resolution: int,
-    provenances: list,
     link_regions_path,
     provenance_metadata_path,
     verbose,
@@ -49,7 +47,6 @@ def create_mesh_resources(
                       the atlas-pipeline generated datasets.
         input_hierarchy : path to the input hierarchy json file containing input
                           dataset brain regions hierarchy.
-        provenances : string name of the module that generated input datasets.
 
     Returns:
         datasets : list containing as much Resource object as input datasets. Each
@@ -83,7 +80,6 @@ def create_mesh_resources(
         provenance_metadata = None
 
     # Constants
-    module_prov = "parcellationexport"
     spatial_unit = "µm"
     atlas_reference_system_id = (
         "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -141,7 +137,7 @@ def create_mesh_resources(
     for filepath in inputpath:
         file_found = False
         flat_tree = {}
-        new_summary_file = False
+        # new_summary_file = False
         link_summary_content = {}
         if os.path.isdir(filepath):
             directory = filepath
@@ -251,21 +247,12 @@ def create_mesh_resources(
             f"{annotation_description}."
         )
 
-        if provenances[0]:
-            try:
-                prov_description = append_provenance_to_description(
-                    provenances, module_prov
-                )
-                mesh_description = f"{mesh_description} {prov_description}"
-            except ValueError as e:
-                L.error(f"Value Error in provenance content: {e}")
-                exit(1)
-
+        # Create and add the AtlasRelease link
         # if atlasrelease_choice == "atlasrelease_ccfv3split":
         #     atlasRelease = {
         #         "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
         #         "5149d239-8b4d-43bb-97b7-8841a12d85c4",
-        #         "@type": ["AtlasRelease", "BrainAtlasRelease"],
+        #         "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
         #     }
         if link_regions_path:
             pass
@@ -295,11 +282,11 @@ def create_mesh_resources(
                 atlasRelease = [
                     {
                         "@id": atlasrelease_dict["atlas_release"][0].id,
-                        "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                        "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
                     },
                     {
                         "@id": atlasrelease_dict["atlas_release"][1].id,
-                        "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                        "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
                     },
                 ]
                 if atlasrelease_dict["create_new"]:
@@ -314,7 +301,7 @@ def create_mesh_resources(
             else:
                 atlasRelease = {
                     "@id": atlasrelease_dict["atlas_release"].id,
-                    "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                    "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
                 }
 
         if provenance_metadata:
@@ -323,27 +310,9 @@ def create_mesh_resources(
             except Exception as e:
                 L.error(f"Error: {e}")
                 exit(1)
-            except json.decoder.JSONDecodeError as e:
-                L.error(f"Error: {e}")
-                exit(1)
+
             # if activity has been created and not fetched from Nexus
-            if not activity_resource._store_metadata:
-                # add contributors to Activity payload as Association
-                for contrib in contribution:
-                    agent = contrib.agent
-                    association = {"@type": agent["@type"], "@id": agent["@id"]}
-                    if (
-                        isinstance(association["@type"], list)
-                        and "Agent" not in association["@type"]
-                    ):
-                        association["@type"].append("Agent")
-                    if (
-                        not isinstance(association["@type"], list)
-                        and association["@type"] != "Agent"
-                    ):
-                        association["@type"] = [association["@type"], "Agent"]
-                    activity_resource.wasAssociatedWith.append(association)
-            else:
+            if activity_resource._store_metadata:
                 if hasattr(activity_resource, "startedAtTime"):
                     activity_resource.startedAtTime = forge.from_json(
                         {
@@ -357,9 +326,6 @@ def create_mesh_resources(
                 "activity": {
                     "@id": activity_resource.id,
                     "@type": activity_resource.type,
-                    "endedAtTime": activity_resource.endedAtTime,
-                    "startedAtTime": activity_resource.startedAtTime,
-                    "wasAssociatedWith": activity_resource.wasAssociatedWith,
                 },
             }
 
@@ -381,33 +347,55 @@ def create_mesh_resources(
             mesh_resource.generation = generation
 
         if link_regions_path:
-            mesh_id = forge.format("identifier", "BrainParcellationMesh", str(uuid4()))
+            mesh_id = forge.format("identifier", "brainparcellationmesh", str(uuid4()))
             mesh_resource.id = mesh_id
             mesh_link = {"mesh": {"@id": mesh_id}}
             try:
                 with open(link_regions_path, "r+") as link_summary_file:
                     link_summary_file.seek(0)
                     link_summary_content = json.loads(link_summary_file.read())
-                try:
-                    new_summary_file = True
-                    atlasrelease_id = link_summary_content[f"{region_id}"][
-                        "atlasRelease"
-                    ]["@id"]
-                    atlasRelease = {
+                    # new_summary_file = True
+                    try:
+                        atlasrelease_id = link_summary_content[f"{region_id}"][
+                            "atlasRelease"
+                        ]["@id"]
+                    except KeyError as error:
+                        L.error(
+                            f"{error}. The input link region json file need to "
+                            "contains the atlasResource @id"
+                        )
+                        exit(1)
+                    mesh_resource.atlasRelease = {
                         "@id": f"{atlasrelease_id}",
-                        "@type": ["AtlasRelease", "BrainAtlasRelease"],
+                        "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
                     }
+                try:
                     if "mesh" not in link_summary_content[f"{region_id}"].keys():
                         link_summary_content[f"{region_id}"].update(mesh_link)
+                    else:
+                        link_summary_content[f"{region_id}"]["mesh"] = mesh_link["mesh"]
                 except KeyError as error:
                     L.error(
-                        f"KeyError: The region whose region id is '{error}' can "
-                        "not be found in the input link region json file"
+                        f"KeyError: {error} is missing in  found in the input link "
+                        "region json file"
                     )
                     exit(1)
-            except json.decoder.JSONDecodeError:
-                region_summary = {f"{region_id}": {"mesh": {"@id": mesh_id}}}
-                link_summary_content.update(region_summary)
+            except json.decoder.JSONDecodeError as error:
+                L.error(
+                    f"{error} when opening the input link region json file. it "
+                    "need to be created first with the CLI push-volumetric"
+                )
+                exit(1)
+                # region_summary = {f"{region_id}": {"mesh": {"@id": mesh_id}}}
+                # link_summary_content.update(region_summary)
+            except FileNotFoundError as error:
+                L.error(
+                    f"{error} when opening the input link region json file. it "
+                    "need to be created first with the CLI push-volumetric"
+                )
+                exit(1)
+                # region_summary = {f"{region_id}": {"mesh": {"@id": mesh_id}}}
+                # link_summary_content.update(region_summary)
 
         ressources_dict["datasets"].append(mesh_resource)
 
@@ -446,8 +434,6 @@ def create_mesh_resources(
                 f"Brain region mesh - {region_name.title()} (ID: {region_id}) - for "
                 f"the {annotation_description}."
             )
-            if provenances[0]:
-                mesh_description = f"{mesh_description} {prov_description}"
 
             mesh_resources = Resource(
                 type=mesh_resource.type,
@@ -467,23 +453,25 @@ def create_mesh_resources(
 
             if link_summary_content:
                 mesh_id = forge.format(
-                    "identifier", "BrainParcellationMesh", str(uuid4())
+                    "identifier", "brainparcellationmesh", str(uuid4())
                 )
                 mesh_resources.id = mesh_id
                 mesh_link = {"mesh": {"@id": mesh_id}}
-                if new_summary_file:
-                    try:
-                        if "mesh" not in link_summary_content[f"{region_id}"].keys():
-                            link_summary_content[f"{region_id}"].update(mesh_link)
-                    except KeyError as error:
-                        L.error(
-                            f"KeyError: The region whose region id is '{error}' "
-                            "can not be found in the input link region json file"
-                        )
-                        exit(1)
-                else:
-                    region_summary = {f"{region_id}": {"mesh": {"@id": mesh_id}}}
-                    link_summary_content.update(region_summary)
+                # if new_summary_file:
+                try:
+                    if "mesh" not in link_summary_content[f"{region_id}"].keys():
+                        link_summary_content[f"{region_id}"].update(mesh_link)
+                    else:
+                        link_summary_content[f"{region_id}"]["mesh"] = mesh_link["mesh"]
+                except KeyError as error:
+                    L.error(
+                        f"KeyError: The region whose region id is {error} "
+                        "can not be found in the input link region json file"
+                    )
+                    exit(1)
+                # else:
+                #     region_summary = {f"{region_id}": {"mesh": {"@id": mesh_id}}}
+                #     link_summary_content.update(region_summary)
                 if f == len(files_mesh) - 1:
                     link_summary_file = open(link_regions_path, "w")
                     link_summary_file.write(

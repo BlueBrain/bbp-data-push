@@ -3,7 +3,6 @@ from pathlib import Path
 
 from bba_data_push.commons import (
     get_voxel_type,
-    append_provenance_to_description,
     get_hierarchy_file,
     get_brain_region_prop,
     # return_contribution,
@@ -50,45 +49,6 @@ def test_get_voxel_type():
     with pytest.raises(KeyError) as e:
         get_voxel_type(voxel_type, component_size)
     assert "'wrong_voxel_type'" in str(e.value)
-
-
-def test_append_provenance_to_description():
-
-    provenance = ["module:version 1"]
-    module_tag = "module"
-
-    assert (
-        append_provenance_to_description(provenance, module_tag) == "Generated in the "
-        "Atlas Pipeline by the module 'module' version 1."
-    )
-
-    provenance = ["module:version 1", "module_2:version 0.0.0"]
-    module_tag = "module_2"
-
-    assert (
-        append_provenance_to_description(provenance, module_tag) == "Generated in the "
-        "Atlas Pipeline by the module 'module_2' version 0.0.0."
-    )
-
-    provenance = ["wrong_provenance"]
-    module_tag = "module"
-
-    with pytest.raises(ValueError) as e:
-        append_provenance_to_description(provenance, module_tag)
-    assert (
-        "The provided provenance string argument must be of the form '<module_name>:"
-        "<anything> <version>'." in str(e.value)
-    )
-
-    provenance = ["module:version 1"]
-    module_tag = "wrong_module_tag"
-
-    with pytest.raises(ValueError) as e:
-        append_provenance_to_description(provenance, module_tag)
-    assert (
-        "Input 'provenance' string 'module:version 1' does not contain the right "
-        "module name." in str(e.value)
-    )
 
 
 def test_get_hierarchy_file():

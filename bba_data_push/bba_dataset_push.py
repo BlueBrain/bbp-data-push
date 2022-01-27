@@ -27,7 +27,10 @@ def _push_datasets_to_Nexus(datasets, forge, schema_id):
     L.info(
         "\n----------------------- Resource content ----------------------"
         f"\n{datasets[-1]}"
+        f"\n{datasets[-2]}"
+        f"\n{datasets[-3]}"
     )
+    L.info(f"\n{datasets[0]}")
     try:
         L.info(
             "\n-------------- Registration & Validation Status ---------------"
@@ -162,14 +165,6 @@ def base_ressource(f):
         "containing the paths to the Atlas pipeline generated dataset",
     )(f)
     f = click.option(
-        "--provenances",
-        type=str,
-        multiple=True,
-        default=[None],
-        help="Strings containing the name and version of the module that generated the "
-        "dataset. They must follow the form '<module_name>:<anything> <version>'.",
-    )(f)
-    f = click.option(
         "--provenance-metadata-path",
         type=click.Path(exists=True),
         help="Json file containing metadata for the derivation properties as well as "
@@ -210,7 +205,6 @@ def push_volumetric(
     dataset_path,
     voxels_resolution,
     config_path,
-    provenances,
     atlasrelease_id,
     hierarchy_path,
     link_regions_path,
@@ -226,7 +220,6 @@ def push_volumetric(
         dataset_path,
         voxels_resolution,
         config_path,
-        provenances,
         atlasrelease_id,
         hierarchy_path,
         link_regions_path,
@@ -234,7 +227,6 @@ def push_volumetric(
         ctx.obj["verbose"],
     )
     if resources_dict["atlasreleases"]:
-        print(resources_dict["atlasreleases"])
         try:
             L.info(
                 "\nRegistering the constructed BrainAtlasRelease resources in Nexus..."
@@ -260,6 +252,10 @@ def push_volumetric(
     if resources_dict["activity"]:
         _push_activity_to_Nexus(resources_dict, ctx.obj["forge"])
 
+    print(resources_dict["datasets"][0].brainLocation)
+    print(resources_dict["datasets"][1].brainLocation)
+    print(resources_dict["datasets"][2].brainLocation)
+    print(resources_dict["datasets"][3].brainLocation)
     if resources_dict["datasets"]:
         _push_datasets_to_Nexus(
             resources_dict["datasets"],
@@ -297,7 +293,6 @@ def push_meshes(
     config_path,
     hierarchy_path,
     voxels_resolution,
-    provenances,
     link_regions_path,
     provenance_metadata_path,
 ):
@@ -312,12 +307,12 @@ def push_meshes(
         config_path,
         hierarchy_path,
         voxels_resolution,
-        provenances,
         link_regions_path,
         provenance_metadata_path,
         ctx.obj["verbose"],
     )
     if resources_dict["atlasreleases"]:
+        print(resources_dict["atlasreleases"][-1])
         try:
             L.info(
                 "\nRegistering the constructed BrainAtlasRelease resources in Nexus..."
@@ -350,7 +345,6 @@ def push_cellrecords(
     dataset_path,
     voxels_resolution,
     config_path,
-    provenances,
     provenance_metadata_path,
 ):
     """Create a CellRecordSerie resource payload and push it along with the
@@ -363,7 +357,6 @@ def push_cellrecords(
         dataset_path,
         voxels_resolution,
         config_path,
-        provenances,
         provenance_metadata_path,
         ctx.obj["verbose"],
     )
@@ -401,7 +394,6 @@ def push_regionsummary(
     dataset_path,
     config_path,
     hierarchy_path,
-    provenances,
     link_regions_path,
     provenance_metadata_path,
 ):
@@ -415,7 +407,6 @@ def push_regionsummary(
         dataset_path,
         config_path,
         hierarchy_path,
-        provenances,
         link_regions_path,
         provenance_metadata_path,
         ctx.obj["verbose"],

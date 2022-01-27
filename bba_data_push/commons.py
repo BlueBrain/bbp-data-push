@@ -59,45 +59,47 @@ def get_voxel_type(voxel_type, component_size: int):
             raise KeyError(f"{e}. The voxel type {voxel_type} is not correct.")
 
 
-def append_provenance_to_description(provenances: list, module_tag: str) -> str:
-    """
-    Check if the input provenance is coherent with the module_tag. If no error is
-    raised, construct and return a description string displaying the Atlas pipeline
-    module used and the version found in 'provenances'.
+# No more used
+# def append_provenance_to_description(provenances: list, module_tag: str) -> str:
+#     """
+#     Check if the input provenance is coherent with the module_tag. If no error is
+#     raised, construct and return a description string displaying the Atlas pipeline
+#     module used and the version found in 'provenances'.
 
-    Parameters:
-        provenances : input string containing the Atlas pipeline module used and its
-                      version.
-        module_tag : string flag indicating which Atlas pipeline module should be used.
+#     Parameters:
+#         provenances : input string containing the Atlas pipeline module used and its
+#                       version.
+#         module_tag : string flag indicating which Atlas pipeline module should be
+#                      used.
 
-    Returns:
-        prov_description : description string displaying the module and the version
-    corresponding to the input 'provenances' tag.
-    """
-    module_found = False
-    for provenance in provenances:
-        try:
-            module, module_version = provenance.split(":", 1)
-            app, version = module_version.split("version ", 1)
-            # if version[-1] == ",":
-            #     version = version[:-1]
-            if module_tag in module:
-                prov_description = (
-                    f"Generated in the Atlas Pipeline by the module '{module}' "
-                    f"version {version}."
-                )
-                module_found = True
-        except ValueError as e:
-            raise ValueError(
-                f"{e}. The provided provenance string argument must be of the "
-                "form '<module_name>:<anything> <version>'."
-            )
-    if not module_found:
-        raise ValueError(
-            f"Input 'provenance' string '{provenance}' does not contain the right "
-            f"module name. The correct module should contain {module_tag} in its name"
-        )
-    return prov_description
+#     Returns:
+#         prov_description : description string displaying the module and the version
+#     corresponding to the input 'provenances' tag.
+#     """
+#     module_found = False
+#     for provenance in provenances:
+#         try:
+#             module, module_version = provenance.split(":", 1)
+#             app, version = module_version.split("version ", 1)
+#             # if version[-1] == ",":
+#             #     version = version[:-1]
+#             if module_tag in module:
+#                 prov_description = (
+#                     f"Generated in the Atlas Pipeline by the module '{module}' "
+#                     f"version {version}."
+#                 )
+#                 module_found = True
+#         except ValueError as e:
+#             raise ValueError(
+#                 f"{e}. The provided provenance string argument must be of the "
+#                 "form '<module_name>:<anything> <version>'."
+#             )
+#     if not module_found:
+#         raise ValueError(
+#             f"Input 'provenance' string '{provenance}' does not contain the right "
+#             f"module name. The correct module should contain {module_tag} in its name"
+#         )
+#     return prov_description
 
 
 def get_brain_region_name_allen(region_id):
@@ -538,27 +540,12 @@ def return_activity_payload(
 
         try:
             used = []
-            for key in activity_metadata["input_dataset_used"]:
-                used_resource = forge.retrieve(
-                    activity_metadata["input_dataset_used"][key]
-                )
-                if not used_resource:
-                    raise Exception(
-                        "Could not retrieve the 'input_dataset_used' "
-                        "Resource with id "
-                        f"{activity_metadata['input_dataset_used'][key]}."
-                    )
-                entity = {"@id": used_resource.id, "@type": used_resource.type}
-                if (
-                    isinstance(entity["@type"], list)
-                    and "Entity" not in entity["@type"]
-                ):
-                    entity["@type"].append("Entity")
-                if (
-                    not isinstance(entity["@type"], list)
-                    and entity["@type"] != "Entity"
-                ):
-                    entity["@type"] = [entity["@type"], "Entity"]
+            for dataset, metadata in activity_metadata["input_dataset_used"].items():
+                if metadata["type"] == "ParcellationOntology":
+                    used_data_type = ["Entity", "ParcellationOntology"]
+                else:
+                    used_data_type = ["Entity", "Dataset", metadata["type"]]
+                entity = {"@id": metadata["id"], "@type": used_data_type}
                 used.append(entity)
         except Exception as e:
             raise Exception(f"Error: {e}.")
@@ -660,7 +647,7 @@ def return_atlasrelease(
             )
             atlasrelease_resource = Resource(
                 id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease"],
+                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
                 name="Allen Mouse CCF v2-v3 hybrid l2-l3 split",
                 description=description,
                 brainTemplateDataLayer=brainTemplateDataLayer,
@@ -703,7 +690,7 @@ def return_atlasrelease(
             )
             atlasrelease_resource = Resource(
                 id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease"],
+                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
                 name="Allen Mouse CCF v2-v3 realigned l2-l3 split",
                 description=description,
                 brainTemplateDataLayer=brainTemplateDataLayer,
@@ -745,7 +732,7 @@ def return_atlasrelease(
             )
             atlasrelease_resource = Resource(
                 id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease"],
+                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
                 name="Allen Mouse CCF v3 l2-l3 split",
                 description=description,
                 brainTemplateDataLayer=brainTemplateDataLayer,
@@ -818,7 +805,7 @@ def return_atlasrelease(
 
             atlasreleasev2_resource = Resource(
                 id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease"],
+                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
                 name=name_ccfv2,
                 description=description_ccfv2,
                 brainTemplateDataLayer=brainTemplateDataLayer,
@@ -831,7 +818,7 @@ def return_atlasrelease(
 
             atlasreleasev3_resource = Resource(
                 id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease"],
+                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
                 name=name_ccfv2.replace("v2", "v3"),
                 description=description_ccfv2.replace("CCFv2 (2011)", "CCFv3 (2017)"),
                 brainTemplateDataLayer=brainTemplateDataLayer,
@@ -851,12 +838,10 @@ def return_atlasrelease(
     if link_to_hierarchy:
         if not atlasrelease_dict["hierarchy"]:
             try:
-                if os.path.samefile(
+                if not os.path.samefile(
                     atlasrelease_hierarchy,
                     config_content["HierarchyJson"]["hierarchy_l23split"],
                 ):
-                    pass
-                else:
                     raise Exception(
                         "Error: The atlas regions hierarchy file provided does not "
                         "correspond to 'hierarchy_l23split' from the dataset "
@@ -888,7 +873,7 @@ def return_atlasrelease(
             distribution_file = forge.attach(atlasrelease_hierarchy, content_type)
 
             hierarchy_resource = Resource(
-                id=forge.format("identifier", "parcellationontology", str(uuid4())),
+                id=forge.format("identifier", "ontologies", str(uuid4())),
                 type=["Entity", "Ontology", "ParcellationOntology"],
                 label="AIBS Mouse CCF Atlas parcellation ontology L2L3 split",
                 distribution=distribution_file,

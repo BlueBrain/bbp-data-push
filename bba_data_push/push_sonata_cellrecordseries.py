@@ -16,7 +16,6 @@ from kgforge.specializations.stores.demo_store import DemoStore
 
 from bba_data_push.commons import (
     return_contribution,
-    append_provenance_to_description,
     return_activity_payload,
 )
 from bba_data_push.logging import create_log_handler
@@ -29,7 +28,6 @@ def create_cell_record_resources(
     inputpath: list,
     voxels_resolution: int,
     config_path,
-    provenances: list,
     provenance_metadata_path,
     verbose,
 ) -> list:
@@ -44,7 +42,6 @@ def create_cell_record_resources(
         voxels_resolution : voxel resolution value.
         config_path : configuration yaml file path containing the names and paths of
                       the atlas-pipeline generated datasets.
-        provenances : string name of the module that generated input datasets.
 
     Returns:
         datasets : list containing as much Resource object as input datasets. Each
@@ -90,7 +87,6 @@ def create_cell_record_resources(
     }
 
     # Constants
-    module_prov = "positions-and-orientations"
     spatial_unit = "µm"
     atlas_reference_system_id = (
         "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -179,15 +175,6 @@ def create_cell_record_resources(
             f"{spatial_unit})."
         )
 
-        if provenances[0]:
-            try:
-                prov_description = append_provenance_to_description(
-                    provenances, module_prov
-                )
-                description = f"{description} {prov_description}"
-            except ValueError as e:
-                L.error(f"Value Error in provenance content. {e}")
-                exit(1)
         try:
             cell_collections = h5py.File(filepath, "r")
         except OSError as e:
