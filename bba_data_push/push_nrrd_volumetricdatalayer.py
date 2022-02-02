@@ -386,13 +386,13 @@ def create_volumetric_resources(
     volumetric_data = {
         "parcellations": {
             f"{volumes['annotation_hybrid']}": [
-                "BrainParcellationDataLayer",
+                "BrainParcellationDataLayer",  # subtype
                 f"{description_hybrid}. The version "
                 "replaces the leaf regions in ccfv3 with the leaf region of "
-                "ccfv2, which have additional levels of hierarchy.",
-                derivation_ccfv2v3,
-                "atlasrelease_ccfv2v3",
-                "parcellationId",
+                "ccfv2, which have additional levels of hierarchy.",  # description
+                derivation_ccfv2v3,  # derivation
+                "atlasrelease_ccfv2v3",  # atlasrelease
+                "parcellationId",  # datasamplemodality
             ],
             f"{volumes['annotation_hybrid_l23split']}": [
                 "BrainParcellationDataLayer",
@@ -448,7 +448,6 @@ def create_volumetric_resources(
             # ],
             f"{volumes['placement_hints_ccfv3_l23split']}": [
                 "PlacementHintsDataLayer",
-                "placement-hints isocortex",
                 description_PH_ccfv3_split,
                 None,
                 "atlasrelease_ccfv3split",
@@ -1117,9 +1116,19 @@ def create_volumetric_resources(
                                 f"{region_id}) - for the "
                                 f"{volumetric_data['volume_mask'][dataset][1]}."
                             )
-                            brainLocation["brainRegion"]["@id"] = f"mba:{region_id}"
-                            brainLocation["brainRegion"]["label"] = region_name
-                            print(brainLocation)
+                            brainLocation = {
+                                "brainRegion": {
+                                    "@id": f"mba:{region_id}",
+                                    "label": region_name,
+                                },
+                                "atlasSpatialReferenceSystem": {
+                                    "@type": [
+                                        "BrainAtlasSpatialReferenceSystem",
+                                        "AtlasSpatialReferenceSystem",
+                                    ],
+                                    "@id": atlas_reference_system_id,
+                                },
+                            }
                             derivation = volumetric_data["volume_mask"][dataset][2]
                             atlasrelease_choice = volumetric_data["volume_mask"][
                                 dataset
@@ -1465,8 +1474,6 @@ def create_volumetric_resources(
             subject=subject,
             contribution=contribution,
         )
-        print("first")
-        print(nrrd_resource.brainLocation)
 
         nrrd_resource = add_nrrd_props(nrrd_resource, header, config, voxel_type)
 
@@ -1581,6 +1588,10 @@ def create_volumetric_resources(
                         name = f"{name} Ccfv2 Corrected Nissl"
 
                 if isPH:
+                    # Do not create specific payload for the json report because it is
+                    # included with the problematic mask
+                    if f >= 8:
+                        break
                     name = f"{name} {suffixe}"
                     if f <= 5:
                         layer_number = re.findall(r"\d+", files_list[f])
@@ -1642,10 +1653,20 @@ def create_volumetric_resources(
                         f"{volumetric_data['volume_mask'][dataset][1]}."
                     )
                     name = f"{region_name.title()} Mask"
-                    brainLocation["brainRegion"]["@id"] = f"mba:{region_id}"
-                    brainLocation["brainRegion"]["label"] = region_name
-                    print("brainLocation")
-                    print(brainLocation)
+                    brainLocation = {
+                        "brainRegion": {
+                            "@id": f"mba:{region_id}",
+                            "label": region_name,
+                        },
+                        "atlasSpatialReferenceSystem": {
+                            "@type": [
+                                "BrainAtlasSpatialReferenceSystem",
+                                "AtlasSpatialReferenceSystem",
+                            ],
+                            "@id": atlas_reference_system_id,
+                        },
+                    }
+
                     if atlasrelease_choice == "atlasrelease_ccfv3split":
                         name = f"{name} Ccfv2 L23split"
                     if action_summary_file:
@@ -1726,7 +1747,7 @@ def create_volumetric_resources(
                     dataSampleModality=nrrd_resource.dataSampleModality,
                     subject=nrrd_resource.subject,
                 )
-                print(nrrd_resources.name)
+
                 if isPH:
                     if 5 < f < 8:
                         try:
@@ -1749,7 +1770,6 @@ def create_volumetric_resources(
                             "PlacementHintsDataReport",
                             "Dataset",
                         ]
-                        f = len(files_list)
 
                 if derivation:
                     nrrd_resources.derivation = nrrd_resource.derivation
@@ -1762,11 +1782,9 @@ def create_volumetric_resources(
 
                 if action_summary_file:
                     nrrd_resources.id = mask_id
-                print("just before dict")
-                print(nrrd_resources.name)
-                print(nrrd_resources.brainLocation)
+
                 ressources_dict["datasets"].append(nrrd_resources)
-        print(ressources_dict["datasets"][-1])
+
     ressources_dict["activity"] = activity_resource
 
     return ressources_dict

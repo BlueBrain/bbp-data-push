@@ -10,7 +10,6 @@ setup(
         "Package creating resource payloads from atlas datasets and push them along "
         "with the corresponding dataset files into Nexus."
     ),
-    download_url="ssh://bbpcode.epfl.ch/code/a/dke/bba_data_integrity_check",
     license="BBP-internal-confidential",
     python_requires=">=3.6.0",
     install_requires=[

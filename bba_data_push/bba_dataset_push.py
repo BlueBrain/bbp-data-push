@@ -27,8 +27,6 @@ def _push_datasets_to_Nexus(datasets, forge, schema_id):
     L.info(
         "\n----------------------- Resource content ----------------------"
         f"\n{datasets[-1]}"
-        f"\n{datasets[-2]}"
-        f"\n{datasets[-3]}"
     )
     L.info(f"\n{datasets[0]}")
     try:
@@ -252,10 +250,6 @@ def push_volumetric(
     if resources_dict["activity"]:
         _push_activity_to_Nexus(resources_dict, ctx.obj["forge"])
 
-    print(resources_dict["datasets"][0].brainLocation)
-    print(resources_dict["datasets"][1].brainLocation)
-    print(resources_dict["datasets"][2].brainLocation)
-    print(resources_dict["datasets"][3].brainLocation)
     if resources_dict["datasets"]:
         _push_datasets_to_Nexus(
             resources_dict["datasets"],

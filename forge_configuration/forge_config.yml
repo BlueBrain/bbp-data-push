@@ -12,8 +12,14 @@ Store:
   searchendpoints:
     sparql:
       endpoint: "https://bluebrain.github.io/nexus/vocabulary/defaultSparqlIndex"
+    elastic:
+      endpoint: "https://bbp.epfl.ch/neurosciencegraph/data/views/aggreg-es/dataset"
+      mapping: "https://bbp.epfl.ch/neurosciencegraph/data/views/es/dataset"
+      default_str_keyword_field: "keyword"
   vocabulary:
-    iri: "https://bluebrain.github.io/nexus/contexts/metadata.json"
+    metadata:
+      iri: "https://bluebrain.github.io/nexus/contexts/metadata.json"
+      local_iri: "https://bluebrainnexus.io/contexts/metadata.json"
     namespace: "https://bluebrain.github.io/nexus/vocabulary/"
     deprecated_property: "https://bluebrain.github.io/nexus/vocabulary/deprecated"
     project_property: "https://bluebrain.github.io/nexus/vocabulary/project"
@@ -37,6 +43,9 @@ Resolvers:
       targets:
         - identifier: agents
           bucket: bbp/agents
+      searchendpoints:
+        sparql:
+          endpoint: "https://bluebrain.github.io/nexus/vocabulary/defaultSparqlIndex"
       result_resource_mapping: https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/configurations/nexus-resolver/agent-to-resource-mapping.hjson
 
 Formatters:
