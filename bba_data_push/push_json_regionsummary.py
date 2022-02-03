@@ -229,15 +229,15 @@ def create_regionsummary_resources(
                 L.error(f"Error: {e}")
                 exit(1)
 
-            # if activity has been created and not fetched from Nexus
-            if activity_resource._store_metadata:
-                if hasattr(activity_resource, "startedAtTime"):
-                    activity_resource.startedAtTime = forge.from_json(
-                        {
-                            "type": activity_resource.startedAtTime.type,
-                            "@value": activity_resource.startedAtTime.value,
-                        }
-                    )
+            # # if activity has been created and not fetched from Nexus
+            # if activity_resource._store_metadata:
+            #     if hasattr(activity_resource, "startedAtTime"):
+            #         activity_resource.startedAtTime = forge.from_json(
+            #             {
+            #                 "type": activity_resource.startedAtTime.type,
+            #                 "@value": activity_resource.startedAtTime.value,
+            #             }
+            #         )
 
             generation = {
                 "@type": "Generation",
