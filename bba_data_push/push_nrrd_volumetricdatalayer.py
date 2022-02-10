@@ -226,18 +226,14 @@ def create_volumetric_resources(
     description_split = "with the isocortex layer 2 and 3 split"
     description_ccfv3_split = f"{description_ccfv3} {description_split}"
     description_hybrid_split = f"{description_hybrid} {description_split}"
-    description_realigned = (
-        "Annotation volume corresponding to the AIBS volume CCFv2 realigned to the "
-        f"AIBS volume CCFv3 at {voxels_resolution} microns"
+
+    description_dirvectors_ccfv3 = (
+        f"3D unit vectors defined over the Original Allen ccfv3 annotation volume "
+        f"(spatial resolution of {voxels_resolution} µm) and representing the neuron "
+        "axone-to-dendrites orientation to voxels from the top regions of the "
+        "Isocortex."
     )
-    # description_realigned_simple = (
-    #     f"Realigned annotation volume from ccfv2 to ccfv3 at {voxels_resolution} "
-    #     "microns"
-    # )
-    description_realigned_split = f"{description_realigned} {description_split}"
-    # description_realigned_split_simple = (
-    #     f"{description_realigned_simple} with the isocortex layer 2 and 3 split"
-    # )
+
     description_orientation = "Quaternions field (w,x,y,z) defined over the"
     description_orientation_end = (
         f"(spatial resolution of {voxels_resolution} µm) and representing the neuron "
@@ -251,10 +247,7 @@ def create_volumetric_resources(
         f"{description_orientation} CCF v2-v3 Hybrid annotation volume "
         f"{description_orientation_end}"
     )
-    description_orientation_realigned = (
-        f"{description_orientation} CCF v2-to-v3 Realigned annotation volume "
-        f"{description_orientation_end}"
-    )
+
     description_PH = (
         "The layers are ordered with respect to depth, which means that the layer "
         "which is the closest from the skull is the first layer (upper layer) and the "
@@ -267,11 +260,6 @@ def create_volumetric_resources(
     # description_PH_hybrid_split = (
     #     "Placement hints (cortical distance of voxels to layer boundaries) of the "
     #     f"Isocortex Layer XX of the {description_hybrid_split}. {description_PH}"
-    # )
-    # description_PH_realigned_split = (
-    #     "Placement hints (cortical distance of voxels to layer boundaries) of the "
-    #     f"Isocortex Layer XX of the {description_realigned_split_simple} with the "
-    #     f"isocortex layer 2 and 3 split. {description_PH}"
     # )
 
     #  "@type": ["VolumetricDataLayer", "BrainParcellationDataLayer"],
@@ -348,14 +336,6 @@ def create_volumetric_resources(
     # )
     # derivation_ccfv3_split["entity"]["@id"] = "annotation_ccfv3_l23split"
 
-    derivation_realigned = {
-        "@type": "Derivation",
-        "description": "AIBS volume CCFv2 realigned to the AIBS volume CCFv3",
-        "entity": {
-            "@id": "annotation_realigned",
-            "@type": "Dataset",
-        },
-    }
     derivation_correctednissl = {
         "@type": "Derivation",
         "entity": {
@@ -408,15 +388,15 @@ def create_volumetric_resources(
                 "atlasrelease_ccfv3split",
                 "parcellationId",
             ],
-            f"{volumes['annotation_realigned_l23split']}": [
-                "BrainParcellationDataLayer",
-                description_realigned_split,
-                derivation_realigned,
-                "atlasrelease_realignedsplit",
-                "parcellationId",
-            ],
         },
         "cell_orientations": {
+            f"{volumes['direction_vectors_isocortex_ccfv3']}": [
+                "CellOrientationField",
+                description_dirvectors_ccfv3,
+                None,
+                "atlasrelease_ccfv3",
+                "eulerAngle",
+            ],
             f"{volumes['cell_orientations_ccfv3']}": [
                 "CellOrientationField",
                 description_orientation_ccfv3,
@@ -429,13 +409,6 @@ def create_volumetric_resources(
                 description_orientation_hybrid,
                 derivation_hybrid_split,
                 "atlasrelease_ccfv2v3",
-                "quaternion",
-            ],
-            f"{volumes['cell_orientations_realigned']}": [
-                "CellOrientationField",
-                description_orientation_realigned,
-                derivation_realigned,
-                "atlasrelease_realignedsplit",
                 "quaternion",
             ],
         },
@@ -452,13 +425,7 @@ def create_volumetric_resources(
                 None,
                 "atlasrelease_ccfv3split",
                 "distance",
-            ],
-            # f"{volumes['placement_hints_realigned_l23split']}": [
-            #     description_PH_realigned_split,
-            #     derivation_realigned,
-            #     "atlasrelease_realignedsplit",
-            #     "distance",
-            # ],
+            ]
         },
         "volume_mask": {
             f"{volumes['brain_region_mask_ccfv3_l23split']}": [
@@ -578,6 +545,7 @@ def create_volumetric_resources(
         action_summary_file = False
         link_summary_content = {}
         different_atlasrelease = False
+        atlasrelease_parcellation = None
         region_id = 997  # default: 997 --> root, whole brain
         region_name = "root"
         brainLocation = {
@@ -940,7 +908,8 @@ def create_volumetric_resources(
                             dataSampleModality = volumetric_data["cell_orientations"][
                                 dataset
                             ][4]
-                            dimension_name = "quaternion"
+                            if dataSampleModality == "quaternion":
+                                dimension_name = "quaternion"
                             # this is going ot be the "name" of the resource
                             filename_noext = os.path.splitext(
                                 os.path.basename(filepath)
@@ -1036,14 +1005,6 @@ def create_volumetric_resources(
                             # ):
                             #     suffixe = "CCF v2-v3 Hybrid L23 Split"
                             #     annotation_description = description_hybrid_split
-                            # elif (
-                            #     dataset
-                            #     == f"{volumes['placement_hints_realigned_l23split']}"
-                            # ):
-                            #     suffixe = "CCF v2-to-v3 Realigned L23 Split"
-                            #     annotation_description = (
-                            #         description_realigned_split_simple
-                            #     )
                             break
                         else:
                             L.error(
@@ -1539,7 +1500,9 @@ def create_volumetric_resources(
         # Resource
         if not isinstance(forge._store, DemoStore):
             try:
-                if os.path.samefile(volumes[atlasrelease_parcellation], filepath):
+                if atlasrelease_parcellation and os.path.samefile(
+                    volumes[atlasrelease_parcellation], filepath
+                ):
                     atlasrelease_dict["atlas_release"].parcellationVolume = {
                         "@id": nrrd_resource.id,
                         "@type": ["Dataset", "BrainParcellationDataLayer"],
