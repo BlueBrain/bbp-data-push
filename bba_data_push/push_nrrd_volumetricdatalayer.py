@@ -18,7 +18,7 @@ from uuid import uuid4
 import copy
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
-from kgforge.core.commons.exceptions import RetrievalError
+# from kgforge.core.commons.exceptions import RetrievalError
 
 from bba_data_push.commons import (
     get_voxel_type,
@@ -1182,42 +1182,42 @@ def create_volumetric_resources(
                 # If only 1 item no need for it to be a list
                 if len(derivation) == 1:
                     derivation = derivation[0]
-                if not derivation:
-                    # Default derivation for everything = 'input_dataset_used'
-                    try:
-                        for metadata in provenance_metadata[
-                            "input_dataset_used"
-                        ].values():
-                            # Use types different from the Resource type
-                            if metadata["type"] == "ParcellationOntology":
-                                deriv_type = ["Entity", metadata["type"]]
-                            else:
-                                deriv_type = metadata["type"]
-                                if deriv_type not in resource_types:
-                                    # deriv_type = ["Dataset", deriv_type]
-                                    deriv_type = "Dataset"
-                                else:
-                                    deriv_type = "Dataset"
-                            deriv = {
-                                "@type": "Derivation",
-                                "entity": {
-                                    "@id": metadata["id"],
-                                    "@type": deriv_type,
-                                },
-                            }
-                            if len(provenance_metadata["input_dataset_used"]) == 1:
-                                derivation = deriv
-                            else:
-                                derivation.append(deriv)
-                    except Exception as error:
-                        L.error(f"Error: {error}.")
-                        exit(1)
-                    except RetrievalError as error:
-                        L.error(
-                            f"Error when trying to retrieve the Resources contained in "
-                            f" 'input_dataset_used'. {error}."
-                        )
-                        exit(1)
+                # if not derivation:
+                #     # Default derivation for everything = 'input_dataset_used'
+                #     try:
+                #         for metadata in provenance_metadata[
+                #             "input_dataset_used"
+                #         ].values():
+                #             # Use types different from the Resource type
+                #             if metadata["type"] == "ParcellationOntology":
+                #                 deriv_type = ["Entity", metadata["type"]]
+                #             else:
+                #                 deriv_type = metadata["type"]
+                #                 if deriv_type not in resource_types:
+                #                     # deriv_type = ["Dataset", deriv_type]
+                #                     deriv_type = "Dataset"
+                #                 else:
+                #                     deriv_type = "Dataset"
+                #             deriv = {
+                #                 "@type": "Derivation",
+                #                 "entity": {
+                #                     "@id": metadata["id"],
+                #                     "@type": deriv_type,
+                #                 },
+                #             }
+                #             if len(provenance_metadata["input_dataset_used"]) == 1:
+                #                 derivation = deriv
+                #             else:
+                #                 derivation.append(deriv)
+                #     except Exception as error:
+                #         L.error(f"Error: {error}.")
+                #         exit(1)
+                #     except RetrievalError as error:
+                #         L.error(
+                #             f"Error when trying to retrieve the Resources contained "
+                #             f"in 'input_dataset_used'. {error}."
+                #         )
+                #         exit(1)
 
         # Parsing the header of the NRRD file
         header = None
