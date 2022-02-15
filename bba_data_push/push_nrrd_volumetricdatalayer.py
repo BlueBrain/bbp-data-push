@@ -321,7 +321,7 @@ def create_volumetric_resources(
                     "CellOrientationField",
                     description_orientation_ccfv3,
                     None,
-                    "atlasrelease_ccfv3",
+                    "atlasrelease_ccfv3split",
                     "quaternion",
                 ],
                 f"{volumes['cell_orientations_hybrid']}": [
@@ -1033,7 +1033,7 @@ def create_volumetric_resources(
                             )[1][1:]
                             filename_noext = f"{region_name.title()} Mask"
                             if atlasrelease_choice == "atlasrelease_ccfv3split":
-                                filename_noext = f"{filename_noext} Ccfv2 L23split"
+                                filename_noext = f"{filename_noext} Ccfv3 L23split"
                             if link_regions_path:
                                 try:
                                     with open(
@@ -1531,7 +1531,7 @@ def create_volumetric_resources(
                     }
 
                     if atlasrelease_choice == "atlasrelease_ccfv3split":
-                        name = f"{name} Ccfv2 L23split"
+                        name = f"{name} Ccfv3 L23split"
                     if action_summary_file:
                         atlasrelease_link = {
                             "atlasRelease": {"@id": atlasRelease["@id"]}
