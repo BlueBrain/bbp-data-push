@@ -483,20 +483,27 @@ def return_softwareagent(forge, metadata_dict):
         if softwareagent_resources:
             softwareagent_resource = softwareagent_resources[0]
         else:
-            softwareSourceCode = {
-                "@type": "SoftwareSourceCode",
-                "codeRepository": metadata_dict["repo_adress"],
-                "programmingLanguage": metadata_dict["langage"],
-            }
-            description = (
-                "Set of processing modules generating data for the Mouse Cell Atlas."
-            )
-            softwareagent_resource = Resource(
-                type=["Agent", "SoftwareAgent"],
-                name=metadata_dict["softwareagent_name"],
-                description=description,
-                softwareSourceCode=softwareSourceCode,
-            )
+            try:
+                softwareSourceCode = {
+                    "@type": "SoftwareSourceCode",
+                    "codeRepository": metadata_dict["repo_adress"],
+                    "programmingLanguage": metadata_dict["language"],
+                }
+                description = (
+                    "Set of processing modules generating data for the Mouse Cell "
+                    "Atlas."
+                )
+                softwareagent_resource = Resource(
+                    type=["Agent", "SoftwareAgent"],
+                    name=metadata_dict["softwareagent_name"],
+                    description=description,
+                    softwareSourceCode=softwareSourceCode,
+                )
+            except KeyError as e:
+                raise KeyError(
+                    f"KeyError : {e} when constructing the Activity SoftwareAgent "
+                    "Resource"
+                )
             try:
                 forge.register(
                     softwareagent_resource, "https://neuroshapes.org/dash/softwareagent"
