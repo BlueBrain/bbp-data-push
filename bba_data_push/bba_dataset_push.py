@@ -306,7 +306,6 @@ def push_meshes(
         ctx.obj["verbose"],
     )
     if resources_dict["atlasreleases"]:
-        print(resources_dict["atlasreleases"][-1])
         try:
             L.info(
                 "\nRegistering the constructed BrainAtlasRelease resources in Nexus..."

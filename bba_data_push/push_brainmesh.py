@@ -359,15 +359,28 @@ def create_mesh_resources(
                         atlasrelease_id = link_summary_content[f"{region_id}"][
                             "atlasRelease"
                         ]["@id"]
+                        mask_id = link_summary_content[f"{region_id}"]["mask"]["@id"]
                     except KeyError as error:
                         L.error(
                             f"{error}. The input link region json file need to "
-                            "contains the atlasResource @id"
+                            "contains the region volumetric Resource Mask @id and the "
+                            "atlasResource @id"
                         )
                         exit(1)
                     mesh_resource.atlasRelease = {
                         "@id": f"{atlasrelease_id}",
                         "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
+                    }
+                    mesh_resource.derivation = {
+                        "@type": "Derivation",
+                        "entity": {
+                            "@id": f"{mask_id}",
+                            "@type": [
+                                "VolumetricDataLayer",
+                                "BrainParcellationMask",
+                                "Dataset",
+                            ],
+                        },
                     }
                 try:
                     if "mesh" not in link_summary_content[f"{region_id}"].keys():
@@ -458,6 +471,25 @@ def create_mesh_resources(
                 mesh_resources.id = mesh_id
                 mesh_link = {"mesh": {"@id": mesh_id}}
                 # if new_summary_file:
+                try:
+                    mask_id = link_summary_content[f"{region_id}"]["mask"]["@id"]
+                except KeyError as error:
+                    L.error(
+                        f"{error}. The input link region json file need to "
+                        "contains the region volumetric Resource Mask @id"
+                    )
+                    exit(1)
+                mesh_resources.derivation = {
+                    "@type": "Derivation",
+                    "entity": {
+                        "@id": f"{mask_id}",
+                        "@type": [
+                            "VolumetricDataLayer",
+                            "BrainParcellationMask",
+                            "Dataset",
+                        ],
+                    },
+                }
                 try:
                     if "mesh" not in link_summary_content[f"{region_id}"].keys():
                         link_summary_content[f"{region_id}"].update(mesh_link)

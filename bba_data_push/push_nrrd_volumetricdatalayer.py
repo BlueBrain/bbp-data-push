@@ -18,6 +18,7 @@ from uuid import uuid4
 import copy
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
+
 # from kgforge.core.commons.exceptions import RetrievalError
 
 from bba_data_push.commons import (
@@ -67,6 +68,7 @@ def create_volumetric_resources(
     config_file.close()
     try:
         volumes = config_content["GeneratedDatasetPath"]["VolumetricFile"]
+        hierarchies = config_content["HierarchyJson"]
     except KeyError as error:
         L.error(f"KeyError: {error} is not found in the dataset configuration file.")
         exit(1)
@@ -78,101 +80,17 @@ def create_volumetric_resources(
         except ValueError as error:
             L.error(f"{error} : {provenance_metadata_path}.")
             exit(1)
+
+        deriv_dict_id = create_deriv_dict_id(
+            forge, provenance_metadata, volumes, hierarchies
+        )
     else:
         provenance_metadata = None
-
-    # Builds a dictionary with the form :
-    # {
-    #     derivation_name1 : { "id" : "{id_value}"
-    #                        "datasets" : [{derivative_dataset}]
-    #                        }
-    #     derivation_name2 : { "id" : "{id_value}"
-    #                        "datasets" : [{derivative_dataset}]
-    #                        }
-    #     }
-    deriv_dict_id = {}
-    if provenance_metadata:
-        try:
-            for dataset in volumes.keys():
-                for key_dataset, val_dataset in provenance_metadata[
-                    "derivations"
-                ].items():
-                    if key_dataset == dataset:
-                        if isinstance(val_dataset, list):
-                            for val in val_dataset:
-                                id_val = forge.format(
-                                    "identifier", "volumetricdatalayer", str(uuid4())
-                                )
-                                if val not in deriv_dict_id.keys():
-                                    deriv_dict_id[val] = {
-                                        "id": f"{id_val}",
-                                        "datasets": [key_dataset],
-                                    }
-                                else:
-                                    deriv_dict_id[val]["datasets"].append(key_dataset)
-                        else:
-                            if val_dataset not in deriv_dict_id.keys():
-                                id_val = forge.format(
-                                    "identifier", "volumetricdatalayer", str(uuid4())
-                                )
-                                deriv_dict_id[val_dataset] = {
-                                    "id": f"{id_val}",
-                                    "datasets": [key_dataset],
-                                }
-                            else:
-                                deriv_dict_id[val_dataset]["datasets"].append(
-                                    key_dataset
-                                )
-        except KeyError as error:
-            L.error(
-                f"KeyError: {error} is not found in the dataset configuration file."
-            )
-            exit(1)
-
-        try:
-            for dataset in config_content["HierarchyJson"].keys():
-                for key_dataset, val_dataset in provenance_metadata[
-                    "derivations"
-                ].items():
-                    if key_dataset == dataset:
-                        if isinstance(val_dataset, list):
-                            for val in val_dataset:
-                                id_val = forge.format(
-                                    "identifier", "ontologies", str(uuid4())
-                                )
-                                if val not in deriv_dict_id.keys():
-                                    deriv_dict_id[val] = {
-                                        "id": f"{id_val}",
-                                        "datasets": [key_dataset],
-                                    }
-                                else:
-                                    deriv_dict_id[val]["datasets"].append(key_dataset)
-                        else:
-                            if val_dataset not in deriv_dict_id.keys():
-                                id_val = forge.format(
-                                    "identifier", "ontologies", str(uuid4())
-                                )
-                                deriv_dict_id[val_dataset] = {
-                                    "id": f"{id_val}",
-                                    "datasets": [key_dataset],
-                                }
-                            else:
-                                deriv_dict_id[val_dataset]["datasets"].append(
-                                    key_dataset
-                                )
-                # Assign to every ontology resource an id with the right format
-                for deriv_dataset, deriv_metadata in deriv_dict_id.items():
-                    if deriv_dataset == dataset:
-                        deriv_metadata["id"] = forge.format(
-                            "identifier", "ontologies", str(uuid4())
-                        )
-        except KeyError as error:
-            L.error(
-                f"KeyError: {error} is not found in the dataset configuration file."
-            )
-            exit(1)
+        deriv_dict_id = {}
 
     # Mutual resource properties
+
+    ontology_type = "ParcellationOntology"
 
     atlas_reference_system_id = (
         "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -362,162 +280,171 @@ def create_volumetric_resources(
     )
 
     # Dictionary containing the possible volumetric dataset to push
-    refined_inhib = "inhibitory_neuron_densities_preserveprop_ccfv2_correctednissl"
-    volumetric_data = {
-        "parcellations": {
-            f"{volumes['annotation_hybrid']}": [
-                "BrainParcellationDataLayer",  # subtype
-                f"{description_hybrid}. The version "
-                "replaces the leaf regions in ccfv3 with the leaf region of "
-                "ccfv2, which have additional levels of hierarchy.",  # description
-                derivation_ccfv2v3,  # derivation
-                "atlasrelease_ccfv2v3",  # atlasrelease
-                "parcellationId",  # datasamplemodality
-            ],
-            f"{volumes['annotation_hybrid_l23split']}": [
-                "BrainParcellationDataLayer",
-                description_hybrid_split,
-                derivation_hybrid,
-                "atlasrelease_hybridsplit",
-                "parcellationId",
-            ],
-            f"{volumes['annotation_ccfv3_l23split']}": [
-                "BrainParcellationDataLayer",
-                description_ccfv3_split,
-                None,
-                "atlasrelease_ccfv3split",
-                "parcellationId",
-            ],
-        },
-        "cell_orientations": {
-            f"{volumes['direction_vectors_isocortex_ccfv3']}": [
-                "CellOrientationField",
-                description_dirvectors_ccfv3,
-                None,
-                "atlasrelease_ccfv3",
-                "eulerAngle",
-            ],
-            f"{volumes['cell_orientations_ccfv3']}": [
-                "CellOrientationField",
-                description_orientation_ccfv3,
-                None,
-                "atlasrelease_ccfv3",
-                "quaternion",
-            ],
-            f"{volumes['cell_orientations_hybrid']}": [
-                "CellOrientationField",
-                description_orientation_hybrid,
-                derivation_hybrid_split,
-                "atlasrelease_ccfv2v3",
-                "quaternion",
-            ],
-        },
-        "placement_hints": {
-            # f"{volumes['placement_hints_hybrid_l23split']}": [
-            #     description_PH_hybrid_split,
-            #     derivation_hybrid_split,
-            #     "atlasrelease_hybridsplit",
-            #     "distance",
-            # ],
-            f"{volumes['placement_hints_ccfv3_l23split']}": [
-                "PlacementHintsDataLayer",
-                description_PH_ccfv3_split,
-                None,
-                "atlasrelease_ccfv3split",
-                "distance",
-            ]
-        },
-        "volume_mask": {
-            f"{volumes['brain_region_mask_ccfv3_l23split']}": [
-                "BrainParcellationMask",
-                description_ccfv3_split,
-                None,
-                "atlasrelease_ccfv3split",
-                "parcellationId",
-            ]
-        },
-        "cell_densities": {
-            f"{volumes['cell_densities_hybrid']}": [
-                "CellDensityDataLayer",
-                description_hybrid,
-                None,
-                "atlasrelease_hybridsplit",
-                "quantity",
-            ],
-            f"{volumes['neuron_densities_hybrid']}": [
-                "CellDensityDataLayer",
-                description_hybrid,
-                None,
-                "atlasrelease_hybridsplit",
-                "quantity",
-            ],
-            f"{volumes['overall_cell_density_ccfv2_correctednissl']}": [
-                "CellDensityDataLayer",
-                f"{description_ccfv2}. It has been generated using the corrected nissl "
-                "volume",
-                derivation_correctednissl,
-                "atlasrelease_ccfv2",
-                "quantity",
-            ],
-            f"{volumes['cell_densities_ccfv2_correctednissl']}": [
-                "CellDensityDataLayer",
-                f"{description_ccfv2}. It has been generated using the corrected nissl "
-                "volume",
-                f"{volumes['overall_cell_density_ccfv2_correctednissl']}",
-                "atlasrelease_ccfv2",
-                "quantity",
-            ],
-            f"{volumes['neuron_densities_ccfv2_correctednissl']}": [
-                "CellDensityDataLayer",
-                f"{description_ccfv2}. It has been generated using the corrected nissl "
-                "volume",
-                (
-                    f"{volumes['cell_densities_ccfv2_correctednissl']}",
-                    "neuron_density.nrrd",
-                ),
-                "atlasrelease_ccfv2",
-                "quantity",
-            ],
-            f"{volumes['inhibitory_neuron_densities_linprog_ccfv2_correctednissl']}": [
-                "CellDensityDataLayer",
-                f"{description_ccfv2}. It has been generated with the corrected nissl "
-                "volume and using the algorithm linprog",
-                (
-                    f"{volumes['cell_densities_ccfv2_correctednissl']}",
-                    "neuron_density.nrrd",
-                ),
-                "atlasrelease_ccfv2",
-                "quantity",
-            ],
-            f"{volumes[refined_inhib]}": [
-                "CellDensityDataLayer",
-                f"{description_ccfv2}. It has been generated with the corrected nissl "
-                "volume and using the algorithm keep-proportions",
-                (
-                    f"{volumes['cell_densities_ccfv2_correctednissl']}",
-                    "neuron_density.nrrd",
-                ),
-                "atlasrelease_ccfv2",
-                "quantity",
-            ],
-            f"{volumes['mtypes_densities_profile_ccfv2_correctednissl']}": [
-                "CellDensityDataLayer",
-                f"{description_ccfv2}. It has been generated from density profiles and "
-                "using the corrected nissl volume",
-                None,
-                "atlasrelease_ccfv2",
-                "quantity",
-            ],
-            f"{volumes['mtypes_densities_probability_map_ccfv2_correctednissl']}": [
-                "CellDensityDataLayer",
-                f"{description_ccfv2}. It has been generated from a probability mapping"
-                " and using the corrected nissl volume",
-                None,
-                "atlasrelease_ccfv2",
-                "quantity",
-            ],
-        },
-    }
+    try:
+        linprog = "inhibitory_neuron_densities_linprog_ccfv2_correctednissl"
+        preserveprop = "inhibitory_neuron_densities_preserveprop_ccfv2_correctednissl"
+        volumetric_data = {
+            "parcellations": {
+                f"{volumes['annotation_hybrid']}": [
+                    "BrainParcellationDataLayer",  # subtype
+                    f"{description_hybrid}. The version "
+                    "replaces the leaf regions in ccfv3 with the leaf region of "
+                    "ccfv2, which have additional levels of hierarchy.",  # description
+                    derivation_ccfv2v3,  # derivation
+                    "atlasrelease_ccfv2v3",  # atlasrelease
+                    "parcellationId",  # datasamplemodality
+                ],
+                f"{volumes['annotation_hybrid_l23split']}": [
+                    "BrainParcellationDataLayer",
+                    description_hybrid_split,
+                    derivation_hybrid,
+                    "atlasrelease_hybridsplit",
+                    "parcellationId",
+                ],
+                f"{volumes['annotation_ccfv3_l23split']}": [
+                    "BrainParcellationDataLayer",
+                    description_ccfv3_split,
+                    None,
+                    "atlasrelease_ccfv3split",
+                    "parcellationId",
+                ],
+            },
+            "cell_orientations": {
+                f"{volumes['direction_vectors_isocortex_ccfv3']}": [
+                    "CellOrientationField",
+                    description_dirvectors_ccfv3,
+                    None,
+                    "atlasrelease_ccfv3split",
+                    "eulerAngle",
+                ],
+                f"{volumes['cell_orientations_ccfv3']}": [
+                    "CellOrientationField",
+                    description_orientation_ccfv3,
+                    None,
+                    "atlasrelease_ccfv3",
+                    "quaternion",
+                ],
+                f"{volumes['cell_orientations_hybrid']}": [
+                    "CellOrientationField",
+                    description_orientation_hybrid,
+                    derivation_hybrid_split,
+                    "atlasrelease_ccfv2v3",
+                    "quaternion",
+                ],
+            },
+            "placement_hints": {
+                # f"{volumes['placement_hints_hybrid_l23split']}": [
+                #     description_PH_hybrid_split,
+                #     derivation_hybrid_split,
+                #     "atlasrelease_hybridsplit",
+                #     "distance",
+                # ],
+                f"{volumes['placement_hints_ccfv3_l23split']}": [
+                    "PlacementHintsDataLayer",
+                    description_PH_ccfv3_split,
+                    None,
+                    "atlasrelease_ccfv3split",
+                    "distance",
+                ]
+            },
+            "volume_mask": {
+                f"{volumes['brain_region_mask_ccfv3_l23split']}": [
+                    "BrainParcellationMask",
+                    description_ccfv3_split,
+                    None,
+                    "atlasrelease_ccfv3split",
+                    "parcellationId",
+                ]
+            },
+            "cell_densities": {
+                f"{volumes['cell_densities_hybrid']}": [
+                    "CellDensityDataLayer",
+                    description_hybrid,
+                    None,
+                    "atlasrelease_hybridsplit",
+                    "quantity",
+                ],
+                f"{volumes['neuron_densities_hybrid']}": [
+                    "CellDensityDataLayer",
+                    description_hybrid,
+                    None,
+                    "atlasrelease_hybridsplit",
+                    "quantity",
+                ],
+                f"{volumes['overall_cell_density_ccfv2_correctednissl']}": [
+                    "CellDensityDataLayer",
+                    f"{description_ccfv2}. It has been generated using the corrected "
+                    "nissl volume",
+                    derivation_correctednissl,
+                    "atlasrelease_ccfv2",
+                    "quantity",
+                ],
+                f"{volumes['cell_densities_ccfv2_correctednissl']}": [
+                    "CellDensityDataLayer",
+                    f"{description_ccfv2}. It has been generated using the corrected "
+                    "nissl volume",
+                    f"{volumes['overall_cell_density_ccfv2_correctednissl']}",
+                    "atlasrelease_ccfv2",
+                    "quantity",
+                ],
+                f"{volumes['neuron_densities_ccfv2_correctednissl']}": [
+                    "CellDensityDataLayer",
+                    f"{description_ccfv2}. It has been generated using the corrected "
+                    "nissl volume",
+                    (
+                        f"{volumes['cell_densities_ccfv2_correctednissl']}",
+                        "neuron_density.nrrd",
+                    ),
+                    "atlasrelease_ccfv2",
+                    "quantity",
+                ],
+                f"{volumes[linprog]}": [
+                    "CellDensityDataLayer",
+                    f"{description_ccfv2}. It has been generated with the corrected "
+                    "nissl volume and using the algorithm linprog",
+                    (
+                        f"{volumes['cell_densities_ccfv2_correctednissl']}",
+                        "neuron_density.nrrd",
+                    ),
+                    "atlasrelease_ccfv2",
+                    "quantity",
+                ],
+                f"{volumes[preserveprop]}": [
+                    "CellDensityDataLayer",
+                    f"{description_ccfv2}. It has been generated with the corrected "
+                    "nissl volume and using the algorithm keep-proportions",
+                    (
+                        f"{volumes['cell_densities_ccfv2_correctednissl']}",
+                        "neuron_density.nrrd",
+                    ),
+                    "atlasrelease_ccfv2",
+                    "quantity",
+                ],
+                f"{volumes['mtypes_densities_profile_ccfv2_correctednissl']}": [
+                    "CellDensityDataLayer",
+                    f"{description_ccfv2}. It has been generated from density profiles "
+                    "and using the corrected nissl volume",
+                    None,
+                    "atlasrelease_ccfv2",
+                    "quantity",
+                ],
+                f"{volumes['mtypes_densities_probability_map_ccfv2_correctednissl']}": [
+                    "CellDensityDataLayer",
+                    f"{description_ccfv2}. It has been generated from a probability "
+                    "mapping and using the corrected nissl volume",
+                    None,
+                    "atlasrelease_ccfv2",
+                    "quantity",
+                ],
+            },
+        }
+    except KeyError as error:
+        L.error(
+            f"KeyError: {error} does not correspond to one of the datasets defined "
+            "in the VolumetricFile section of the 'generated dataset' configuration "
+            "file."
+        )
+        exit(1)
 
     # Constructs the Resource properties payloads with the dictionary of properties
     ressources_dict = {
@@ -1157,20 +1084,29 @@ def create_volumetric_resources(
                 for deriv_key, deriv_value in deriv_dict_id.items():
                     if dataset_name in deriv_value["datasets"]:
                         deriv_type = []
-                        for volumetric_type, content in volumetric_data.items():
-                            try:
-                                deriv_type = content[f"{volumes[deriv_key]}"][0]
-                                if deriv_type not in resource_types:
-                                    # deriv_type = ["Dataset", deriv_type]
+                        # the type is given for the derivation that are
+                        # 'input_dataset_used'
+                        try:
+                            if deriv_value["type"] == "ParcellationOntology":
+                                deriv_type = ["Entity", deriv_value["type"]]
+                            else:
+                                deriv_type = "Dataset"
+                        except KeyError:
+                            pass
+                        if not deriv_type:
+                            for volumetric_type, content in volumetric_data.items():
+                                try:
+                                    deriv_type = content[f"{volumes[deriv_key]}"][0]
+                                    # In order to avoir RegistrationError due to
+                                    # derivation having a type constrained by the
+                                    # volumetricdatalayer schema :
                                     deriv_type = "Dataset"
-                                else:
-                                    deriv_type = "Dataset"
-                            except KeyError:
-                                pass
+                                except KeyError:
+                                    pass
                         # if the derivation is not a known volumetric dataset then
                         # it is an ontology
                         if not deriv_type:
-                            deriv_type = ["Entity", "ParcellationOntology"]
+                            deriv_type = ["Entity", ontology_type]
                         deriv = {
                             "@type": "Derivation",
                             "entity": {
@@ -1182,42 +1118,6 @@ def create_volumetric_resources(
                 # If only 1 item no need for it to be a list
                 if len(derivation) == 1:
                     derivation = derivation[0]
-                # if not derivation:
-                #     # Default derivation for everything = 'input_dataset_used'
-                #     try:
-                #         for metadata in provenance_metadata[
-                #             "input_dataset_used"
-                #         ].values():
-                #             # Use types different from the Resource type
-                #             if metadata["type"] == "ParcellationOntology":
-                #                 deriv_type = ["Entity", metadata["type"]]
-                #             else:
-                #                 deriv_type = metadata["type"]
-                #                 if deriv_type not in resource_types:
-                #                     # deriv_type = ["Dataset", deriv_type]
-                #                     deriv_type = "Dataset"
-                #                 else:
-                #                     deriv_type = "Dataset"
-                #             deriv = {
-                #                 "@type": "Derivation",
-                #                 "entity": {
-                #                     "@id": metadata["id"],
-                #                     "@type": deriv_type,
-                #                 },
-                #             }
-                #             if len(provenance_metadata["input_dataset_used"]) == 1:
-                #                 derivation = deriv
-                #             else:
-                #                 derivation.append(deriv)
-                #     except Exception as error:
-                #         L.error(f"Error: {error}.")
-                #         exit(1)
-                #     except RetrievalError as error:
-                #         L.error(
-                #             f"Error when trying to retrieve the Resources contained "
-                #             f"in 'input_dataset_used'. {error}."
-                #         )
-                #         exit(1)
 
         # Parsing the header of the NRRD file
         header = None
@@ -1366,7 +1266,7 @@ def create_volumetric_resources(
                         # if the derivation is not a known volumetric dataset then
                         # it is an ontology
                         if not deriv_type:
-                            deriv_type = ["Entity", "ParcellationOntology"]
+                            deriv_type = ["Entity", ontology_type]
                         deriv = {
                             "@type": "Derivation",
                             "entity": {
@@ -1377,11 +1277,11 @@ def create_volumetric_resources(
                         hierarchy_deriv.append(deriv)
                 # If only 1 item no need for it to be a list
                 if len(hierarchy_deriv) == 1:
-                    hierarchy_deriv = derivation[0]
+                    hierarchy_deriv = hierarchy_deriv[0]
 
                 atlasrelease_dict["atlas_release"].parcellationOntology = {
                     "@id": atlasrelease_dict["hierarchy"].id,
-                    "@type": ["Entity", "ParcellationOntology", "Ontology"],
+                    "@type": ["Entity", ontology_type, "Ontology"],
                 }
                 atlasrelease_dict["hierarchy"].contribution = contribution
                 ressources_dict["hierarchy"].append(atlasrelease_dict["hierarchy"])
@@ -1751,6 +1651,122 @@ def create_volumetric_resources(
     ressources_dict["activity"] = activity_resource
 
     return ressources_dict
+
+
+def create_deriv_id(forge, deriv_dict_id, val_dataset, key_dataset, dataset_type):
+
+    if isinstance(val_dataset, list):
+        for val in val_dataset:
+            id_val = forge.format("identifier", dataset_type, str(uuid4()))
+            if val not in deriv_dict_id.keys():
+                deriv_dict_id[val] = {
+                    "id": f"{id_val}",
+                    "datasets": [key_dataset],
+                }
+            else:
+                deriv_dict_id[val]["datasets"].append(key_dataset)
+    else:
+        if val_dataset not in deriv_dict_id.keys():
+            id_val = forge.format("identifier", dataset_type, str(uuid4()))
+            deriv_dict_id[val_dataset] = {
+                "id": f"{id_val}",
+                "datasets": [key_dataset],
+            }
+        else:
+            deriv_dict_id[val_dataset]["datasets"].append(key_dataset)
+
+    return deriv_dict_id
+
+
+def create_deriv_dict_id(forge, provenance_metadata, volumes, hierarchies):
+    """
+    Builds a dictionary with the form :
+    {
+        derivation_name1 : { "id" : "{id_value}"
+                            "datasets" : [{derivative_dataset}]
+                            }
+        derivation_name2 : { "id" : "{id_value}"
+                            "datasets" : [{derivative_dataset}]
+                            }
+    }
+    Parameters:
+        voxel_type : voxel type (string).
+        component_size : integer indicating the number of component per voxel.
+
+    Returns:
+        voxel_type : str value of voxel_type is returned. Equal to the input value if
+                     its value does not trigger error or else the default hardcoded
+                     value is returned.
+    """
+    deriv_dict_id = {}
+    try:
+        for key_dataset, val_dataset in provenance_metadata["derivations"].items():
+            derivation_found = False
+            # first check if the derivation is in input_dataset_used
+            if isinstance(val_dataset, list):
+                for val in val_dataset:
+                    if val in provenance_metadata["input_dataset_used"].keys():
+                        derivation_found = True
+                        val_dataset_id = provenance_metadata["input_dataset_used"][
+                            val_dataset
+                        ]["id"]
+                        val_dataset_type = provenance_metadata["input_dataset_used"][
+                            val_dataset
+                        ]["type"]
+                        if val_dataset not in deriv_dict_id.keys():
+                            deriv_dict_id[val_dataset] = {
+                                "id": f"{val_dataset_id}",
+                                "datasets": [key_dataset],
+                                "type": val_dataset_type,
+                            }
+                    else:
+                        deriv_dict_id[val_dataset]["datasets"].append(key_dataset)
+            elif val_dataset in provenance_metadata["input_dataset_used"].keys():
+                derivation_found = True
+                val_dataset_id = provenance_metadata["input_dataset_used"][val_dataset][
+                    "id"
+                ]
+                val_dataset_type = provenance_metadata["input_dataset_used"][
+                    val_dataset
+                ]["type"]
+                if val_dataset not in deriv_dict_id.keys():
+                    deriv_dict_id[val_dataset] = {
+                        "id": f"{val_dataset_id}",
+                        "datasets": [key_dataset],
+                        "type": val_dataset_type,
+                    }
+                else:
+                    deriv_dict_id[val_dataset]["datasets"].append(key_dataset)
+
+            if not derivation_found:
+                for dataset in volumes.keys():
+                    if dataset == key_dataset:
+                        deriv_dict_id = create_deriv_id(
+                            forge,
+                            deriv_dict_id,
+                            val_dataset,
+                            key_dataset,
+                            "volumetricdatalayer",
+                        )
+                # Lastly search if the dataset is a hierarchy file
+                if not derivation_found:
+                    for dataset in hierarchies.keys():
+                        if dataset == key_dataset:
+                            deriv_dict_id = create_deriv_id(
+                                forge,
+                                deriv_dict_id,
+                                val_dataset,
+                                key_dataset,
+                                "ontologies",
+                            )
+    except KeyError as error:
+        L.error(
+            f"KeyError: {error} derivation dataset is not found in the dataset "
+            "configuration file."
+        )
+        exit(1)
+
+    return deriv_dict_id
 
 
 def add_nrrd_props(resource, nrrd_header, config, voxel_type):

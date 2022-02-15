@@ -137,7 +137,6 @@ def create_regionsummary_resources(
 
     flat_tree = {}
     for region_id in metadata_content:
-        print(region_id)
         try:
             region_infos, hierarchy_tree = get_brain_region_prop(
                 region_id,
@@ -185,7 +184,6 @@ def create_regionsummary_resources(
             L.error(f"KeyError: {error} not found in the region metadata file")
             exit(1)
         try:
-            print(link_summary_content)
             atlasRelease = {
                 "@id": link_summary_content[region_id]["atlasRelease"]["@id"],
                 "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],

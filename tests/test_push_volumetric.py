@@ -248,7 +248,7 @@ def test_create_volumetric_resources():
     # Check every exceptions :
 
     # configuration file with wrong keys
-    with pytest.raises(KeyError) as e:
+    with pytest.raises(SystemExit) as e:
         create_volumetric_resources(
             forge,
             [dataset_path[0]],
@@ -260,7 +260,7 @@ def test_create_volumetric_resources():
             provenance_metadata_path=None,
             verbose=0,
         )[-1]
-    assert str(e.value) == "'annotation_hybrid'"
+    assert e.value.code == 1
 
     # dataset is an empty folder
     with pytest.raises(SystemExit) as e:
