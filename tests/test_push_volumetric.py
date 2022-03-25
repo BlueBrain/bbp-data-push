@@ -37,31 +37,7 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "label": "Mus musculus",
             },
         },
-        "derivation": [
-            {
-                "@type": "Derivation",
-                "description": (
-                    "The original AIBS ccfv3 (2017) has smoother region borders, "
-                    "without jaggies, compared to the original AIBS ccfv2."
-                ),
-                "entity": {
-                    "@id": "brain_parcellation_ccfv3",
-                    "@type": "Dataset",
-                },
-            },
-            {
-                "@type": "Derivation",
-                "description": (
-                    "The original AIBS ccfv2 (2011) has a finer granularity than the "
-                    "original AIBS ccfv3 in term of leaf nodes"
-                ),
-                "entity": {
-                    "@id": "brain_parcellation_ccfv2",
-                    "@type": "Dataset",
-                },
-            },
-        ],
-        "description": "Hybrid annotation volume from ccfv2 and ccfv3 at 25 microns. "
+        "description": "Hybrid annotation volume from ccfv2 and ccfv3 at 25 µm. "
         "The version replaces the leaf regions in ccfv3 with the leaf region of ccfv2, "
         "which have additional levels of hierarchy.",
         "isRegisteredIn": {
@@ -119,7 +95,6 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
         volumetric_dict["name"] = "Excitatory Neuron Density"
         volumetric_dict["sampleType"] = "intensity"
         volumetric_dict["dimension"][0]["name"] = "intensity"
-        volumetric_dict.pop("derivation", None)
 
     volumetric_dict["type"].append("Dataset")
 
@@ -144,8 +119,7 @@ def test_create_volumetric_resources():
     ]
     hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
-
-    voxel_resolution = "25"
+    atlasrelease_config_path = str(Path(TEST_PATH, "/tests/tests_data/atlasrelease_config_path.json"))
 
     # Arguments wrong
     empty_folder = str(
@@ -200,14 +174,15 @@ def test_create_volumetric_resources():
 
     result = vars(
         create_volumetric_resources(
-            forge,
-            [dataset_path[0]],
-            voxel_resolution,
-            config_path,
-            atlasrelease_id=None,
+            forge=forge,
+            inputpath = [dataset_path[0]],
+            config_path = config_path,
+            atlasrelease_config_path = atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )["datasets"][-1]
     )
@@ -219,18 +194,19 @@ def test_create_volumetric_resources():
 
     cell_density_dict_fulloptions["description"] = (
         "Excitatory neuron density volume for the Hybrid annotation volume from ccfv2 "
-        "and ccfv3 at 25 microns."
+        "and ccfv3 at 25 µm."
     )
 
     result = create_volumetric_resources(
         forge,
         dataset_path,
-        voxel_resolution,
         config_path,
-        atlasrelease_id=None,
+        atlasrelease_config_path = atlasrelease_config_path,
         input_hierarchy=hierarchy_path,
-        link_regions_path=None,
+        input_hierarchy_jsonld=None,
         provenance_metadata_path=None,
+        link_regions_path=None,
+        resource_tag=None,
         verbose=1,
     )["datasets"]
 
@@ -252,12 +228,13 @@ def test_create_volumetric_resources():
         create_volumetric_resources(
             forge,
             [dataset_path[0]],
-            voxel_resolution,
             wrong_config_key,
-            atlasrelease_id=None,
+            atlasrelease_config_path = atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -267,12 +244,13 @@ def test_create_volumetric_resources():
         create_volumetric_resources(
             forge,
             [empty_folder],
-            voxel_resolution,
             config_data_emptydata,
-            atlasrelease_id=None,
+            atlasrelease_config_path = atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -282,12 +260,13 @@ def test_create_volumetric_resources():
         create_volumetric_resources(
             forge,
             [wrong_dataset_name],
-            voxel_resolution,
             config_path,
-            atlasrelease_id=None,
+            atlasrelease_config_path = atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -297,12 +276,13 @@ def test_create_volumetric_resources():
         create_volumetric_resources(
             forge,
             [dataset_path[0]],
-            voxel_resolution,
             config_data_notfound,
-            atlasrelease_id=None,
+            atlasrelease_config_path = atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -312,12 +292,13 @@ def test_create_volumetric_resources():
         create_volumetric_resources(
             forge,
             [folder_annotation],
-            voxel_resolution,
             config_wrongdatatype,
-            atlasrelease_id=None,
+            atlasrelease_config_path = atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -327,12 +308,13 @@ def test_create_volumetric_resources():
         create_volumetric_resources(
             forge,
             [neuron_density_file],
-            voxel_resolution,
             config_wrongdatatype,
-            atlasrelease_id=None,
+            atlasrelease_config_path = atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -342,12 +324,13 @@ def test_create_volumetric_resources():
         create_volumetric_resources(
             forge,
             [corrupted_data_header],
-            voxel_resolution,
             config_corruptedData,
-            atlasrelease_id=None,
+            atlasrelease_config_path = atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -362,7 +345,6 @@ def test_add_nrrd_props():
         atlasRelease=volumetric_dict_simple["atlasRelease"],
         brainLocation=volumetric_dict_simple["brainLocation"],
         contribution=volumetric_dict_simple["contribution"],
-        derivation=volumetric_dict_simple["derivation"],
         description=volumetric_dict_simple["description"],
         isRegisteredIn=volumetric_dict_simple["isRegisteredIn"],
         name=volumetric_dict_simple["name"],

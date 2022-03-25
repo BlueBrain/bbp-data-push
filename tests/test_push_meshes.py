@@ -5,6 +5,7 @@ from kgforge.core import KnowledgeGraphForge
 
 # from bba_dataset_push.bba_data_push import push_meshes
 from bba_data_push.push_brainmesh import create_mesh_resources
+import bba_data_push.constants as const
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 
@@ -101,27 +102,14 @@ def test_create_mesh_resources():
             "brainRegion": {"label": "region_1", "@id": "mba:1"},
         },
         "contribution": [],
-        "subject": {
-            "@type": "Subject",
-            "species": {
-                "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
-                "label": "Mus musculus",
-            },
-        },
+        "subject": const.subject,
         "description": (
             "Brain region mesh - Region_1 (ID: 1) - for the Hybrid annotation volume "
             "from ccfv2 and ccfv3 at 25 µm."
         ),
-        "isRegisteredIn": {
-            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-            "allen_ccfv3_spatial_reference_system",
-            "@type": [
-                "BrainAtlasSpatialReferenceSystem",
-                "AtlasSpatialReferenceSystem",
-            ],
-        },
+        "isRegisteredIn": const.isRegisteredIn,
         "name": "Region_1 Mesh Hybrid",
-        "spatialUnit": "µm",
+        "spatialUnit": const.SPATIAL_UNIT,
     }
 
     result = vars(
@@ -130,9 +118,10 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             config_path,
             [hierarchy_path[0]],
-            voxels_resolution=25,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )["datasets"][-1]
     )
@@ -152,10 +141,12 @@ def test_create_mesh_resources():
         forge,
         dataset_path,
         config_path,
-        hierarchy_path,
-        voxels_resolution=25,
-        link_regions_path=None,
+        atlasrelease_config_path = atlasrelease_config_path,
+        [hierarchy_path[0]],
+        input_hierarchy_jsonld=None,
         provenance_metadata_path=None,
+        link_regions_path=None,
+        resource_tag=None,
         verbose=1,
     )["datasets"]
 
@@ -171,18 +162,20 @@ def test_create_mesh_resources():
     # Check every exceptions :
 
     # configuration file with wrong keys
-    with pytest.raises(KeyError) as e:
+    with pytest.raises(SystemExit) as e:
         create_mesh_resources(
             forge,
             [dataset_path[0]],
             wrong_config_key,
+            atlasrelease_config_path = atlasrelease_config_path,
             [hierarchy_path[0]],
-            voxels_resolution=25,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
-    assert str(e.value) == "'brain_region_meshes_hybrid'"
+    assert e.value.code == 1
 
     # dataset with wrong name
     with pytest.raises(SystemExit) as e:
@@ -191,9 +184,10 @@ def test_create_mesh_resources():
             [wrong_dataset_name],
             config_path,
             [hierarchy_path[0]],
-            voxels_resolution=25,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -205,9 +199,10 @@ def test_create_mesh_resources():
             [not_a_dir],
             config_wrongdatatype,
             [hierarchy_path[0]],
-            voxels_resolution=25,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -219,9 +214,10 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             config_data_notfound,
             [hierarchy_path[0]],
-            voxels_resolution=25,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -233,9 +229,10 @@ def test_create_mesh_resources():
             [empty_folder],
             config_data_emptydata,
             [hierarchy_path[0]],
-            voxels_resolution=25,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -247,9 +244,10 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             config_data_emptyhierarchy,
             [empty_hierarchy],
-            voxels_resolution=25,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1
@@ -261,9 +259,10 @@ def test_create_mesh_resources():
             [dataset_path[0]],
             config_data_wronghierarchy,
             [wrong_hierarchy],
-            voxels_resolution=25,
-            link_regions_path=None,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            link_regions_path=None,
+            resource_tag=None,
             verbose=0,
         )[-1]
     assert e.value.code == 1

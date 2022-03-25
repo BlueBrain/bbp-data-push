@@ -19,7 +19,11 @@ from bba_data_push.commons import (
     return_contribution,
     return_atlasrelease,
     return_activity_payload,
+    return_file_hash,
+    fetch_linked_resources,
 )
+import bba_data_push.constants as const
+
 from bba_data_push.logging import create_log_handler
 
 L = create_log_handler(__name__, "./push_brainmesh.log")
@@ -29,10 +33,12 @@ def create_mesh_resources(
     forge,
     inputpath: list,
     config_path,
+    atlasrelease_config_path,
     input_hierarchy: list,
-    voxels_resolution: int,
-    link_regions_path,
+    input_hierarchy_jsonld,
     provenance_metadata_path,
+    link_regions_path,
+    resource_tag,
     verbose,
 ) -> list:
     """
@@ -61,12 +67,10 @@ def create_mesh_resources(
     config_content = yaml.safe_load(config_file.read().strip())
     config_file.close()
     try:
-        mesh_path = config_content["GeneratedDatasetPath"]["MeshFile"]
+        meshes = config_content["GeneratedDatasetPath"]["MeshFile"]
+        hierarchies = config_content["HierarchyJson"]
     except KeyError as error:
-        L.error(
-            f"KeyError: {error}. The key ['GeneratedDatasetPath']['MeshFile'] is not "
-            "found in the dataset configuration file"
-        )
+        L.error(f"KeyError: {error} is not found in the dataset configuration file.")
         exit(1)
 
     if provenance_metadata_path:
@@ -79,37 +83,11 @@ def create_mesh_resources(
     else:
         provenance_metadata = None
 
-    # Constants
-    spatial_unit = "µm"
-    atlas_reference_system_id = (
-        "https://bbp.epfl.ch/neurosciencegraph/data/"
-        "allen_ccfv3_spatial_reference_system"
-    )
-
-    # Link to the spatial ref system
-    isRegisteredIn = {
-        "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
-        "@id": atlas_reference_system_id,
-    }
-
-    subject = {
-        "@type": "Subject",
-        "species": {
-            "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
-            "label": "Mus musculus",
-        },
-    }
-
-    description_ccfv3 = (
-        f"original Allen ccfv3 annotation volume at {voxels_resolution} {spatial_unit}"
-    )
-    description_hybrid = (
-        f"Hybrid annotation volume from ccfv2 and ccfv3 at {voxels_resolution} "
-        f"{spatial_unit}"
-    )
-    description_split = "with the isocortex layer 2 and 3 split"
-    description_ccfv3_split = f"{description_ccfv3} {description_split}"
-    description_hybrid_split = f"{description_hybrid} {description_split}"
+    try:
+        mesh_dict = const.return_mesh_dict(meshes)
+    except KeyError as error:
+        L.error(f"{error}")
+        exit(1)
 
     # Create contribution
     if isinstance(forge._store, DemoStore):
@@ -124,76 +102,79 @@ def create_mesh_resources(
 
     # Constructs the Resource properties payloads accordingly to the input atlas Mesh
     # datasets
-    ressources_dict = {
-        "datasets": [],
+
+    # resources_payloads = {
+    #     "datasets": [],
+    #     "activity": [],
+    #     "atlasreleases": [],
+    #     "hierarchy": [],
+    # }
+    # atlasrelease_payloads = {"atlasrelease_choice": None, "hierarchy": False}
+    resources_payloads = {
+        "datasets_toUpdate": {
+            f"{const.schema_mesh}": [],
+            f"{const.schema_atlasrelease}": [],
+            f"{const.schema_ontology}": [],
+        },
+        "datasets_toPush": {
+            f"{const.schema_mesh}": [],
+            f"{const.schema_atlasrelease}": [],
+            f"{const.schema_ontology}": [],
+        },
         "activity": [],
-        "atlasreleases": [],
-        "hierarchy": [],
+        "tag": "",
     }
-    atlasrelease_dict = {"atlasrelease_choice": None, "hierarchy": False}
+    atlasrelease_payloads = {
+        "atlasrelease_choice": None,
+        "hierarchy": False,
+        "tag": None,
+        "fetched": False,
+    }
+    atlasrelease_choosen = []
     atlasRelease = {}
     generation = {}
     activity_resource = []
     for filepath in inputpath:
-        file_found = False
+        fileFound = False
         flat_tree = {}
-        # new_summary_file = False
         link_summary_content = {}
-        if os.path.isdir(filepath):
-            directory = filepath
-            files = os.listdir(directory)
-            pattern = "*.obj"
-            files_mesh = fnmatch.filter(files, pattern)
-            if not files_mesh:
-                L.error(f"Error: '{filepath}' do not contain any .obj mesh files")
-                exit(1)
-            try:
-                if os.path.samefile(filepath, mesh_path["brain_region_meshes_hybrid"]):
-                    file_found = True
-                    hierarchy_tag = "hierarchy"
-                    annotation_name = "Hybrid"
-                    atlasrelease_choice = "atlasrelease_ccfv2v3"
-                    annotation_description = description_hybrid
-            except FileNotFoundError:
-                pass
-
-            if not file_found:
+        fetched_resources = None
+        toUpdate = False
+        for dataset in mesh_dict:
+            if os.path.isdir(filepath):
+                directory = filepath
+                files = os.listdir(directory)
+                pattern = "*.obj"
+                files_mesh = fnmatch.filter(files, pattern)
+                if not files_mesh:
+                    L.error(f"Error: '{filepath}' do not contain any .obj mesh files")
+                    exit(1)
                 try:
-                    if os.path.samefile(
-                        filepath, mesh_path["brain_region_meshes_hybrid_l23split"]
-                    ):
-                        file_found = True
-                        hierarchy_tag = "hierarchy_l23split"
-                        annotation_name = "Hybrid L23split"
-                        atlasrelease_choice = "atlasrelease_hybridsplit"
-                        annotation_description = description_hybrid_split
+                    if os.path.samefile(filepath, dataset):
+                        fileFound = True
+                        mesh_type = [
+                            "BrainParcellationMesh",
+                            "Mesh",
+                            const.dataset_type,
+                        ]
+                        hierarchy_tag = mesh_dict[dataset]["hierarchy_tag"]
+                        annotation_name = mesh_dict[dataset]["annotation_name"]
+                        atlasrelease_choice = mesh_dict[dataset]["atlasrelease"]
+                        annotation_description = mesh_dict[dataset]["description"]
                 except FileNotFoundError:
                     pass
-
-            if not file_found:
-                try:
-                    if os.path.samefile(
-                        filepath, mesh_path["brain_region_meshes_ccfv3_l23split"]
-                    ):
-                        file_found = True
-                        hierarchy_tag = "hierarchy_l23split"
-                        annotation_name = "CCFv3 L23split"
-                        atlasrelease_choice = "atlasrelease_ccfv3split"
-                        annotation_description = description_ccfv3_split
-                except FileNotFoundError:
-                    pass
-            # If still no file found at this step then raise error
-            if not file_found:
+            else:
                 L.error(
-                    f"Error: The '{filepath}' folder do not correspond to one of "
-                    "the brain meshes folder dataset defined in the MeshFile "
-                    "Section of the 'generated dataset' configuration file"
+                    f"Error: '{filepath}' is not a directory. The input dataset need to be "
+                    "a directory containing OBJ brain meshes"
                 )
                 exit(1)
-        else:
+        # If still no file found at this step then raise error
+        if not fileFound:
             L.error(
-                f"Error: '{filepath}' is not a directory. The input dataset need to be "
-                "a directory containing OBJ brain meshes"
+                f"Error: The '{filepath}' folder do not correspond to one of "
+                "the brain meshes folder dataset defined in the MeshFile "
+                "Section of the 'generated dataset' configuration file"
             )
             exit(1)
 
@@ -207,7 +188,7 @@ def create_mesh_resources(
                 "have to be integer representing their region"
             )
             exit(1)
-        extension = os.path.splitext(os.path.basename(meshpath))[1][1:]
+        file_extension = os.path.splitext(os.path.basename(meshpath))[1][1:]
 
         try:
             hierarchy_path = get_hierarchy_file(
@@ -229,8 +210,6 @@ def create_mesh_resources(
 
         # We create a 1st payload that will be recycled in case of multiple files to
         # push
-        content_type = f"application/{extension}"
-        distribution_file = forge.attach(meshpath, content_type)
 
         brainLocation = {
             "brainRegion": {"@id": f"mba:{region_id}", "label": region_name},
@@ -239,7 +218,7 @@ def create_mesh_resources(
                     "BrainAtlasSpatialReferenceSystem",
                     "AtlasSpatialReferenceSystem",
                 ],
-                "@id": atlas_reference_system_id,
+                "@id": const.atlas_reference_system_id,
             },
         }
         mesh_description = (
@@ -247,79 +226,247 @@ def create_mesh_resources(
             f"{annotation_description}."
         )
 
-        # Create and add the AtlasRelease link
-        # if atlasrelease_choice == "atlasrelease_ccfv3split":
-        #     atlasRelease = {
-        #         "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
-        #         "5149d239-8b4d-43bb-97b7-8841a12d85c4",
-        #         "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
-        #     }
-        if link_regions_path:
-            pass
-        elif not isinstance(forge._store, DemoStore):
-            if not atlasrelease_dict["atlasrelease_choice"] or (
-                atlasrelease_choice != atlasrelease_dict["atlasrelease_choice"]
+        # ======= Fetch the atlasRelease Resource linked to the input datasets =======
+
+        if not isinstance(forge._store, DemoStore):
+            # Check that the same atlasrelease is not treated again
+            if not atlasrelease_payloads["atlasrelease_choice"] or (
+                atlasrelease_choice not in atlasrelease_choosen
             ):
-                atlasrelease_dict["atlasrelease_choice"] = atlasrelease_choice
+                differentAtlasrelease = True
+                atlasrelease_choosen.append(atlasrelease_choice)
+                atlasrelease_payloads["atlasrelease_choice"] = atlasrelease_choice
                 try:
-                    atlasrelease_dict = return_atlasrelease(
-                        forge=forge,
-                        config_content={},
-                        new_atlasrelease_hierarchy_path=False,
-                        atlasrelease_dict=atlasrelease_dict,
-                        parcellation_found=False,
-                        atlas_reference_system_id=atlas_reference_system_id,
-                        subject=subject,
+                    atlasrelease_payloads = return_atlasrelease(
+                        forge,
+                        config_content,
+                        atlasrelease_config_path,
+                        atlasrelease_payloads,
+                        resource_tag,
                     )
+                    if atlasrelease_payloads["fetched"]:
+                        L.info("atlasrelease Resource found in the Nexus project")
+                    else:
+                        L.error(
+                            "atlasrelease Resource not found in the Nexus project. "
+                            "You need to first create it and push it into Nexus "
+                            "using the CLI push-volumetric"
+                        )
+                        exit(1)
                 except Exception as e:
                     L.error(f"Exception: {e}")
                     exit(1)
-                except FileNotFoundError as e:
-                    L.error(f"FileNotFoundError: {e}")
+                except AttributeError as e:
+                    L.error(f"AttributeError: {e}")
                     exit(1)
-            # if atlasrelease are ccfv2 and ccfv3
-            if isinstance(atlasrelease_dict["atlas_release"], list):
-                atlasRelease = [
-                    {
-                        "@id": atlasrelease_dict["atlas_release"][0].id,
-                        "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
-                    },
-                    {
-                        "@id": atlasrelease_dict["atlas_release"][1].id,
-                        "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
-                    },
-                ]
-                if atlasrelease_dict["create_new"]:
-                    atlasrelease_dict["atlas_release"][0].contribution = contribution
-                    atlasrelease_dict["atlas_release"][1].contribution = contribution
-                    ressources_dict["atlasreleases"].append(
-                        atlasrelease_dict["atlas_release"][0]
-                    )
-                    ressources_dict["atlasreleases"].append(
-                        atlasrelease_dict["atlas_release"][1]
-                    )
-            else:
+
                 atlasRelease = {
-                    "@id": atlasrelease_dict["atlas_release"].id,
-                    "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
+                    "@id": atlasrelease_payloads["atlas_release"].id,
+                    "@type": atlasrelease_payloads["atlas_release"].type,
                 }
 
-        if provenance_metadata:
+                resources_payloads["tag"] = atlasrelease_payloads["tag"]
+
+                # ========= Check that the atlas Ontology is present in input =========
+
+                # For a new atlas release creation verify first that the right
+                # parcellation volume and hierarchy file have been provided and attach
+                # the distribution. For an update, compare first if they distribution
+                # are different before attaching it
+
+                # => check if the good hierarchy file is given in input
+                try:
+                    atlasrelease_ontology_path = get_hierarchy_file(
+                        input_hierarchy,
+                        config_content,
+                        const.atlasrelease_dict[atlasrelease_choice]["ontology"][
+                            "name"
+                        ],
+                    )
+                except KeyError:
+                    try:
+                        # If it is an update
+                        if atlasrelease_payloads["hierarchy"].distribution:
+                            pass
+                    # Then it is a brand new creation and the file is needed
+                    except AttributeError as error:
+                        L.error(
+                            "Error: the ontology file corresponding to the "
+                            "created atlasRelease resource can not be found among "
+                            f"input hierarchy files. {error}"
+                        )
+                        exit(1)
+
+                # If the hierarchy file has been fetched then the distribution will be
+                # updated with the one given in input only if it is different. For a
+                # brand new file, the distribution will be attached.
+                try:
+                    if atlasrelease_payloads["hierarchy"].distribution:
+                        format_hierarchy_original = os.path.splitext(
+                            os.path.basename(atlasrelease_ontology_path)
+                        )[1][1:]
+                        content_type_original = (
+                            f"application/{format_hierarchy_original}"
+                        )
+                        hierarchy_original_hash = return_file_hash(
+                            atlasrelease_ontology_path
+                        )
+                        input_hierarchy_distrib = {
+                            f"{content_type_original}": (
+                                hierarchy_original_hash,
+                                atlasrelease_ontology_path,
+                            )
+                        }
+                        # If the correct hierarchy jsonld file is given in input then 
+                        # compare it and eventually attach it for the ontology resource
+                        # distribution as well
+                        try:
+                            if (
+                                input_hierarchy_jsonld
+                                and const.atlasrelease_dict[atlasrelease_choice][
+                                    "ontology"
+                                ]["mba_jsonld"]
+                            ):
+                                hierarchy_jsonld_name = const.atlasrelease_dict[
+                                    atlasrelease_choice
+                                ]["ontology"]["mba_jsonld"]
+                                try:
+                                    if os.path.samefile(
+                                        input_hierarchy_jsonld,
+                                        hierarchies[hierarchy_jsonld_name],
+                                    ):
+                                        pass
+                                except FileNotFoundError as error:
+                                    L.error(
+                                        f"Error : {error}. Input hierarchy jsonLD file "
+                                        "does not correspond to the input hierarchy "
+                                        "json file"
+                                    )
+                                    exit(1)
+                                format_hierarchy_mba = os.path.splitext(
+                                    os.path.basename(input_hierarchy_jsonld)
+                                )[1][1:]
+                                content_type_mba = f"application/{format_hierarchy_mba}"
+                                hierarchy_mba_hash = return_file_hash(
+                                    input_hierarchy_jsonld
+                                )
+                                hierarchy_mba_dict = {
+                                    f"{content_type_mba}": (
+                                        hierarchy_mba_hash,
+                                        input_hierarchy_jsonld,
+                                    )
+                                }
+                                input_hierarchy_distrib.update(hierarchy_mba_dict)
+                        except KeyError:
+                            pass
+
+                        # Compare the fetched hierarchy file hash with the hash from
+                        # the input ones
+                        distribution_file = []
+                        if not isinstance(
+                            atlasrelease_payloads["hierarchy"].distribution, list
+                        ):
+                            atlasrelease_payloads["hierarchy"].distribution = [
+                                atlasrelease_payloads["hierarchy"].distribution
+                            ]
+                        for fetched_distrib in atlasrelease_payloads[
+                            "hierarchy"
+                        ].distribution:
+                            try:
+                                if (
+                                    fetched_distrib.digest.value
+                                    != input_hierarchy_distrib[
+                                        fetched_distrib.encodingFormat
+                                    ][0]
+                                ):
+                                    distribution_hierarchy = forge.attach(
+                                        input_hierarchy_distrib[
+                                            fetched_distrib.encodingFormat
+                                        ][1],
+                                        fetched_distrib.encodingFormat,
+                                    )
+                                    # attach the selected input distribution and pop it
+                                    # from the dictionary
+                                    distribution_file.append(distribution_hierarchy)
+                                    input_hierarchy_distrib.pop(
+                                        fetched_distrib.encodingFormat
+                                    )
+                            except KeyError:
+                                pass
+                            # If still keys in it then attach the remaining files
+                            if input_hierarchy_distrib:
+                                print("ccc")
+                                for encoding, file in input_hierarchy_distrib.items():
+                                    distribution_hierarchy = forge.attach(
+                                        file[1],
+                                        encoding,
+                                    )
+                                    distribution_file.append(distribution_hierarchy)
+                except AttributeError:
+                    # If the hierarchy file is new so it does not have a distribution
+                    for encoding, file in input_hierarchy_distrib.items():
+                        distribution_hierarchy = forge.attach(file[1], encoding)
+                        distribution_file.append(distribution_hierarchy)
+
+                atlasrelease_payloads["hierarchy"].distribution = distribution_file
+
+                # ==================== Link atlasRelease/Ontology ====================
+                if not atlasrelease_payloads["atlas_release"].parcellationOntology:
+                    atlasrelease_payloads["atlas_release"].parcellationOntology = {
+                        "@id": atlasrelease_payloads["hierarchy"].id,
+                        "@type": ["Entity", const.ontology_type, "Ontology"],
+                    }
+                atlasrelease_payloads["hierarchy"].contribution = contribution
+
+                resources_payloads["datasets_toUpdate"][
+                    f"{const.schema_ontology}"
+                ].append(atlasrelease_payloads["hierarchy"])
+
+        # ==================== Fetch atlasRelease linked resources ====================
+
+        try:
+            L.info(
+                "Resources in Nexus which correspond to input datasets will be "
+                "updated..."
+            )
+            # fetched_resources will be either one resource or a dictionary of resource
+            fetched_resources = fetch_linked_resources(
+                forge,
+                atlasrelease_payloads,
+                [mesh_type],
+                [],
+                "isRegionMesh",
+            )
+        except KeyError as error:
+            L.error(f"{error}")
+            exit(1)
+        except IndexError as error:
+            L.error(f"{error}")
+            exit(1)
+
+        # ==================== add Activity and generation prop ====================
+
+        if provenance_metadata and not activity_resource:
             try:
                 activity_resource = return_activity_payload(forge, provenance_metadata)
             except Exception as e:
-                L.error(f"Error: {e}")
+                L.error(f"{e}")
                 exit(1)
 
-            # # if activity has been created and not fetched from Nexus
-            # if activity_resource._store_metadata:
-            #     if hasattr(activity_resource, "startedAtTime"):
-            #         activity_resource.startedAtTime = forge.from_json(
-            #             {
-            #                 "type": activity_resource.startedAtTime.type,
-            #                 "@value": activity_resource.startedAtTime.value,
-            #             }
-            #         )
+            # if the activity Resource has been fetched from Nexus, the property
+            # 'value' need to be mapped back to @value
+            if hasattr(activity_resource, "startedAtTime"):
+                # A Resource property that is a dict at the creation of the Resource
+                # become a Resource attribut after being synchronized on Nexus
+                if not isinstance(activity_resource.startedAtTime, dict):
+                    if hasattr(activity_resource.startedAtTime, "@value"):
+                        value = getattr(activity_resource.startedAtTime, "@value")
+                        activity_resource.startedAtTime = forge.from_json(
+                            {
+                                "type": activity_resource.startedAtTime.type,
+                                "@value": value,
+                            }
+                        )
 
             generation = {
                 "@type": "Generation",
@@ -329,22 +476,49 @@ def create_mesh_resources(
                 },
             }
 
+        # =========================== 1st Payload creation ===========================
+
+        # If the resource has been fetched, we compare its distribution to the input
+        # file, copy its id and _store_metadata
+        if fetched_resources:
+            filepath_hash = return_file_hash(meshpath)
+            try:
+                first_fetched_resource = fetched_resources[f"{region_id}"]
+                print(f"first resource: {first_fetched_resource._store_metadata}")
+                toUpdate = True
+            except KeyError:
+                pass
+            try:
+                if filepath_hash != first_fetched_resource.distribution.digest.value:
+                    content_type = f"application/{file_extension}"
+                    distribution_file = forge.attach(meshpath, content_type)
+            except AttributeError:
+                content_type = f"application/{file_extension}"
+                distribution_file = forge.attach(meshpath, content_type)
+            fetched_resource_id = first_fetched_resource.id
+            fetched_resource_metadata = first_fetched_resource._store_metadata
+        else:
+            content_type = f"application/{file_extension}"
+            distribution_file = forge.attach(meshpath, content_type)
+
         mesh_resource = Resource(
-            type=["BrainParcellationMesh", "Mesh", "Dataset"],
+            type=mesh_type,
             name=f"{region_name.title()} Mesh {annotation_name}",
             description=mesh_description,
             atlasRelease=atlasRelease,
             brainLocation=brainLocation,
             distribution=distribution_file,
-            isRegisteredIn=isRegisteredIn,
-            spatialUnit=spatial_unit,
-            subject=subject,
+            isRegisteredIn=const.isRegisteredIn,
+            spatialUnit=const.SPATIAL_UNIT,
+            subject=const.subject,
             contribution=contribution,
         )
         # dataset = Dataset.from_resource(forge, mesh_resource, store_metadata=True)
 
         if generation:
             mesh_resource.generation = generation
+
+        # ======================= Create the derivation prop =======================
 
         if link_regions_path:
             mesh_id = forge.format("identifier", "brainparcellationmesh", str(uuid4()))
@@ -356,30 +530,18 @@ def create_mesh_resources(
                     link_summary_content = json.loads(link_summary_file.read())
                     # new_summary_file = True
                     try:
-                        atlasrelease_id = link_summary_content[f"{region_id}"][
-                            "atlasRelease"
-                        ]["@id"]
                         mask_id = link_summary_content[f"{region_id}"]["mask"]["@id"]
                     except KeyError as error:
                         L.error(
                             f"{error}. The input link region json file need to "
-                            "contains the region volumetric Resource Mask @id and the "
-                            "atlasResource @id"
+                            "contains the region volumetric Resource Mask @id"
                         )
                         exit(1)
-                    mesh_resource.atlasRelease = {
-                        "@id": f"{atlasrelease_id}",
-                        "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
-                    }
                     mesh_resource.derivation = {
                         "@type": "Derivation",
                         "entity": {
                             "@id": f"{mask_id}",
-                            "@type": [
-                                "VolumetricDataLayer",
-                                "BrainParcellationMask",
-                                "Dataset",
-                            ],
+                            "@type": const.mesh_dict["derivation_type"],
                         },
                     }
                 try:
@@ -410,8 +572,29 @@ def create_mesh_resources(
                 # region_summary = {f"{region_id}": {"mesh": {"@id": mesh_id}}}
                 # link_summary_content.update(region_summary)
 
-        ressources_dict["datasets"].append(mesh_resource)
+        # Add the generation prop for every different atlasRelease
+        if differentAtlasrelease:
+            if generation:
+                atlasrelease_payloads["hierarchy"].generation = generation
+                atlasrelease_payloads["atlas_release"].generation = generation
+            resources_payloads["datasets_toUpdate"][
+                f"{const.schema_atlasrelease}"
+            ].append(atlasrelease_payloads["atlas_release"])
 
+        if toUpdate:
+            if fetched_resource_id:
+                mesh_resource.id = fetched_resource_id
+            if fetched_resource_metadata:
+                mesh_resource._store_metadata = fetched_resource_metadata
+            resources_payloads["datasets_toUpdate"][f"{const.schema_mesh}"].append(
+                mesh_resource
+            )
+        else:
+            resources_payloads["datasets_toPush"][f"{const.schema_mesh}"].append(
+                mesh_resource
+            )
+
+        toUpdate = False
         for f in range(1, len(files_mesh)):  # start at the 2nd file
 
             meshpath = os.path.join(directory, files_mesh[f])
@@ -440,13 +623,46 @@ def create_mesh_resources(
                         "BrainAtlasSpatialReferenceSystem",
                         "AtlasSpatialReferenceSystem",
                     ],
-                    "@id": atlas_reference_system_id,
+                    "@id": const.atlas_reference_system_id,
                 },
             }
             mesh_description = (
                 f"Brain region mesh - {region_name.title()} (ID: {region_id}) - for "
                 f"the {annotation_description}."
             )
+
+            if fetched_resources:
+                try:
+                    fetched_resource_id = fetched_resources[f"{region_id}"].id
+                    fetched_resource_metadata = fetched_resources[
+                        f"{region_id}"
+                    ]._store_metadata
+                    toUpdate = True
+                    filepath_hash = return_file_hash(filepath)
+                    try:
+                        if (
+                            filepath_hash
+                            != fetched_resources[
+                                f"{region_id}"
+                            ].distribution.digest.value
+                        ):
+                            content_type = fetched_resources[
+                                f"{region_id}"
+                            ].distribution.encodingFormat
+                            distribution_file = forge.attach(
+                                fetched_resources[f"{region_id}"].distribution,
+                                content_type,
+                            )
+                    except AttributeError:
+                        content_type = fetched_resources[
+                            f"{region_id}"
+                        ].distribution.encodingFormat
+                        distribution_file = forge.attach(
+                            fetched_resources[f"{region_id}"].distribution,
+                            content_type,
+                        )
+                except KeyError:
+                    pass
 
             mesh_resources = Resource(
                 type=mesh_resource.type,
@@ -491,6 +707,7 @@ def create_mesh_resources(
                     },
                 }
                 try:
+                    print(link_summary_content)
                     if "mesh" not in link_summary_content[f"{region_id}"].keys():
                         link_summary_content[f"{region_id}"].update(mesh_link)
                     else:
@@ -513,7 +730,20 @@ def create_mesh_resources(
 
             # dataset = Dataset.from_resource(forge, mesh_resources,
             # store_metadata=True)
-            ressources_dict["datasets"].append(mesh_resources)
 
-    ressources_dict["activity"] = activity_resource
-    return ressources_dict
+            if toUpdate:
+                if fetched_resource_id:
+                    mesh_resources.id = fetched_resource_id
+                if fetched_resource_metadata:
+                    mesh_resources._store_metadata = fetched_resource_metadata
+                resources_payloads["datasets_toUpdate"][f"{const.schema_mesh}"].append(
+                    mesh_resources
+                )
+            else:
+                resources_payloads["datasets_toPush"][f"{const.schema_mesh}"].append(
+                    mesh_resources
+                )
+
+    resources_payloads["activity"] = activity_resource
+
+    return resources_payloads

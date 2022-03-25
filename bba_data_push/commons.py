@@ -4,10 +4,12 @@ import json
 import copy
 import requests
 import jwt
+import hashlib
 from uuid import uuid4
 from datetime import datetime
 from kgforge.core import Resource
 from kgforge.core.commons.exceptions import RegistrationError, RetrievalError
+import bba_data_push.constants as const
 
 
 # Simplify it ? resolve automatically the voxel_type ?
@@ -285,6 +287,110 @@ def get_brain_region_prop(
 #     return resource
 
 
+def return_file_hash(file_path):
+    """
+    Python program to find SHA256 hash string of a file.
+    Read and update hash string value in blocks of 4K because sometimes won't be able
+    to fit the whole file in memory = you have to read chunks of memory of 4096
+    bytes sequentially and feed them to the sha256 method.
+    """
+    sha256_hash = hashlib.sha256()  # SHA-256 hash object
+
+    with open(file_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+
+    return sha256_hash.hexdigest()
+
+
+def fetch_linked_resources(
+    forge,
+    atlasrelease_payloads,
+    resource_type_list,
+    datasamplemodality_list,
+    resource_flag,
+):
+    fetched_resources = {}
+    try:
+        if resource_flag == "isPH":
+            filters = {
+                "type": resource_type_list[0],
+                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+                "dataSampleModality": datasamplemodality_list[0],
+            }
+            fetched_resources_PHlayer = forge.search(filters, limit=7)
+            filters = {
+                "type": resource_type_list[1],
+                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+                "dataSampleModality": datasamplemodality_list[1],
+            }
+            fetched_resources_PHreport = forge.search(filters, limit=1)[0]
+            for resource in fetched_resources_PHlayer:
+                fetched_resources.update[f"{resource.layer.label}"] = resource
+            fetched_resources["report"] = fetched_resources_PHreport
+        elif resource_flag == "isRegionMask":
+            filters = {
+                "type": resource_type_list[0],
+                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+            }
+            fetched_resources_regionmask = forge.search(filters, limit=1500)
+            if fetched_resources_regionmask:
+                for resource in fetched_resources_regionmask:
+                    # more memory efficient than split because does not keep all the split
+                    # tokens in memory
+                    print(resource.brainLocation.brainRegion.id)
+                    region_number = resource.brainLocation.brainRegion.id.rsplit(
+                        "/", 1
+                    )[-1]
+                    fetched_resources[f"{region_number}"] = resource
+        elif resource_flag == "isRegionMesh":
+            filters = {
+                "type": resource_type_list[0],
+                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+            }
+            fetched_resources_regionmesh = forge.search(filters, limit=1500)
+            if fetched_resources_regionmesh:
+                for resource in fetched_resources_regionmesh:
+                    region_number = resource.brainLocation.brainRegion.id.rsplit(
+                        "/", 1
+                    )[-1]
+                    fetched_resources[f"{region_number}"] = resource
+        elif resource_flag == "isRegionSummary":
+            filters = {
+                "type": resource_type_list[0],
+                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+            }
+            fetched_resources_regionsummary = forge.search(filters, limit=1500)
+            if fetched_resources_regionsummary:
+                for resource in fetched_resources_regionsummary:
+                    region_number = resource.brainLocation.brainRegion.id.rsplit(
+                        "/", 1
+                    )[-1]
+                    fetched_resources[f"{region_number}"] = resource
+        elif resource_flag == "isAtlasParcellation":
+            print("ICI")
+            fetched_resources = forge.retrieve(
+                atlasrelease_payloads["atlas_release"].parcellationVolume["@id"]
+                + "?rev"
+            )
+            print(f"beginning: {fetched_resources._store_metadata}")
+        else:
+            print("cacou")
+            filters = {
+                "type": resource_type_list[0],
+                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+                "dataSampleModality": datasamplemodality_list[0],
+            }
+            print(filters)
+            fetched_resources = forge.search(filters, limit=1)[0]
+    except KeyError as error:
+        raise KeyError(f"KeyError in atlasrelease_payloads. {error}")
+    except IndexError:
+        raise IndexError("Resources not found in the Nexus project")
+    print("kakouu")
+    return fetched_resources
+
+
 def return_contribution(forge):
     """
     Create and return a Contribution Resource from the user informations extracted
@@ -475,6 +581,7 @@ def return_softwareagent(forge, metadata_dict):
                 "name": f"{metadata_dict['softwareagent_name']}",
             }
             softwareagent_resources = forge.search(filters, limit=1)
+        # forge.search return nothing if it does not found the resource
         except Exception as e:
             raise Exception(
                 "Error when searching the SoftwareAgent Resource in the destination "
@@ -483,6 +590,7 @@ def return_softwareagent(forge, metadata_dict):
         if softwareagent_resources:
             softwareagent_resource = softwareagent_resources[0]
         else:
+            # If no softwareAgent with the input name has been found then create it
             try:
                 softwareSourceCode = {
                     "@type": "SoftwareSourceCode",
@@ -521,13 +629,23 @@ def return_activity_payload(
     activity_metadata,
 ):
 
-    configuration = (
-        "Activity generated using the snakemake rule "
-        f"'{activity_metadata['rule_name']}'."
-    )
-    activity_type = (
-        activity_metadata["rule_name"].replace("_", " ").title().replace(" ", "")
-    )
+    try:
+        print(activity_metadata)
+        configuration = (
+            "Activity generated using the snakemake rule "
+            f"'{activity_metadata['rule_name']}.'"
+        )
+        activity_type = (
+            activity_metadata["rule_name"].replace("_", " ").title().replace(" ", "")
+        )
+        startedAtTime = {
+            "@type": "xsd:dateTime",
+            "@value": f"{activity_metadata['start_time']}",
+        }
+    except KeyError as error:
+        raise KeyError(
+            f"KeyError: {error} missing in the input activity metadata json file"
+        )
     try:
         activity_resource = forge.retrieve(activity_metadata["activity_id"])
     except RegistrationError:
@@ -561,29 +679,38 @@ def return_activity_payload(
                 f"Error when trying to retrieve the Resources contained in "
                 f" 'input_dataset_used'. {e}."
             )
-        softwareSourceCode = softwareagent_resource.softwareSourceCode
+        softwaresourcecode = softwareagent_resource.softwareSourceCode
+        # A Resource property that is a dict at the creation of the Resource becomes a
+        # Resource attribut after being synchronized on Nexus
+        if isinstance(softwaresourcecode, dict):
+            softwareSourceCode = {
+                "@type": softwaresourcecode["type"],
+                "codeRepository": softwaresourcecode["codeRepository"],
+                "programmingLanguage": softwaresourcecode["programmingLanguage"],
+                "version": activity_metadata["software_version"],
+                "runtimePlatform": activity_metadata["runtime_platform"],
+            }
+        else:
+            softwareSourceCode = {
+                "@type": softwaresourcecode.type,
+                "codeRepository": softwaresourcecode.codeRepository,
+                "programmingLanguage": softwaresourcecode.programmingLanguage,
+                "version": activity_metadata["software_version"],
+                "runtimePlatform": activity_metadata["runtime_platform"],
+            }
         wasAssociatedWith = [
             {
                 "@type": softwareagent_resource.type,
                 "@id": softwareagent_resource.id,
                 "description": softwareagent_resource.description,
                 "name": softwareagent_resource.name,
-                "softwareSourceCode": {
-                    "@type": softwareagent_resource.softwareSourceCode.type,
-                    "codeRepository": softwareSourceCode.codeRepository,
-                    "programmingLanguage": softwareSourceCode.programmingLanguage,
-                    "version": activity_metadata["software_version"],
-                    "runtimePlatform": activity_metadata["runtime_platform"],
-                },
+                "softwareSourceCode": softwareSourceCode,
             }
         ]
-        startedAtTime = {
-            "@type": "xsd:dateTime",
-            "@value": f"{activity_metadata['start_time']}",
-        }
         activity_resource = Resource(
             id=activity_metadata["activity_id"],
             type=["Activity"],
+            name=f"rule: {activity_metadata['rule_name']}",
             startedAtTime=startedAtTime,
             wasAssociatedWith=wasAssociatedWith,
             used=used,
@@ -603,294 +730,161 @@ def return_activity_payload(
 def return_atlasrelease(
     forge,
     config_content,
-    atlasrelease_id,
-    atlasrelease_dict,
-    atlasrelease_parcellation,
-    atlasrelease_hierarchy,
-    atlas_reference_system_id,
-    subject,
+    atlasrelease_config_path,
+    atlasrelease_payloads,
+    resource_tag,
 ):
+    atlasrelease_choice = atlasrelease_payloads["atlasrelease_choice"]
+    ontology_choice = const.atlasrelease_dict[atlasrelease_choice]["ontology"]
 
     spatialReferenceSystem = {
-        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-        "allen_ccfv3_spatial_reference_system",
+        "@id": const.atlas_reference_system_id,
         "@type": "AtlasSpatialReferenceSystem",
-    }
-
-    # average brain model ccfv3
-    brainTemplateDataLayer = {
-        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
-        "dca40f99-b494-4d2c-9a2f-c407180138b7",
-        "@type": "BrainTemplateDataLayer",
     }
 
     releaseDate = {
         "@type": "xsd:date",
         "@value": f"{datetime.today().strftime('%Y-%m-%d')}",
     }
-    link_to_hierarchy = False
-    atlasrelease_resource = []
-    if atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_hybridsplit":
-        if atlasrelease_id:
-            # Atlas release hybrid v2-v3 L2L3 split
-            try:
-                # filters = {"name": "Allen Mouse CCF v2-v3 hybrid l2-l3 split"}
-                # atlasrelease_resource = forge.search(filters, limit=1)[0]
-                atlasrelease_resource = forge.retrieve(atlasrelease_id)
-                atlasrelease_dict["atlas_release"] = atlasrelease_resource
-            except Exception as e:
-                raise Exception(
-                    "Error when searching the BrainAtlasRelease Resource 'Allen "
-                    "Mouse CCF v2-v3 hybrid l2-l3 split' in the destination "
-                    f"project '{forge._store.bucket}'. {e}"
-                )
-                exit(1)
-        elif atlasrelease_parcellation == "annotation_hybrid_l23split":
-            description = (
-                "This atlas release uses the brain parcellation resulting of the "
-                "hybridation between CCFv2 and CCFv3 and integrating the splitting of "
-                "layer 2 and layer 3. The average brain template and the ontology is "
-                "common across CCFv2 and CCFv3."
-            )
-            atlasrelease_resource = Resource(
-                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
-                name="Allen Mouse CCF v2-v3 hybrid l2-l3 split",
-                description=description,
-                brainTemplateDataLayer=brainTemplateDataLayer,
-                spatialReferenceSystem=spatialReferenceSystem,
-                subject=subject,
-                releaseDate=releaseDate,
-            )
-            link_to_hierarchy = True
-        if not atlasrelease_resource:
-            raise Exception(
-                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 hybrid l2-l3 split'"
-                f"in the destination project '{forge._store.bucket}'. Please provide "
-                "the argument --atlasrelease-id and the right parcellation volume to "
-                "first generate and push a new atlas release resource into your "
-                "project."
-            )
-            exit(1)
-
-    # Atlas Releases realigned split volume
-    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_realignedsplit":
-        if atlasrelease_id:
-            try:
-                # filters = {"name": "Allen Mouse CCF v2-v3 realigned l2-l3 split"}
-                # atlasrelease_resource = forge.search(filters, limit=1)[0]
-                atlasrelease_resource = forge.retrieve(atlasrelease_id)
-                atlasrelease_dict["atlas_release"] = atlasrelease_resource
-            except Exception as e:
-                raise Exception(
-                    "Error when searching the BrainAtlasRelease Resource 'Allen "
-                    "Mouse CCF v2-v3 realigned l2-l3 split' in the destination "
-                    f"project '{forge._store.bucket}'. {e}"
-                )
-                exit(1)
-        elif atlasrelease_parcellation == "annotation_realigned_l23split":
-            description = (
-                "This atlas release uses the brain parcellation resulting of the "
-                "realignment of CCFv2 over CCFv3 and integrating the splitting of "
-                "layer 2 and layer 3. The average brain template and the ontology is "
-                "common across CCFv2 and CCFv3."
-            )
-            atlasrelease_resource = Resource(
-                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
-                name="Allen Mouse CCF v2-v3 realigned l2-l3 split",
-                description=description,
-                brainTemplateDataLayer=brainTemplateDataLayer,
-                spatialReferenceSystem=spatialReferenceSystem,
-                subject=subject,
-                releaseDate=releaseDate,
-            )
-            link_to_hierarchy = True
-        if not atlasrelease_resource:
-            raise Exception(
-                "No BrainAtlasRelease 'Allen Mouse CCF v2-v3 realigned l2-l3 split'"
-                f"in the destination project '{forge._store.bucket}'. Please provide "
-                "the argument --atlasrelease-id and the right parcellation volume to "
-                "first generate and push a new atlas release resource into your "
-                "project."
-            )
-            exit(1)
-
-    # Atlas Releases ccfv3 layer23 split volume
-    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_ccfv3split":
-        if atlasrelease_id:
-            try:
-                # filters = {"name": "Allen Mouse CCF v3 l2-l3 split"}
-                # atlasrelease_resource = forge.search(filters, limit=1)[0]
-                atlasrelease_resource = forge.retrieve(atlasrelease_id)
-                atlasrelease_dict["atlas_release"] = atlasrelease_resource
-            except Exception as e:
-                raise Exception(
-                    "Error when searching the BrainAtlasRelease Resource 'Allen Mouse "
-                    "CCF v3 l2-l3 split' in the destination project "
-                    f"'{forge._store.bucket}'. {e}"
-                )
-                exit(1)
-        elif atlasrelease_parcellation == "annotation_ccfv3_l23split":
-            description = (
-                "This atlas release uses the brain parcellation of CCFv3 (2017) with "
-                "the isocortex layer 2 and 3 split. The average brain template and the "
-                "ontology is common across CCFv2 and CCFv3."
-            )
-            atlasrelease_resource = Resource(
-                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
-                name="Allen Mouse CCF v3 l2-l3 split",
-                description=description,
-                brainTemplateDataLayer=brainTemplateDataLayer,
-                spatialReferenceSystem=spatialReferenceSystem,
-                subject=subject,
-                releaseDate=releaseDate,
-            )
-            link_to_hierarchy = True
-        if not atlasrelease_resource:
-            raise Exception(
-                "No BrainAtlasRelease 'Allen Mouse CCF v3 l2-l3 split  resource found "
-                f"in the destination project '{forge._store.bucket}'. Please provide "
-                "the argument --atlasrelease-id and the right parcellation volume to "
-                "first generate and push a new atlas release resource into your "
-                "project."
-            )
-            exit(1)
-    # Old Atlas Releases ccfv2 and ccfv3
-    elif atlasrelease_dict["atlasrelease_choice"] == "atlasrelease_ccfv2v3":
+    print("1")
+    try:
+        with open(atlasrelease_config_path, "r+") as atlasrelease_config_file:
+            atlasrelease_config_file.seek(0)
+            atlasrelease_config = json.loads(atlasrelease_config_file.read())
+    except json.decoder.JSONDecodeError as error:
+        raise json.decoder.JSONDecodeError(
+            f"JSONDecodeError when opening the file '{atlasrelease_config_path}'. "
+            f"{error}"
+        )
+    except FileNotFoundError:
+        pass
+    atlasrelease_tag = None
+    ontology_id = None
+    ontology_distribution = None
+    ontology_derivation = None
+    ontology_metadata = None
+    atlasrelease_id = None
+    atlas_release_metadata = None
+    parcellationOntology = None
+    parcellationVolume = None
+    # Check the content of atlasrelease_config_path
+    print("2")
+    try:
+        atlasrelease = atlasrelease_config[atlasrelease_choice]
         try:
-            # filters = {"name": "Allen Mouse CCF v2"}
-            # atlasreleasev2_resource = forge.search(filters, limit=1)[0]
-            # filters = {"name": "Allen Mouse CCF v3"}
-            # atlasreleasev3_resource = forge.search(filters, limit=1)[0]
-            atlasreleasev2_resource = forge.retrieve(
-                "https://bbp.epfl.ch/neurosciencegraph/data/"
-                "7f85cd66-d212-4799-bb4c-0732b8534442"
-            )
-            atlasreleasev3_resource = forge.retrieve(
-                "https://bbp.epfl.ch/neurosciencegraph/data/"
-                "e238a1f6-0b30-48df-ac8b-6185efe10a59"
-            )
-            atlasrelease_dict["atlas_release"] = [
-                atlasreleasev2_resource,
-                atlasreleasev3_resource,
-            ]
-            atlasrelease_dict["create_new"] = False
-        except Exception as e:
-            raise Exception(
-                "Error when searching the BrainAtlasRelease Resources 'Allen "
-                "Mouse CCF v2' and 'Allen Mouse CCF v3'in the destination "
-                f"project '{forge._store.bucket}'. {e}"
-            )
-            exit(1)
-        if not atlasreleasev2_resource or not atlasreleasev3_resource:
-            # L.info(
-            #     "No BrainAtlasRelease 'Allen Mouse CCF v2' and 'Allen "
-            #     "Mouse CCF v3' resources found in the destination project "
-            #     f"'{forge._store.bucket}'. They will therefore be created."
-            # )
-            description_ccfv2 = (
-                "This atlas release uses the brain parcellation of CCFv2 (2011). The "
-                "average brain template and the ontology is common across CCFv2 and "
-                "CCFv3."
-            )
-            name_ccfv2 = "Allen Mouse CCF v2"
-            parcellationOntology = {
-                "@id": "http://bbp.epfl.ch/neurosciencegraph/ontologies/mba",
-                "@type": ["Entity", "Ontology", "ParcellationOntology"],
-            }
-            parcellationVolume = {
-                "@id": "https://bbp.epfl.ch/neurosciencegraph/data/ "
-                "7b4b36ad-911c-4758-8686-2bf7943e10fb",
-                "@type": [
-                    "Dataset",
-                    "VolumetricDataLayer",
-                    "BrainParcellationDataLayer",
-                ],
-            }
-
-            atlasreleasev2_resource = Resource(
-                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
-                name=name_ccfv2,
-                description=description_ccfv2,
-                brainTemplateDataLayer=brainTemplateDataLayer,
-                spatialReferenceSystem=spatialReferenceSystem,
-                subject=subject,
-                parcellationOntology=parcellationOntology,
-                parcellationVolume=parcellationVolume,
-                releaseDate=releaseDate,
-            )
-
-            atlasreleasev3_resource = Resource(
-                id=forge.format("identifier", "brainatlasrelease", str(uuid4())),
-                type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
-                name=name_ccfv2.replace("v2", "v3"),
-                description=description_ccfv2.replace("CCFv2 (2011)", "CCFv3 (2017)"),
-                brainTemplateDataLayer=brainTemplateDataLayer,
-                spatialReferenceSystem=spatialReferenceSystem,
-                subject=subject,
-                parcellationOntology=parcellationOntology,
-                parcellationVolume=parcellationVolume,
-                releaseDate=releaseDate,
-            )
-            atlasrelease_dict["atlas_release"] = [
-                atlasreleasev2_resource,
-                atlasreleasev3_resource,
-            ]
-            atlasrelease_dict["create_new"] = True
-
-    # Link the new atlas release to the hierarchy file
-    if link_to_hierarchy:
-        if not atlasrelease_dict["hierarchy"]:
+            atlasrelease_tag = atlasrelease["tag"]
+        except KeyError:
+            pass
+        atlasrelease_resource = forge.retrieve(atlasrelease["id"])
+        if atlasrelease_resource:
             try:
-                if not os.path.samefile(
-                    atlasrelease_hierarchy,
-                    config_content["HierarchyJson"]["hierarchy_l23split"],
-                ):
+                atlasrelease_payloads["fetched"] = True
+                atlasrelease_id = atlasrelease_resource.id
+                atlas_release_metadata = atlasrelease_resource._store_metadata
+                # why do we instanciate these :
+                parcellationOntology = {
+                    "@id": atlasrelease_resource.parcellationOntology.id,
+                    "@type": ["Entity", const.ontology_type, "Ontology"],
+                }
+                parcellationVolume = {
+                    "@id": atlasrelease_resource.parcellationVolume.id,
+                    "@type": ["Dataset", "BrainParcellationDataLayer"],
+                }
+            except AttributeError as error:
+                raise AttributeError(
+                    f"Error with the atlasRelease resource fetched. {error}"
+                )
+            try:
+                ontology_resource = forge.retrieve(
+                    atlasrelease_resource.parcellationOntology.id
+                )
+                if ontology_resource:
+                    ontology_id = ontology_resource.id
+                    ontology_derivation = ontology_resource.derivation
+                    ontology_distribution = ontology_resource.distribution
+                    ontology_metadata = ontology_resource._store_metadata
+                else:
                     raise Exception(
-                        "Error: The atlas regions hierarchy file provided does not "
-                        "correspond to 'hierarchy_l23split' from the dataset "
-                        "configuration file"
+                        "Error the ontology Resource linked to "
+                        f"'{atlasrelease_resource}' has not been found destination "
+                        f"project '{forge._store.bucket}'."
                     )
-                    exit(1)
-            except FileNotFoundError as error:
-                raise FileNotFoundError(f"Error: {error}")
-                exit(1)
-
-            description = (
-                "AIBS Mouse CCF Atlas regions hierarchy tree file including the split "
-                "of layer 2 and layer 3"
+            except AttributeError as error:
+                raise AttributeError(
+                    f"Error with the ontology resource fetched. {error}"
+                )
+        else:
+            raise Exception(
+                f"Error the atlasRelease Resource '{atlasrelease_resource}' has not "
+                f"been found destination project '{forge._store.bucket}'."
             )
-            # Original AIBS hierarchy file
-            # "@type": ["Entity", "Ontology"],
-            derivation = {
-                "@type": "Derivation",
-                "entity": {
-                    "@id": "http://bbp.epfl.ch/neurosciencegraph/ontologies/mba",
-                    "@type": "Entity",
-                },
-            }
-            file_extension = os.path.splitext(os.path.basename(atlasrelease_hierarchy))[
-                1
-            ][1:]
+    except KeyError:
+        pass
+    # Tag that will be linked to the atlasRelease, its ontology, its parcellation and
+    # every linked resources
+    if resource_tag:
+        tag = resource_tag
+    elif atlasrelease_tag:
+        tag = atlasrelease_tag
+    else:
+        tag = f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}"
+    print("3")
+    atlasrelease_payloads["tag"] = tag
 
-            content_type = f"application/{file_extension}"
-            distribution_file = forge.attach(atlasrelease_hierarchy, content_type)
+    # ontology resource creation
+    hierarchy_resource = Resource(
+        type=["Entity", "Ontology", "ParcellationOntology"],
+        label=ontology_choice["label"],
+        description=ontology_choice["description"],
+        subject=const.subject,
+    )
+    print("3.3")
+    if ontology_id:
+        hierarchy_resource.id = ontology_id
+    else:
+        hierarchy_resource.id = forge.format("identifier", "ontologies", str(uuid4()))
 
-            hierarchy_resource = Resource(
-                id=forge.format("identifier", "ontologies", str(uuid4())),
-                type=["Entity", "Ontology", "ParcellationOntology"],
-                label="AIBS Mouse CCF Atlas parcellation ontology L2L3 split",
-                distribution=distribution_file,
-                description=description,
-                derivation=derivation,
-                subject=subject,
-            )
+    # If a distribution has been fetched we keep it and analyse it later
+    if ontology_distribution:
+        hierarchy_resource.distribution = ontology_distribution
+    print("3.7")
+    if ontology_derivation:
+        hierarchy_resource.derivation = ontology_derivation
+    else:
+        hierarchy_resource.derivation = {
+            "@type": "Derivation",
+            "entity": {
+                "@id": ontology_choice["derivation"],
+                "@type": "Entity",
+            },
+        }
+    if ontology_metadata:
+        hierarchy_resource._store_metadata = ontology_metadata
+    print(hierarchy_resource._store_metadata._rev)
 
-            atlasrelease_dict["hierarchy"] = hierarchy_resource
+    atlasrelease_payloads["hierarchy"] = hierarchy_resource
+    print("4")
+    # atlasRelease resource creation
+    atlasrelease_resource = Resource(
+        type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
+        name=const.atlasrelease_dict[atlasrelease_choice]["name"],
+        description=const.atlasrelease_dict[atlasrelease_choice]["description"],
+        brainTemplateDataLayer=const.brainTemplateDataLayer,
+        spatialReferenceSystem=spatialReferenceSystem,
+        subject=const.subject,
+        releaseDate=releaseDate,
+        parcellationOntology=parcellationOntology,  # if None, will be modified later
+        parcellationVolume=parcellationVolume,  # if None, will be modified later
+    )
+    if atlasrelease_id:
+        atlasrelease_resource.id = atlasrelease_id
+    else:
+        atlasrelease_resource.id = forge.format(
+            "identifier", "brainatlasrelease", str(uuid4())
+        )
+    if atlas_release_metadata:
+        atlasrelease_resource._store_metadata = atlas_release_metadata
 
-        atlasrelease_dict["atlas_release"] = atlasrelease_resource
-
-    return atlasrelease_dict
+    atlasrelease_payloads["atlas_release"] = atlasrelease_resource
+    print("5")
+    return atlasrelease_payloads
