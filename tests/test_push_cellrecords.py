@@ -21,7 +21,13 @@ def test_create_cell_record_resources():
     forge = KnowledgeGraphForge(forge_config_file, token=nexus_token_file)
 
     dataset_path = str(Path(TEST_PATH, "tests/tests_data/cell_records_sonata.h5"))
+    hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
+    atlasrelease_config_path = str(
+        Path(TEST_PATH, "/tests/tests_data/atlasrelease_config_path.json")
+    )
+    dataset_returned = "datasets_toPush"
+    dataset_schema = const.schema_cellrecord
 
     # Arguments wrong
     empty_folder = str(
@@ -78,7 +84,7 @@ def test_create_cell_record_resources():
 
     cellrecords_resource_simple = {
         "type": ["CellRecordSeries", "Dataset"],
-        "atlasRelease": {"@id": const.atlasrelease_hybrid_id},
+        "atlasRelease": const.atlasrelease_hybrid_l23split,
         "brainLocation": {
             "atlasSpatialReferenceSystem": {
                 "@id": const.atlas_reference_system_id,
@@ -169,9 +175,13 @@ def test_create_cell_record_resources():
             forge,
             [dataset_path],
             config_path,
+            atlasrelease_config_path,
+            hierarchy_path,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            resource_tag=None,
             verbose=0,
-        )["datasets"][-1]
+        )[dataset_returned][dataset_schema][-1]
     )
 
     for key in cellrecords_resource_simple:
@@ -184,9 +194,13 @@ def test_create_cell_record_resources():
         forge,
         [dataset_path],
         config_path,
+        atlasrelease_config_path,
+        hierarchy_path,
+        input_hierarchy_jsonld=None,
         provenance_metadata_path=None,
+        resource_tag=None,
         verbose=0,
-    )["datasets"]
+    )[dataset_returned][dataset_schema]
 
     # Search for the cell_record_dataset to compare with (if multiple results returned)
     cell_record_dataset = None
@@ -205,9 +219,13 @@ def test_create_cell_record_resources():
             forge,
             dataset_path,
             wrong_config_key,
+            atlasrelease_config_path,
+            hierarchy_path,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset corrupted
@@ -216,9 +234,13 @@ def test_create_cell_record_resources():
             forge,
             [corrupted_dataset],
             config_data_corrupted,
+            atlasrelease_config_path,
+            hierarchy_path,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset with wrong content
@@ -227,9 +249,13 @@ def test_create_cell_record_resources():
             forge,
             [wrong_dataset],
             config_data_wrongdataset,
+            atlasrelease_config_path,
+            hierarchy_path,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # configuration file contains not existing file path
@@ -238,9 +264,13 @@ def test_create_cell_record_resources():
             forge,
             [dataset_path],
             config_data_notfound,
+            atlasrelease_config_path,
+            hierarchy_path,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset is an empty folder
@@ -249,9 +279,13 @@ def test_create_cell_record_resources():
             forge,
             [empty_folder],
             config_wrongdatatype,
+            atlasrelease_config_path,
+            hierarchy_path,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset without cell_type content
@@ -260,9 +294,13 @@ def test_create_cell_record_resources():
             forge,
             [nocelltype_data],
             config_data_emptydata,
+            atlasrelease_config_path,
+            hierarchy_path,
+            input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
+            resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
 

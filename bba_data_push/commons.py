@@ -293,6 +293,11 @@ def return_file_hash(file_path):
     Read and update hash string value in blocks of 4K because sometimes won't be able
     to fit the whole file in memory = you have to read chunks of memory of 4096
     bytes sequentially and feed them to the sha256 method.
+
+    Parameters:
+        file_path : File path.
+
+    Returns: Hash value of the input file.
     """
     sha256_hash = hashlib.sha256()  # SHA-256 hash object
 
@@ -310,6 +315,23 @@ def fetch_linked_resources(
     datasamplemodality_list,
     resource_flag,
 ):
+    """
+    Return the resources fetched from Nexus using the type, datasamplemodality and
+    resource_flag informations. If there is only one resource to fetch, a resource
+    will be returned otherwise a dictionary indexed containing all the resources will
+    be returned.
+
+    Parameters:
+        forge : Instantiated and configured forge object.
+        atlasrelease_payloads : dict containing atlasRelease and ontology resources.
+        resource_type_list : List containing the resource types to fetch.
+        datasamplemodality_list : List containing the resource datasamplemodality to
+                                 fetch.
+        resource_flag : string flag indicating the resource to fetch.
+
+    Returns:
+        fetched_resources : Fetched resource or dict containing fetched resources.
+    """
     fetched_resources = {}
     try:
         if resource_flag == "isPH":
@@ -336,8 +358,8 @@ def fetch_linked_resources(
             fetched_resources_regionmask = forge.search(filters, limit=1500)
             if fetched_resources_regionmask:
                 for resource in fetched_resources_regionmask:
-                    # more memory efficient than split because does not keep all the split
-                    # tokens in memory
+                    # more memory efficient than split because does not keep all the
+                    # split tokens in memory
                     print(resource.brainLocation.brainRegion.id)
                     region_number = resource.brainLocation.brainRegion.id.rsplit(
                         "/", 1
@@ -397,6 +419,7 @@ def return_contribution(forge):
     from its token.
     To do this, the user Person Resource identifier is retrieved from Nexus if it
     exists, otherwise create a Person Resource with the user informations.
+
     Parameters:
         forge : instantiated and configured forge object.
         resource : Resource object defined by a properties payload linked to a file.
@@ -561,7 +584,19 @@ def return_contribution(forge):
 
 
 def return_softwareagent(forge, metadata_dict):
+    """
+    Create and return a SoftwareAgent Resource from the provenance informations
+    extracted from 'metadata_dict'.
+    To do this, the user SoftwareAgent Resource identifier is retrieved from Nexus if
+    it exists, otherwise create a SoftwareAgent Resource with the user informations.
 
+    Parameters:
+        forge : instantiated and configured forge object.
+        metadata_dict : Dict containing informations about the pipeline run.
+
+    Returns:
+        softwareagent_resource : Resource object of SoftwareAgent type.
+    """
     try:
         softwareagent_resources = forge.resolve(
             metadata_dict["softwareagent_name"],
@@ -628,7 +663,19 @@ def return_activity_payload(
     forge,
     activity_metadata,
 ):
+    """
+    Create and return a Activity Resource from the provenance informations extracted
+    from 'activity_metadata'.
+    To do this, the user Activity Resource identifier is retrieved from Nexus if it
+    exists, otherwise create a Activity Resource with the user informations.
 
+    Parameters:
+        forge : instantiated and configured forge object.
+        activity_metadata : Dict containing informations about the pipeline run.
+
+    Returns:
+        activity_resource : Resource object of Activity type.
+    """
     try:
         print(activity_metadata)
         configuration = (
@@ -729,11 +776,27 @@ def return_activity_payload(
 
 def return_atlasrelease(
     forge,
-    config_content,
     atlasrelease_config_path,
     atlasrelease_payloads,
     resource_tag,
 ):
+    """
+    Return a dictionary containing the atlasRelease and ontology resource. If their
+    ids are found in the atlasrelease configuration json file they will be fetched and
+    their payloads will be updated.
+
+    Parameters:
+        forge : Instantiated and configured forge object.
+        atlasrelease_config_path : Json file meant to contain the atlasrelease and
+                                   ontology @id
+        atlasrelease_payloads : Dict meant to contain the atlasRelease and ontology
+                                resources.
+        resource_tag : String containing the tag value.
+
+    Returns:
+        atlasrelease_payloads : Fetched resource or dict containing the atlasRelease
+                                and ontology resources.
+    """
     atlasrelease_choice = atlasrelease_payloads["atlasrelease_choice"]
     ontology_choice = const.atlasrelease_dict[atlasrelease_choice]["ontology"]
 

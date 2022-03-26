@@ -1,8 +1,9 @@
 """ 
 Create resource payload and push them along with the corresponding dataset files into 
-Nexus. Eventually return a JSON temporary file containing the Activity resource payload 
-detailings the Atlas pipeline run specifications. This file can be provided as an input 
-by the bba-dataset-push module that will erase it after use.
+Nexus. If the Resource already exists in Nexus then update it instead. Eventually 
+push/update their linked atlasRelease and ontology resources. Tag all these resources 
+with the input tag or, if not provided, with a timestamp.
+Each CLI can process multiple files/directories at once.
 To know more about Nexus, see https://bluebrainnexus.io.
 Link to BBP Atlas pipeline confluence documentation: 
 https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
@@ -195,10 +196,20 @@ def base_resource(f):
         "containing the paths to the Atlas pipeline generated dataset",
     )(f)
     f = click.option(
-        "--provenance-metadata-path",
+        "--hierarchy-path",
         type=click.Path(exists=True),
-        help="Json file containing metadata for the derivation properties as well as "
-        "the Activity and SoftwareAgent resources.",
+        required=True,
+        multiple=True,
+        help="The path to the json hierarchy file containing an AIBS hierarchy "
+        "structure.",
+    )(f)
+    f = click.option(
+        "--hierarchy-jsonld-path",
+        type=click.Path(exists=True),
+        help="Path to the AIBS hierarchy structure as a JSON-LD file. It is mandatory "
+        "in case of the creation of a new Ontology resource as it will be attached to "
+        "it when integrated in the knowledge graph. New Ontology resource is created "
+        "at the same time a new atlasRelease resource need to be created.",
     )(f)
     f = click.option(
         "--atlasrelease-config-path",
@@ -210,23 +221,14 @@ def base_resource(f):
         "bbp/atlas.",
     )(f)
     f = click.option(
+        "--provenance-metadata-path",
+        type=click.Path(exists=True),
+        help="Json file containing metadata for the derivation properties as well as "
+        "the Activity and SoftwareAgent resources.",
+    )(f)
+    f = click.option(
         "--resource-tag",
         help="Optional tag value with which to tag the resources",
-    )(f)
-    f = click.option(
-        "--hierarchy-path",
-        type=click.Path(exists=True),
-        required=True,
-        multiple=True,
-        help="The path to the json hierarchy file containing an AIBS hierarchy structure.",
-    )(f)
-    f = click.option(
-        "--hierarchy-jsonld-path",
-        type=click.Path(exists=True),
-        help="Path to the AIBS hierarchy structure as a JSON-LD file. It is mandatory in "
-        "case of the creation of a new Ontology resource as it will be attached to it when "
-        "integrated in the knowledge graph. New Ontology resource is created at the same "
-        "time a new atlasRelease resource need to be created.",
     )(f)
 
     return f
@@ -238,8 +240,8 @@ def base_resource(f):
     "--link-regions-path",
     help="Optional json file containing link between regions and resources  (@ ids of "
     "mask and mesh for each brain region) to be extracted by the CLI "
-    "push-regionsummary. If the file already exists it will be annoted else it will be "
-    "created.",
+    "push-regionsummary. If the file already exists it will be annotated else it will "
+    "be created.",
 )
 @click.pass_context
 @log_args(L)
@@ -255,7 +257,10 @@ def push_volumetric(
     resource_tag,
 ):
     """Create a VolumetricDataLayer resource payload and push it along with the "
-    corresponding volumetric input dataset files into Nexus.\n
+    corresponding volumetric input dataset files into Nexus. If the Resource already
+    exists in Nexus then it will be updated instead. Eventually push/update their
+    linked atlasRelease and ontology resources. Tag all these resources with the input
+    tag or, if not provided, with a timestamp\n
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the volumetric payloads...")
@@ -306,7 +311,10 @@ def push_meshes(
     resource_tag,
 ):
     """Create a Mesh resource payload and push it along with the corresponding brain
-    .OBJ mesh folder input dataset files into Nexus.\n
+    .OBJ mesh folder input dataset files into Nexus. If the Resource already exists in
+    Nexus then it will be updated instead. Eventually push/update their linked
+    atlasRelease and ontology resources. Tag all these resources with the input tag or,
+    if not provided, with a timestamp\n
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the mesh payloads...")
@@ -349,7 +357,10 @@ def push_cellrecords(
     resource_tag,
 ):
     """Create a CellRecordSerie resource payload and push it along with the
-    corresponding Sonata hdf5 file input dataset files into Nexus.\n
+    corresponding Sonata hdf5 file input dataset files into Nexus. If the Resource
+    already exists in Nexus then it will be updated instead. Eventually push/update
+    their linked atlasRelease and ontology resources. Tag all these resources with the
+    input tag or, if not provided, with a timestamp\n
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the CellRecord payloads...")
@@ -406,7 +417,10 @@ def push_regionsummary(
     resource_tag,
 ):
     """Create a RegionSummary resource payload and push it along with the corresponding
-    brain region metadata json input dataset files into Nexus.\n
+    brain region metadata json input dataset files into Nexus. If the Resource already
+    exists in Nexus then it will be updated instead. Eventually push/update their
+    linked atlasRelease and ontology resources. Tag all these resources with the input
+    tag or, if not provided, with a timestamp\n
     """
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the RegionSummary payload...")

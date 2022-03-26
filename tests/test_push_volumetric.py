@@ -9,6 +9,7 @@ from bba_data_push.push_nrrd_volumetricdatalayer import (
     create_volumetric_resources,
     add_nrrd_props,
 )
+import bba_data_push.constants as const
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 
@@ -16,7 +17,7 @@ TEST_PATH = Path(Path(__file__).parent.parent)
 def volumetric_dict(cell_density=False, nrrd_props=False):
 
     volumetric_dict = {
-        "type": ["VolumetricDataLayer", "BrainParcellationDataLayer"],
+        "type": ["Dataset", "VolumetricDataLayer", "BrainParcellationDataLayer"],
         "atlasRelease": {},
         "brainLocation": {
             "atlasSpatialReferenceSystem": {
@@ -91,12 +92,10 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
     if cell_density:
 
         volumetric_dict["type"].remove("BrainParcellationDataLayer")
-        volumetric_dict["type"].extend(["GliaCellDensity", "CellDensityDataLayer"])
+        volumetric_dict["type"].extend(["CellDensityDataLayer", "GliaCellDensity"])
         volumetric_dict["name"] = "Excitatory Neuron Density"
         volumetric_dict["sampleType"] = "intensity"
         volumetric_dict["dimension"][0]["name"] = "intensity"
-
-    volumetric_dict["type"].append("Dataset")
 
     return volumetric_dict
 
@@ -119,7 +118,11 @@ def test_create_volumetric_resources():
     ]
     hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
-    atlasrelease_config_path = str(Path(TEST_PATH, "/tests/tests_data/atlasrelease_config_path.json"))
+    atlasrelease_config_path = str(
+        Path(TEST_PATH, "/tests/tests_data/atlasrelease_config_path.json")
+    )
+    dataset_returned = "datasets_toPush"
+    dataset_schema = const.schema_volumetricdatalayer
 
     # Arguments wrong
     empty_folder = str(
@@ -175,16 +178,16 @@ def test_create_volumetric_resources():
     result = vars(
         create_volumetric_resources(
             forge=forge,
-            inputpath = [dataset_path[0]],
-            config_path = config_path,
-            atlasrelease_config_path = atlasrelease_config_path,
+            inputpath=[dataset_path[0]],
+            config_path=config_path,
+            atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )["datasets"][-1]
+        )[dataset_returned][dataset_schema][-1]
     )
     for key in volumetric_dict_simple:
         assert result[key] == volumetric_dict_simple[key]
@@ -201,14 +204,14 @@ def test_create_volumetric_resources():
         forge,
         dataset_path,
         config_path,
-        atlasrelease_config_path = atlasrelease_config_path,
+        atlasrelease_config_path=atlasrelease_config_path,
         input_hierarchy=hierarchy_path,
         input_hierarchy_jsonld=None,
         provenance_metadata_path=None,
         link_regions_path=None,
         resource_tag=None,
         verbose=1,
-    )["datasets"]
+    )[dataset_returned][dataset_schema]
 
     # Search for the excitatory neuron dataset to compare with (if multiple results
     # returned)
@@ -229,14 +232,14 @@ def test_create_volumetric_resources():
             forge,
             [dataset_path[0]],
             wrong_config_key,
-            atlasrelease_config_path = atlasrelease_config_path,
+            atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset is an empty folder
@@ -245,14 +248,14 @@ def test_create_volumetric_resources():
             forge,
             [empty_folder],
             config_data_emptydata,
-            atlasrelease_config_path = atlasrelease_config_path,
+            atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset with wrong name
@@ -261,14 +264,14 @@ def test_create_volumetric_resources():
             forge,
             [wrong_dataset_name],
             config_path,
-            atlasrelease_config_path = atlasrelease_config_path,
+            atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # configuration file contains not existing file path
@@ -277,14 +280,14 @@ def test_create_volumetric_resources():
             forge,
             [dataset_path[0]],
             config_data_notfound,
-            atlasrelease_config_path = atlasrelease_config_path,
+            atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # annotation dataset is a folder
@@ -293,14 +296,14 @@ def test_create_volumetric_resources():
             forge,
             [folder_annotation],
             config_wrongdatatype,
-            atlasrelease_config_path = atlasrelease_config_path,
+            atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # cell density dataset is a file
@@ -309,14 +312,14 @@ def test_create_volumetric_resources():
             forge,
             [neuron_density_file],
             config_wrongdatatype,
-            atlasrelease_config_path = atlasrelease_config_path,
+            atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset with wrong nrrd header
@@ -325,14 +328,14 @@ def test_create_volumetric_resources():
             forge,
             [corrupted_data_header],
             config_corruptedData,
-            atlasrelease_config_path = atlasrelease_config_path,
+            atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
 

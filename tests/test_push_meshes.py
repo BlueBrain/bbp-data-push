@@ -29,6 +29,11 @@ def test_create_mesh_resources():
         str(Path(TEST_PATH, "tests/tests_data/hierarchy.json")),
         str(Path(TEST_PATH, "tests/tests_data/hierarchy_l23split.json")),
     ]
+    atlasrelease_config_path = str(
+        Path(TEST_PATH, "/tests/tests_data/atlasrelease_config_path.json")
+    )
+    dataset_returned = "datasets_toPush"
+    dataset_schema = const.schema_mesh
 
     # Arguments wrong
     empty_folder = str(
@@ -117,13 +122,14 @@ def test_create_mesh_resources():
             forge,
             [dataset_path[0]],
             config_path,
+            atlasrelease_config_path,
             [hierarchy_path[0]],
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )["datasets"][-1]
+        )[dataset_returned][dataset_schema][-1]
     )
 
     for key in mesh_resource_simple:
@@ -141,14 +147,14 @@ def test_create_mesh_resources():
         forge,
         dataset_path,
         config_path,
-        atlasrelease_config_path = atlasrelease_config_path,
-        [hierarchy_path[0]],
+        atlasrelease_config_path,
+        hierarchy_path,
         input_hierarchy_jsonld=None,
         provenance_metadata_path=None,
         link_regions_path=None,
         resource_tag=None,
         verbose=1,
-    )["datasets"]
+    )[dataset_returned][dataset_schema]
 
     # Search for the hybrid mesh dataset to compare with (if multiple results returned)
     hybrid_v2v3_dataset = None
@@ -167,14 +173,14 @@ def test_create_mesh_resources():
             forge,
             [dataset_path[0]],
             wrong_config_key,
-            atlasrelease_config_path = atlasrelease_config_path,
+            atlasrelease_config_path,
             [hierarchy_path[0]],
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset with wrong name
@@ -183,13 +189,14 @@ def test_create_mesh_resources():
             forge,
             [wrong_dataset_name],
             config_path,
+            atlasrelease_config_path,
             [hierarchy_path[0]],
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset is not a directory
@@ -198,13 +205,14 @@ def test_create_mesh_resources():
             forge,
             [not_a_dir],
             config_wrongdatatype,
+            atlasrelease_config_path,
             [hierarchy_path[0]],
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # configuration file contains not existing file path
@@ -213,13 +221,14 @@ def test_create_mesh_resources():
             forge,
             [dataset_path[0]],
             config_data_notfound,
+            atlasrelease_config_path,
             [hierarchy_path[0]],
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # dataset is an empty folder
@@ -228,13 +237,14 @@ def test_create_mesh_resources():
             forge,
             [empty_folder],
             config_data_emptydata,
+            atlasrelease_config_path,
             [hierarchy_path[0]],
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # hierarchy file is empty
@@ -243,13 +253,14 @@ def test_create_mesh_resources():
             forge,
             [dataset_path[0]],
             config_data_emptyhierarchy,
+            atlasrelease_config_path,
             [empty_hierarchy],
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
     # hierarchy file do not contain some regions
@@ -258,13 +269,14 @@ def test_create_mesh_resources():
             forge,
             [dataset_path[0]],
             config_data_wronghierarchy,
+            atlasrelease_config_path,
             [wrong_hierarchy],
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[-1]
+        )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
 

@@ -1,5 +1,7 @@
 """
-All the constants and hardcoded stuff
+All the constants and hardcoded stuff.
+Update the content of the dictionnary accordingly with the dataset names from the 
+input configuration file '--config-path'.
 """
 
 
@@ -82,8 +84,8 @@ hierarchy_dict = {
     "hierarchy_l23split": {
         "name": "hierarchy_l23split",
         "label": "AIBS Mouse CCF Atlas parcellation ontology L2L3 split",
-        "description": "AIBS Mouse CCF Atlas regions hierarchy tree file including the split "
-        "of layer 2 and layer 3",
+        "description": "AIBS Mouse CCF Atlas regions hierarchy tree file including the "
+        "split of layer 2 and layer 3",
         "derivation": "http://bbp.epfl.ch/neurosciencegraph/ontologies/mba",
         "mba_jsonld": "mba_hierarchy_l23split",
     },
@@ -105,8 +107,8 @@ brainTemplateDataLayer = {
 atlasrelease_dict = {
     "atlasrelease_hybridsplit": {
         "name": "Allen Mouse CCF v2-v3 hybrid l2-l3 split",
-        "description": "This atlas release uses the brain parcellation resulting of the "
-        "hybridation between CCFv2 and CCFv3 and integrating the splitting of "
+        "description": "This atlas release uses the brain parcellation resulting of "
+        "the hybridation between CCFv2 and CCFv3 and integrating the splitting of "
         "layer 2 and layer 3. The average brain template and the ontology is "
         "common across CCFv2 and CCFv3.",
         "ontology": hierarchy_dict["hierarchy_l23split"],
@@ -114,8 +116,8 @@ atlasrelease_dict = {
     },
     "atlasrelease_ccfv3split": {
         "name": "Blue Brain Mouse Atlas",  # "Allen Mouse CCF v3 l2-l3 split",
-        "description": "This atlas release uses the brain parcellation of CCFv3 (2017) with "
-        "the isocortex layer 2 and 3 split. The average brain template and the "
+        "description": "This atlas release uses the brain parcellation of CCFv3 (2017) "
+        "with the isocortex layer 2 and 3 split. The average brain template and the "
         "ontology is common across CCFv2 and CCFv3.",
         "ontology": hierarchy_dict["hierarchy_l23split"],
         "parcellation": annotation_ccfv3_l23split,
@@ -131,7 +133,15 @@ default_sampling_time_unit = "ms"
 
 
 def return_volumetric_dict(volumetric_datasets):
+    """
+    Parameters:
+        volumetric_datasets : Dict containing all the volumetric datasets from the
+                            input config file.
 
+    Returns:
+        volumetric_dict : Dict containing all the volumetric datasets with their
+                        informations.
+    """
     # Descriptions for VolumetricDataLayer datasets
     description_dirvectors_ccfv3 = (
         f"3D unit vectors defined over the Original Allen ccfv3 annotation volume "
@@ -450,7 +460,14 @@ def return_volumetric_dict(volumetric_datasets):
 
 
 def return_mesh_dict(mesh_datasets):
+    """
+    Parameters:
+        mesh_datasets : Dict containing all the mesh datasets from the input config
+                        file.
 
+    Returns:
+        mesh_dict : Dict containing all the mesh datasets with their informations.
+    """
     mesh = mesh_datasets
     try:
         mesh_dict = {
@@ -502,7 +519,15 @@ def return_mesh_dict(mesh_datasets):
 
 
 def return_metadata_dict(metadata_datasets):
+    """
+    Parameters:
+        metadata_datasets : Dict containing all the metadata json datasets from the
+                           input config file.
 
+    Returns:
+        metadata_dict : Dict containing all the metadata json datasets with their
+                        informations.
+    """
     metadata = metadata_datasets
     try:
         metadata_dict = {
@@ -525,7 +550,15 @@ def return_metadata_dict(metadata_datasets):
 
 
 def return_cellrecords_dict(cellrecords_datasets):
+    """
+    Parameters:
+        cellrecords_datasets : Dict containing all the cellrecord datasets from the
+                               input config file.
 
+    Returns:
+        cellrecord_dict : Dict containing all the cellrecord datasets with their
+                          informations.
+    """
     cellrecords = cellrecords_datasets
     try:
         cellrecord_dict = {
