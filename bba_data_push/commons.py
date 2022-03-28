@@ -395,7 +395,6 @@ def fetch_linked_resources(
                 atlasrelease_payloads["atlas_release"].parcellationVolume["@id"]
                 + "?rev"
             )
-            print(f"beginning: {fetched_resources._store_metadata}")
         else:
             print("cacou")
             filters = {
@@ -877,10 +876,7 @@ def return_atlasrelease(
                     f"Error with the ontology resource fetched. {error}"
                 )
         else:
-            raise Exception(
-                f"Error the atlasRelease Resource '{atlasrelease_resource}' has not "
-                f"been found destination project '{forge._store.bucket}'."
-            )
+            pass
     except KeyError:
         pass
     # Tag that will be linked to the atlasRelease, its ontology, its parcellation and
@@ -910,6 +906,9 @@ def return_atlasrelease(
     # If a distribution has been fetched we keep it and analyse it later
     if ontology_distribution:
         hierarchy_resource.distribution = ontology_distribution
+    else:
+        # Else we will create it after with the input hierarchy files
+        hierarchy_resource.distribution = None
     print("3.7")
     if ontology_derivation:
         hierarchy_resource.derivation = ontology_derivation
@@ -923,7 +922,7 @@ def return_atlasrelease(
         }
     if ontology_metadata:
         hierarchy_resource._store_metadata = ontology_metadata
-    print(hierarchy_resource._store_metadata._rev)
+        print(hierarchy_resource._store_metadata._rev)
 
     atlasrelease_payloads["hierarchy"] = hierarchy_resource
     print("4")

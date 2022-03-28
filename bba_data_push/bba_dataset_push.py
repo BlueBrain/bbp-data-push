@@ -1,11 +1,11 @@
-""" 
-Create resource payload and push them along with the corresponding dataset files into 
-Nexus. If the Resource already exists in Nexus then update it instead. Eventually 
-push/update their linked atlasRelease and ontology resources. Tag all these resources 
+"""
+Create resource payload and push them along with the corresponding dataset files into
+Nexus. If the Resource already exists in Nexus then update it instead. Eventually
+push/update their linked atlasRelease and ontology resources. Tag all these resources
 with the input tag or, if not provided, with a timestamp.
 Each CLI can process multiple files/directories at once.
 To know more about Nexus, see https://bluebrainnexus.io.
-Link to BBP Atlas pipeline confluence documentation: 
+Link to BBP Atlas pipeline confluence documentation:
 https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 """
 import logging

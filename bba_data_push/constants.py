@@ -1,6 +1,6 @@
 """
 All the constants and hardcoded stuff.
-Update the content of the dictionnary accordingly with the dataset names from the 
+Update the content of the dictionnary accordingly with the dataset names from the
 input configuration file '--config-path'.
 """
 
@@ -78,9 +78,7 @@ atlasrelease_hybrid_l23split = {
 # ================== Ontology constants ==================
 
 hierarchy_dict = {
-    "hierarchy_mba": {
-        "name": "hierarchy",
-    },
+    "hierarchy_mba": {"name": "hierarchy", "mba_jsonld": ""},
     "hierarchy_l23split": {
         "name": "hierarchy_l23split",
         "label": "AIBS Mouse CCF Atlas parcellation ontology L2L3 split",
