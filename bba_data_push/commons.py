@@ -360,12 +360,12 @@ def fetch_linked_resources(
                 for resource in fetched_resources_regionmask:
                     # more memory efficient than split because does not keep all the
                     # split tokens in memory
-                    print(resource.brainLocation.brainRegion.id)
                     region_number = resource.brainLocation.brainRegion.id.rsplit(
                         "/", 1
                     )[-1]
                     fetched_resources[f"{region_number}"] = resource
         elif resource_flag == "isRegionMesh":
+            print("we fetch the meshes")
             filters = {
                 "type": resource_type_list[0],
                 "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
@@ -377,6 +377,8 @@ def fetch_linked_resources(
                         "/", 1
                     )[-1]
                     fetched_resources[f"{region_number}"] = resource
+            for k, v in fetched_resources.items():
+                print(f"{k}  :  {v.id}")
         elif resource_flag == "isRegionSummary":
             filters = {
                 "type": resource_type_list[0],
@@ -389,26 +391,25 @@ def fetch_linked_resources(
                         "/", 1
                     )[-1]
                     fetched_resources[f"{region_number}"] = resource
+            for k, v in fetched_resources.items():
+                print(f"{k}  :  {v.id}")
         elif resource_flag == "isAtlasParcellation":
-            print("ICI")
             fetched_resources = forge.retrieve(
                 atlasrelease_payloads["atlas_release"].parcellationVolume["@id"]
                 + "?rev"
             )
         else:
-            print("cacou")
             filters = {
                 "type": resource_type_list[0],
                 "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
-                "dataSampleModality": datasamplemodality_list[0],
             }
-            print(filters)
+            if datasamplemodality_list:
+                filters["dataSampleModality"] = datasamplemodality_list[0]
             fetched_resources = forge.search(filters, limit=1)[0]
     except KeyError as error:
         raise KeyError(f"KeyError in atlasrelease_payloads. {error}")
     except IndexError:
-        raise IndexError("Resources not found in the Nexus project")
-    print("kakouu")
+        pass
     return fetched_resources
 
 
@@ -676,7 +677,6 @@ def return_activity_payload(
         activity_resource : Resource object of Activity type.
     """
     try:
-        print(activity_metadata)
         configuration = (
             "Activity generated using the snakemake rule "
             f"'{activity_metadata['rule_name']}.'"
@@ -778,6 +778,7 @@ def return_atlasrelease(
     atlasrelease_config_path,
     atlasrelease_payloads,
     resource_tag,
+    secondary_cli=False
 ):
     """
     Return a dictionary containing the atlasRelease and ontology resource. If their
@@ -808,7 +809,6 @@ def return_atlasrelease(
         "@type": "xsd:date",
         "@value": f"{datetime.today().strftime('%Y-%m-%d')}",
     }
-    print("1")
     try:
         with open(atlasrelease_config_path, "r+") as atlasrelease_config_file:
             atlasrelease_config_file.seek(0)
@@ -820,7 +820,6 @@ def return_atlasrelease(
         )
     except FileNotFoundError:
         pass
-    atlasrelease_tag = None
     ontology_id = None
     ontology_distribution = None
     ontology_derivation = None
@@ -830,13 +829,8 @@ def return_atlasrelease(
     parcellationOntology = None
     parcellationVolume = None
     # Check the content of atlasrelease_config_path
-    print("2")
     try:
         atlasrelease = atlasrelease_config[atlasrelease_choice]
-        try:
-            atlasrelease_tag = atlasrelease["tag"]
-        except KeyError:
-            pass
         atlasrelease_resource = forge.retrieve(atlasrelease["id"])
         if atlasrelease_resource:
             try:
@@ -883,11 +877,16 @@ def return_atlasrelease(
     # every linked resources
     if resource_tag:
         tag = resource_tag
-    elif atlasrelease_tag:
-        tag = atlasrelease_tag
+    # push-brainmesh, push-regionsummary will reuse the tag pushed by push-volumetric if
+    # it is a timestamp
+    elif secondary_cli:
+        try:
+            tag = atlasrelease["tag"]
+        except KeyError:
+            pass
     else:
         tag = f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}"
-    print("3")
+
     atlasrelease_payloads["tag"] = tag
 
     # ontology resource creation
@@ -897,7 +896,6 @@ def return_atlasrelease(
         description=ontology_choice["description"],
         subject=const.subject,
     )
-    print("3.3")
     if ontology_id:
         hierarchy_resource.id = ontology_id
     else:
@@ -909,7 +907,6 @@ def return_atlasrelease(
     else:
         # Else we will create it after with the input hierarchy files
         hierarchy_resource.distribution = None
-    print("3.7")
     if ontology_derivation:
         hierarchy_resource.derivation = ontology_derivation
     else:
@@ -922,10 +919,8 @@ def return_atlasrelease(
         }
     if ontology_metadata:
         hierarchy_resource._store_metadata = ontology_metadata
-        print(hierarchy_resource._store_metadata._rev)
 
     atlasrelease_payloads["hierarchy"] = hierarchy_resource
-    print("4")
     # atlasRelease resource creation
     atlasrelease_resource = Resource(
         type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
@@ -948,5 +943,4 @@ def return_atlasrelease(
         atlasrelease_resource._store_metadata = atlas_release_metadata
 
     atlasrelease_payloads["atlas_release"] = atlasrelease_resource
-    print("5")
     return atlasrelease_payloads

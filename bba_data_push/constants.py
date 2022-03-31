@@ -129,6 +129,13 @@ ontology_type = "ParcellationOntology"
 default_sampling_period = 30
 default_sampling_time_unit = "ms"
 
+# ========================= Mesh constants =========================
+mesh_type = "Mesh"
+# ===================== RegionSummary constants =====================
+regionsummary_type = "RegionSummary"
+# ==================== CellRecordSeries constants ====================
+cellrecord_type = "CellRecordSeries"
+
 
 def return_volumetric_dict(volumetric_datasets):
     """
@@ -467,10 +474,12 @@ def return_mesh_dict(mesh_datasets):
         mesh_dict : Dict containing all the mesh datasets with their informations.
     """
     mesh = mesh_datasets
+    brainmesh_type = [dataset_type, mesh_type, "BrainParcellationMesh"]
     try:
         mesh_dict = {
             f"{mesh['brain_region_meshes_hybrid']}": {
                 "name": "brain_region_meshes_hybrid",
+                "type": brainmesh_type,
                 "description": description_hybrid,
                 "atlasrelease": atlasrelease_ccfv2v3,
                 "hierarchy_tag": hierarchy_dict["hierarchy_mba"]["name"],
@@ -483,6 +492,7 @@ def return_mesh_dict(mesh_datasets):
             },
             f"{mesh['brain_region_meshes_hybrid_l23split']}": {
                 "name": "brain_region_meshes_hybrid",
+                "type": brainmesh_type,
                 "description": description_hybrid_split,
                 "atlasrelease": atlasrelease_hybrid_l23split,
                 "hierarchy_tag": hierarchy_dict["hierarchy_l23split"]["name"],
@@ -495,6 +505,7 @@ def return_mesh_dict(mesh_datasets):
             },
             f"{mesh['brain_region_meshes_ccfv3_l23split']}": {
                 "name": "brain_region_meshes_ccfv3_l23split",
+                "type": brainmesh_type,
                 "description": description_ccfv3_split,
                 "atlasrelease": "atlasrelease_ccfv3split",
                 "hierarchy_tag": hierarchy_dict["hierarchy_l23split"]["name"],
@@ -527,10 +538,12 @@ def return_metadata_dict(metadata_datasets):
                         informations.
     """
     metadata = metadata_datasets
+    metadata_type = ["BrainRegionSummary", "Entity", regionsummary_type]
     try:
         metadata_dict = {
             f"{metadata['metadata_parcellations_ccfv3_l23split']}": {
                 "name": "metadata_parcellations_ccfv3_l23split",
+                "type": metadata_type,
                 "description": description_ccfv3_split,
                 "atlasrelease": "atlasrelease_ccfv3split",
                 "hierarchy_tag": "hierarchy_l23split",
@@ -558,10 +571,12 @@ def return_cellrecords_dict(cellrecords_datasets):
                           informations.
     """
     cellrecords = cellrecords_datasets
+    cellrecords_type = [dataset_type, cellrecord_type]
     try:
         cellrecord_dict = {
             f"{cellrecords['cell_records_sonata']}": {
                 "name": "cell_records_sonata",
+                "type": cellrecords_type,
                 "description": f"Sonata .h5 file storing the 3D cell positions and "
                 f"orientations of the {description_hybrid}.",
                 "atlasrelease": atlasrelease_hybrid_l23split,

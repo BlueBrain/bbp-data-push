@@ -178,6 +178,8 @@ def create_volumetric_resources(
         distribution_file = None
         fetched_resources = None
         toUpdate = False
+        fetched_resource_id = None
+        fetched_resource_metadata = None
         region_id = 997  # default: 997 --> root, whole brain
         region_name = "root"
         brainLocation = {
@@ -763,10 +765,11 @@ def create_volumetric_resources(
                         atlasrelease_config_path,
                         atlasrelease_payloads,
                         resource_tag,
+                        False
                     )
                     if atlasrelease_payloads["fetched"]:
                         L.info(
-                            "atlasrelease Resource '{atlasrelease_choice}' found in "
+                            f"atlasrelease Resource '{atlasrelease_choice}' found in "
                             f"the Nexus destination project '{forge._store.bucket}'"
                         )
                     else:
@@ -798,207 +801,218 @@ def create_volumetric_resources(
                 # are different before attaching it
 
                 # => check if the good hierarchy file is given in input
-                try:
-                    atlasrelease_ontology_path = get_hierarchy_file(
-                        input_hierarchy,
-                        config_content,
-                        const.atlasrelease_dict[atlasrelease_choice]["ontology"][
-                            "name"
-                        ],
-                    )
-                except KeyError:
+                if differentAtlasrelease:
                     try:
-                        # If it is an update
-                        if atlasrelease_payloads["hierarchy"].distribution:
-                            pass
-                    # Then it is a brand new creation and the file is needed
-                    except AttributeError as error:
+                        atlasrelease_ontology_path = get_hierarchy_file(
+                            input_hierarchy,
+                            config_content,
+                            const.atlasrelease_dict[atlasrelease_choice]["ontology"][
+                                "name"
+                            ],
+                        )
+                    except KeyError:
+                        # If the distribution is empty the good file is needed for a new
+                        # creation
+                        if not atlasrelease_payloads["hierarchy"].distribution:
+                            L.error(
+                                "Error: the ontology file corresponding to the "
+                                "created atlasRelease resource can not be found among "
+                                "input hierarchy files."
+                            )
+                            exit(1)
+
+                    # Build the distribution dict with the input hierarchy file
+                    format_hierarchy_original = os.path.splitext(
+                        os.path.basename(atlasrelease_ontology_path)
+                    )[1][1:]
+                    content_type_original = f"application/{format_hierarchy_original}"
+                    hierarchy_original_hash = return_file_hash(
+                        atlasrelease_ontology_path
+                    )
+                    input_hierarchy_distrib = {
+                        f"{content_type_original}": (
+                            hierarchy_original_hash,
+                            atlasrelease_ontology_path,
+                        )
+                    }
+                    # If the correct hierarchy jsonld file is given in input then add it
+                    # to the distribution dict.
+                    try:
+                        hierarchy_mba = const.atlasrelease_dict[atlasrelease_choice][
+                            "ontology"
+                        ]["mba_jsonld"]
+                        if os.path.samefile(
+                            input_hierarchy_jsonld,
+                            hierarchies[hierarchy_mba],
+                        ):
+                            content_type_mba = "application/ld+json"
+                            hierarchy_mba_hash = return_file_hash(
+                                input_hierarchy_jsonld
+                            )
+                            hierarchy_mba_dict = {
+                                f"{content_type_mba}": (
+                                    hierarchy_mba_hash,
+                                    input_hierarchy_jsonld,
+                                )
+                            }
+                            input_hierarchy_distrib.update(hierarchy_mba_dict)
+                    except FileNotFoundError as error:
                         L.error(
-                            "Error: the ontology file corresponding to the "
-                            "created atlasRelease resource can not be found among "
-                            f"input hierarchy files. {error}"
+                            f"Error : {error}. Input hierarchy jsonLD file "
+                            "does not correspond to the input hierarchy "
+                            "json file"
                         )
                         exit(1)
+                    # if no input hierarchy jsonLD has been provided then
+                    # input_hierarchy_jsonld is None and os.path.samefile raises a
+                    # TypeError
+                    except TypeError:
+                        pass
 
-                # Build the distribution dict with the input hierarchy file
-                format_hierarchy_original = os.path.splitext(
-                    os.path.basename(atlasrelease_ontology_path)
-                )[1][1:]
-                content_type_original = f"application/{format_hierarchy_original}"
-                hierarchy_original_hash = return_file_hash(atlasrelease_ontology_path)
-                input_hierarchy_distrib = {
-                    f"{content_type_original}": (
-                        hierarchy_original_hash,
-                        atlasrelease_ontology_path,
-                    )
-                }
-                # If the correct hierarchy jsonld file is given in input then add it to
-                # the distribution dict.
-                try:
-                    hierarchy_mba = const.atlasrelease_dict[atlasrelease_choice][
-                        "ontology"
-                    ]["mba_jsonld"]
-                    if os.path.samefile(
-                        input_hierarchy_jsonld,
-                        hierarchies[hierarchy_mba],
-                    ):
-                        format_hierarchy_mba = os.path.splitext(
-                            os.path.basename(input_hierarchy_jsonld)
-                        )[1][1:]
-                        content_type_mba = f"application/{format_hierarchy_mba}"
-                        hierarchy_mba_hash = return_file_hash(input_hierarchy_jsonld)
-                        hierarchy_mba_dict = {
-                            f"{content_type_mba}": (
-                                hierarchy_mba_hash,
-                                input_hierarchy_jsonld,
-                            )
-                        }
-                        input_hierarchy_distrib.update(hierarchy_mba_dict)
-                except FileNotFoundError as error:
-                    L.error(
-                        f"Error : {error}. Input hierarchy jsonLD file "
-                        "does not correspond to the input hierarchy "
-                        "json file"
-                    )
-                    exit(1)
-
-                # If the hierarchy file has been fetched then the distribution will be
-                # updated with the one given in input only if it is different from the
-                # ones from the distribution dict. For a brand new file, the
-                # distribution will be attached by default.
-                distribution_file = []
-                if atlasrelease_payloads["hierarchy"].distribution:
-                    # Compare the fetched hierarchy file hash with the hash from
-                    # the input ones
-                    if not isinstance(
-                        atlasrelease_payloads["hierarchy"].distribution, list
-                    ):
-                        atlasrelease_payloads["hierarchy"].distribution = [
-                            atlasrelease_payloads["hierarchy"].distribution
-                        ]
-                    for fetched_distrib in atlasrelease_payloads[
-                        "hierarchy"
-                    ].distribution:
-                        try:
-                            if (
-                                fetched_distrib.digest.value
-                                != input_hierarchy_distrib[
-                                    fetched_distrib.encodingFormat
-                                ][0]
-                            ):
-                                distribution_hierarchy = forge.attach(
-                                    input_hierarchy_distrib[
+                    # If the hierarchy file has been fetched then the distribution will
+                    # be updated with the one given in input only if it is different
+                    # from the ones from the distribution dict. For a brand new file,
+                    # the distribution will be attached by default.
+                    distribution_ontologies = []
+                    if atlasrelease_payloads["hierarchy"].distribution:
+                        if not isinstance(
+                            atlasrelease_payloads["hierarchy"].distribution, list
+                        ):
+                            atlasrelease_payloads["hierarchy"].distribution = [
+                                atlasrelease_payloads["hierarchy"].distribution
+                            ]
+                        # Compare the fetched hierarchy file hash with the hash from
+                        # the input ones
+                        for fetched_distrib in atlasrelease_payloads[
+                            "hierarchy"
+                        ].distribution:
+                            try:
+                                if (
+                                    fetched_distrib.digest.value
+                                    != input_hierarchy_distrib[
                                         fetched_distrib.encodingFormat
-                                    ][1],
-                                    fetched_distrib.encodingFormat,
-                                )
-                                # attach the selected input distribution and pop it
-                                # from the dictionary
-                                distribution_file.append(distribution_hierarchy)
+                                    ][0]
+                                ):
+                                    distribution_hierarchy = forge.attach(
+                                        input_hierarchy_distrib[
+                                            fetched_distrib.encodingFormat
+                                        ][1],
+                                        fetched_distrib.encodingFormat,
+                                    )
+                                    # attach the selected input distribution and pop it
+                                    # from the dictionary
+                                    distribution_ontologies.append(
+                                        distribution_hierarchy
+                                    )
+                                else:
+                                    # If the distribution is the same, keep it
+                                    distribution_ontologies.append(fetched_distrib)
                                 input_hierarchy_distrib.pop(
                                     fetched_distrib.encodingFormat
                                 )
-                        except KeyError:
-                            pass
+                            # If the distribution is empty
+                            except AttributeError:
+                                pass
+                            except KeyError:
+                                pass
+
                         # If still keys in it then attach the remaining files
                         if input_hierarchy_distrib:
-                            print("ccc")
                             for encoding, file in input_hierarchy_distrib.items():
                                 distribution_hierarchy = forge.attach(
                                     file[1],
                                     encoding,
                                 )
-                                distribution_file.append(distribution_hierarchy)
-                else:
-                    # If the hierarchy file is new so it does not have a distribution
-                    # then attach the distribution from the input files
-                    for encoding, file in input_hierarchy_distrib.items():
-                        distribution_hierarchy = forge.attach(file[1], encoding)
-                        distribution_file.append(distribution_hierarchy)
+                                distribution_ontologies.append(distribution_hierarchy)
+                    else:
+                        # If the hierarchy file is new so it does not have a
+                        # distribution then attach the distribution from the input files
+                        for encoding, file in input_hierarchy_distrib.items():
+                            distribution_hierarchy = forge.attach(file[1], encoding)
+                            distribution_ontologies.append(distribution_hierarchy)
 
-                atlasrelease_payloads["hierarchy"].distribution = distribution_file
+                    atlasrelease_payloads[
+                        "hierarchy"
+                    ].distribution = distribution_ontologies
 
-                # => check if the good parcellation file is given in input right now
-                # but link it to the atlasRelease resource later during the dataset
-                # payload creation loop
-                atlasrelease_parcellation = const.atlasrelease_dict[
-                    atlasrelease_choice
-                ]["parcellation"]
-                for datasetpath in inputpath:
-                    try:
-                        if os.path.samefile(
-                            datasetpath, volumes[atlasrelease_parcellation]
-                        ):
-                            pass
-                    except FileNotFoundError:
+                    # => check if the good parcellation file is given in input right now
+                    # but link it to the atlasRelease resource later during the dataset
+                    # payload creation loop
+                    atlasrelease_parcellation = const.atlasrelease_dict[
+                        atlasrelease_choice
+                    ]["parcellation"]
+                    for datasetpath in inputpath:
                         try:
+                            if os.path.samefile(
+                                datasetpath, volumes[atlasrelease_parcellation]
+                            ):
+                                pass
+                        except FileNotFoundError:
                             if atlasrelease_payloads[
                                 "atlas_release"
                             ].parcellationVolume:
-                                pass
-                        except AttributeError:
-                            L.error(
-                                "Error: the parcellation file corresponding to "
-                                "the created atlasRelease resource can not be "
-                                "found among input dataset files"
-                            )
-                            exit(1)
+                                L.error(
+                                    "Error: the parcellation file corresponding to "
+                                    "the created atlasRelease resource can not be "
+                                    "found among input dataset files"
+                                )
+                                exit(1)
 
-                # ===================== Derivation Hierarchy file =====================
+                    # =================== Derivation Hierarchy file ===================
 
-                # Check if a dataset derive from the hierarchy file
-                hierarchy_name = const.atlasrelease_dict[atlasrelease_choice][
-                    "ontology"
-                ]["name"]
-                if hierarchy_name in deriv_dict_id.keys():
-                    atlasrelease_payloads["hierarchy"].id = deriv_dict_id[
-                        hierarchy_name
-                    ]["id"]
+                    # Check if a dataset derive from the hierarchy file
+                    hierarchy_name = const.atlasrelease_dict[atlasrelease_choice][
+                        "ontology"
+                    ]["name"]
+                    if hierarchy_name in deriv_dict_id.keys():
+                        atlasrelease_payloads["hierarchy"].id = deriv_dict_id[
+                            hierarchy_name
+                        ]["id"]
 
-                hierarchy_deriv = []
-                for deriv_key, deriv_value in deriv_dict_id.items():
-                    if hierarchy_name in deriv_value["datasets"]:
-                        deriv_type = []
-                        for volumetric_type, content in volumetric_dict.items():
-                            try:
-                                deriv_type = content[f"{volumes[deriv_key]}"][0]
-                                if deriv_type not in resource_types:
-                                    deriv_type = ["Dataset", deriv_type]
-                                else:
-                                    deriv_type = "Dataset"
-                            except KeyError:
-                                pass
-                        # if the derivation is not a known volumetric dataset then
-                        # it is an ontology
-                        if not deriv_type:
-                            deriv_type = ["Entity", const.ontology_type]
-                        deriv = {
-                            "@type": "Derivation",
-                            "entity": {
-                                "@id": deriv_value["id"],
-                                "@type": deriv_type,
-                            },
+                    hierarchy_deriv = []
+                    for deriv_key, deriv_value in deriv_dict_id.items():
+                        if hierarchy_name in deriv_value["datasets"]:
+                            deriv_type = []
+                            for volumetric_type, content in volumetric_dict.items():
+                                try:
+                                    deriv_type = content[f"{volumes[deriv_key]}"][0]
+                                    if deriv_type not in resource_types:
+                                        deriv_type = ["Dataset", deriv_type]
+                                    else:
+                                        deriv_type = "Dataset"
+                                except KeyError:
+                                    pass
+                            # if the derivation is not a known volumetric dataset then
+                            # it is an ontology
+                            if not deriv_type:
+                                deriv_type = ["Entity", const.ontology_type]
+                            deriv = {
+                                "@type": "Derivation",
+                                "entity": {
+                                    "@id": deriv_value["id"],
+                                    "@type": deriv_type,
+                                },
+                            }
+                            hierarchy_deriv.append(deriv)
+                    # If only 1 item no need for it to be a list
+                    if len(hierarchy_deriv) == 1:
+                        hierarchy_deriv = hierarchy_deriv[0]
+
+                    # =================== Link atlasRelease/Ontology ===================
+                    if not atlasrelease_payloads["atlas_release"].parcellationOntology:
+                        atlasrelease_payloads["atlas_release"].parcellationOntology = {
+                            "@id": atlasrelease_payloads["hierarchy"].id,
+                            "@type": ["Entity", const.ontology_type, "Ontology"],
                         }
-                        hierarchy_deriv.append(deriv)
-                # If only 1 item no need for it to be a list
-                if len(hierarchy_deriv) == 1:
-                    hierarchy_deriv = hierarchy_deriv[0]
-
-                # ==================== Link atlasRelease/Ontology ====================
-                if not atlasrelease_payloads["atlas_release"].parcellationOntology:
-                    atlasrelease_payloads["atlas_release"].parcellationOntology = {
-                        "@id": atlasrelease_payloads["hierarchy"].id,
-                        "@type": ["Entity", const.ontology_type, "Ontology"],
-                    }
-                atlasrelease_payloads["hierarchy"].contribution = contribution
-                if atlasrelease_payloads["fetched"]:
-                    resources_payloads["datasets_toUpdate"][
-                        f"{const.schema_ontology}"
-                    ].append(atlasrelease_payloads["hierarchy"])
-                else:
-                    resources_payloads["datasets_toPush"][
-                        f"{const.schema_ontology}"
-                    ].append(atlasrelease_payloads["hierarchy"])
+                    atlasrelease_payloads["hierarchy"].contribution = contribution
+                    if atlasrelease_payloads["fetched"]:
+                        resources_payloads["datasets_toUpdate"][
+                            f"{const.schema_ontology}"
+                        ].append(atlasrelease_payloads["hierarchy"])
+                    else:
+                        resources_payloads["datasets_toPush"][
+                            f"{const.schema_ontology}"
+                        ].append(atlasrelease_payloads["hierarchy"])
 
         # ==================== Fetch atlasRelease linked resources ====================
 
@@ -1026,10 +1040,6 @@ def create_volumetric_resources(
                     volumetric_dict["placement_hints"][dataset]["datasamplemodality_2"],
                 ]
             try:
-                L.info(
-                    "Resources in Nexus which correspond to input datasets will be "
-                    "updated..."
-                )
                 # fetched_resources will be either one resource or a dictionary of
                 # resource
                 fetched_resources = fetch_linked_resources(
@@ -1094,6 +1104,12 @@ def create_volumetric_resources(
         if provenance_metadata and not activity_resource:
             try:
                 activity_resource = return_activity_payload(forge, provenance_metadata)
+                if not activity_resource._store_metadata:
+                    L.info(
+                        "Existing activity resource not found in the Nexus destination "
+                        f"project '{forge._store.bucket}'. A new activity will be "
+                        "created and registered"
+                    )
             except Exception as e:
                 L.error(f"{e}")
                 exit(1)
@@ -1105,10 +1121,10 @@ def create_volumetric_resources(
                 # becomes a Resource attribut after being synchronized on Nexus
                 if not isinstance(activity_resource.startedAtTime, dict):
                     if hasattr(activity_resource.startedAtTime, "@value") and hasattr(
-                        activity_resource.startedAtTime, "@type"
+                        activity_resource.startedAtTime, "type"
                     ):
                         value = getattr(activity_resource.startedAtTime, "@value")
-                        type = getattr(activity_resource.startedAtTime, "@type")
+                        type = getattr(activity_resource.startedAtTime, "type")
                         activity_resource.startedAtTime = forge.from_json(
                             {
                                 "@type": type,
@@ -1135,26 +1151,39 @@ def create_volumetric_resources(
         # file, copy its id and _store_metadata
         if fetched_resources:
             filepath_hash = return_file_hash(filepath)
+            # If the fetched resources are a dict full of resource per regions
+            first_fetched_resource = None
             if isinstance(fetched_resources, dict):
                 try:
                     first_fetched_resource = fetched_resources[f"{region_id}"]
-                    print(f"first resource: {first_fetched_resource._store_metadata}")
-                    toUpdate = True
+                # If the region in particular is not found then do not update this one
+                # and create it instead
                 except KeyError:
+                    content_type = f"application/{file_extension}"
+                    distribution_file = forge.attach(filepath, content_type)
                     pass
             else:
                 first_fetched_resource = fetched_resources
+            if first_fetched_resource:
                 toUpdate = True
-                print(f"first resource: {first_fetched_resource._store_metadata}")
-            try:
-                if filepath_hash != first_fetched_resource.distribution.digest.value:
+                fetched_resource_id = first_fetched_resource.id
+                fetched_resource_metadata = first_fetched_resource._store_metadata
+                try:
+                    if (
+                        filepath_hash
+                        != first_fetched_resource.distribution.digest.value
+                    ):
+                        content_type = f"application/{file_extension}"
+                        distribution_file = forge.attach(filepath, content_type)
+                    else:
+                        distribution_file = first_fetched_resource.distribution
+                # If no distribution in the fetched resources then attach the input file
+                except AttributeError:
                     content_type = f"application/{file_extension}"
                     distribution_file = forge.attach(filepath, content_type)
-            except AttributeError:
+            else:
                 content_type = f"application/{file_extension}"
                 distribution_file = forge.attach(filepath, content_type)
-            fetched_resource_id = first_fetched_resource.id
-            fetched_resource_metadata = first_fetched_resource._store_metadata
         else:
             content_type = f"application/{file_extension}"
             distribution_file = forge.attach(filepath, content_type)
@@ -1177,7 +1206,9 @@ def create_volumetric_resources(
         if derivation:
             nrrd_resource.derivation = derivation
 
-        if dataset in dict_ids:
+        if fetched_resource_id:
+            nrrd_resource.id = fetched_resource_id
+        elif dataset in dict_ids:
             nrrd_resource.id = dict_ids[dataset]
         elif dataset_name in deriv_dict_id.keys():
             nrrd_resource.id = deriv_dict_id[dataset_name]["id"]
@@ -1191,16 +1222,13 @@ def create_volumetric_resources(
         if resource_flag == "isPH":
             nrrd_resource.name = f"{nrrd_resource.name} {suffixe}"
 
+        if fetched_resource_metadata:
+            nrrd_resource._store_metadata = fetched_resource_metadata
+
         if action_summary_file:
-            try:
-                if nrrd_resource.id:
-                    mask_id = nrrd_resource.id
-                else:
-                    mask_id = forge.format(
-                        "identifier", "volumetricdatalayer", str(uuid4())
-                    )
-                    nrrd_resource.id = mask_id
-            except AttributeError:
+            if hasattr(nrrd_resource, "id"):
+                mask_id = nrrd_resource.id
+            else:
                 mask_id = forge.format(
                     "identifier", "volumetricdatalayer", str(uuid4())
                 )
@@ -1212,12 +1240,8 @@ def create_volumetric_resources(
                         link_summary_content[f"{region_id}"].update(mask_link)
                     else:
                         link_summary_content[f"{region_id}"] = mask_link
-                except KeyError as error:
-                    L.error(
-                        f"KeyError: The region whose region id is {error} cannot be "
-                        "found in the input link region json file"
-                    )
-                    exit(1)
+                except KeyError:
+                    link_summary_content[f"{region_id}"] = mask_link
             else:
                 region_summary = {
                     f"{region_id}": {
@@ -1225,6 +1249,20 @@ def create_volumetric_resources(
                     }
                 }
                 link_summary_content.update(region_summary)
+
+        # ====================== Link atlasRelease/Parcellation ======================
+
+        if resource_flag == "isAtlasParcellation":
+            if not atlasrelease_payloads["atlas_release"].parcellationVolume:
+                if not hasattr(nrrd_resource, "id"):
+                    nrrd_resource.id = forge.format(
+                        "identifier", "volumetricdatalayer", str(uuid4())
+                    )
+                atlasrelease_payloads["atlas_release"].parcellationVolume = {
+                    "@id": nrrd_resource.id,
+                    "@type": ["Dataset", "BrainParcellationDataLayer"],
+                }
+            atlasrelease_payloads["atlas_release"].contribution = contribution
 
         # Add the generation prop for every different atlasRelease
         if differentAtlasrelease:
@@ -1240,53 +1278,33 @@ def create_volumetric_resources(
                     f"{const.schema_atlasrelease}"
                 ].append(atlasrelease_payloads["atlas_release"])
 
-        # ====================== Link atlasRelease/Parcellation ======================
-
-        if resource_flag == "isAtlasParcellation":
-            print(f"the atlasparcellation : {nrrd_resource._store_metadata}")
-            if not atlasrelease_payloads["atlas_release"].parcellationVolume:
-                atlasrelease_payloads["atlas_release"].parcellationVolume = {
-                    "@id": nrrd_resource.id,
-                    "@type": ["Dataset", "BrainParcellationDataLayer"],
-                }
-            atlasrelease_payloads["atlas_release"].contribution = contribution
-            print(f"the atlasparcellation bis : {nrrd_resource._store_metadata}")
-
         if toUpdate:
-            if fetched_resource_id:
-                nrrd_resource.id = fetched_resource_id
-            if fetched_resource_metadata:
-                nrrd_resource._store_metadata = fetched_resource_metadata
             resources_payloads["datasets_toUpdate"][
                 f"{const.schema_volumetricdatalayer}"
             ].append(nrrd_resource)
-            print("11111111111111111")
-            print(nrrd_resource._store_metadata._rev)
-            print("111111111111111")
         else:
             resources_payloads["datasets_toPush"][
                 f"{const.schema_volumetricdatalayer}"
             ].append(nrrd_resource)
-            if hasattr(nrrd_resource, "_store_metadata._rev"):
-                print("ooooooooo")
-                print(nrrd_resource._store_metadata._rev)
-                print("ooooooooooo")
 
         # =========================== Directory Datasets ===========================
 
         # If the input is a folder containing several dataset to push
-        toUpdate = False
         if isFolder:
             for f in range(1, len(files_list)):  # start at the 2nd file
+                toUpdate = False
+                fetched_resource_id = None
+                fetched_resource_metadata = None
                 filepath = os.path.join(directory, files_list[f])
                 filename_noext = os.path.splitext(os.path.basename(filepath))[0]
+                file_extension = os.path.splitext(os.path.basename(filepath))[1][1:]
                 name = filename_noext.replace("_", " ").title()
-                # Check if the file has been fetched
-                content_type = f"application/{file_extension}"
-                distribution_file = forge.attach(filepath, content_type)
 
+                # ============ CELL DENSITY = TO REWORK LIKE THE OTHERS ============
                 if resource_flag == "isCellDensity":
                     file_split = filename_noext.split("_")
+                    content_type = f"application/{file_extension}"
+                    distribution_file = forge.attach(filepath, content_type)
                     v = "mtypes_densities_probability_map_ccfv2_correctednissl"
                     try:
                         if os.path.samefile(
@@ -1324,6 +1342,17 @@ def create_volumetric_resources(
                             "label": f"{layer_number[0]}",
                         }
                         brainLocation["layer"] = layer
+                    if f == 6:
+                        description = "Volume containing for each voxel its distance "
+                        f"from the bottom of the {annotation_description} Isocortex. "
+                        "The bottom being the deepest part of the Isocortex (highest "
+                        "cortical depth)."
+                        layer_number = re.findall(r"\d+", files_list[f])
+                        layer = {
+                            "@id": f"layer:{layer_number[0]}",
+                            "label": f"{layer_number[0]}",
+                        }
+                        brainLocation["layer"] = layer
                     if fetched_resources:
                         try:
                             fetched_resource_id = fetched_resources[
@@ -1341,70 +1370,23 @@ def create_volumetric_resources(
                                         f"{layer_number[0]}"
                                     ].distribution.digest.value
                                 ):
-                                    content_type = fetched_resources[
-                                        f"{layer_number[0]}"
-                                    ].distribution.encodingFormat
+                                    content_type = f"application/{file_extension}"
                                     distribution_file = forge.attach(
-                                        fetched_resources[
-                                            f"{layer_number[0]}"
-                                        ].distribution,
-                                        content_type,
+                                        filepath, content_type
                                     )
+                                else:
+                                    distribution_file = fetched_resources[
+                                        f"{layer_number[0]}"
+                                    ].distribution
                             except AttributeError:
-                                content_type = fetched_resources[
-                                    f"{layer_number[0]}"
-                                ].distribution.encodingFormat
-                                distribution_file = forge.attach(
-                                    fetched_resources[
-                                        f"{layer_number[0]}"
-                                    ].distribution,
-                                    content_type,
-                                )
+                                content_type = f"application/{file_extension}"
+                                distribution_file = forge.attach(filepath, content_type)
                         except KeyError:
-                            pass
-                    if f == 6:
-                        description = "Volume containing for each voxel its distance "
-                        f"from the bottom of the {annotation_description} Isocortex. "
-                        "The bottom being the deepest part of the Isocortex (highest "
-                        "cortical depth)."
-                        layer_number = re.findall(r"\d+", files_list[f])
-                        layer = {
-                            "@id": f"layer:{layer_number[0]}",
-                            "label": f"{layer_number[0]}",
-                        }
-                        brainLocation["layer"] = layer
-                        if fetched_resources:
-                            try:
-                                fetched_resource_id = fetched_resources["y"].id
-                                fetched_resource_metadata = fetched_resources[
-                                    "y"
-                                ]._store_metadata
-                                toUpdate = True
-                                filepath_hash = return_file_hash(filepath)
-                                try:
-                                    if (
-                                        filepath_hash
-                                        != fetched_resources[
-                                            "y"
-                                        ].distribution.digest.value
-                                    ):
-                                        content_type = fetched_resources[
-                                            "y"
-                                        ].distribution.encodingFormat
-                                        distribution_file = forge.attach(
-                                            fetched_resources["y"].distribution,
-                                            content_type,
-                                        )
-                                except AttributeError:
-                                    content_type = fetched_resources[
-                                        "y"
-                                    ].distribution.encodingFormat
-                                    distribution_file = forge.attach(
-                                        fetched_resources["y"].distribution,
-                                        content_type,
-                                    )
-                            except KeyError:
-                                pass
+                            content_type = f"application/{file_extension}"
+                            distribution_file = forge.attach(filepath, content_type)
+                    else:
+                        content_type = f"application/{file_extension}"
+                        distribution_file = forge.attach(filepath, content_type)
                     if f == 7:
                         description = (
                             f"3D mask volume of the {annotation_description}. It "
@@ -1461,6 +1443,7 @@ def create_volumetric_resources(
                         },
                     }
                     if fetched_resources:
+                        print("fetched_resources")
                         try:
                             fetched_resource_id = fetched_resources[f"{region_id}"].id
                             fetched_resource_metadata = fetched_resources[
@@ -1468,6 +1451,7 @@ def create_volumetric_resources(
                             ]._store_metadata
                             toUpdate = True
                             filepath_hash = return_file_hash(filepath)
+                            print("return_file_hash")
                             try:
                                 if (
                                     filepath_hash
@@ -1475,64 +1459,28 @@ def create_volumetric_resources(
                                         f"{region_id}"
                                     ].distribution.digest.value
                                 ):
-                                    content_type = fetched_resources[
-                                        f"{region_id}"
-                                    ].distribution.encodingFormat
+                                    content_type = f"application/{file_extension}"
                                     distribution_file = forge.attach(
-                                        fetched_resources[f"{region_id}"].distribution,
-                                        content_type,
-                                    )
-                            except AttributeError:
-                                content_type = fetched_resources[
-                                    f"{region_id}"
-                                ].distribution.encodingFormat
-                                distribution_file = forge.attach(
-                                    fetched_resources[f"{region_id}"].distribution,
-                                    content_type,
-                                )
-                        except KeyError:
-                            pass
-                    if action_summary_file:
-                        if dataset_name in deriv_dict_id.keys():
-                            mask_id = deriv_dict_id[dataset_name]["id"]
-                        else:
-                            mask_id = forge.format(
-                                "identifier", "volumetricdatalayer", str(uuid4())
-                            )
-                        mask_link = {"mask": {"@id": mask_id}}
-                        if action_summary_file == "append":
-                            try:
-                                if (
-                                    "mask"
-                                    not in link_summary_content[f"{region_id}"].keys()
-                                ):
-                                    link_summary_content[f"{region_id}"].update(
-                                        mask_link
+                                        filepath, content_type
                                     )
                                 else:
-                                    link_summary_content[f"{region_id}"] = mask_link
-                            except KeyError as error:
-                                L.error(
-                                    "KeyError: The region whose region id is "
-                                    f"'{error}' can not be found in the input link "
-                                    "region json file"
-                                )
-                                exit(1)
-                        else:
-                            region_summary = {
-                                f"{region_id}": {
-                                    "mask": {"@id": mask_id},
-                                }
-                            }
-                            link_summary_content.update(region_summary)
-                    if f == len(files_list) - 1:
-                        link_summary_file = open(link_regions_path, "w")
-                        link_summary_file.write(
-                            json.dumps(
-                                link_summary_content, ensure_ascii=False, indent=2
-                            )
-                        )
-                        link_summary_file.close()
+                                    distribution_file = fetched_resources[
+                                        f"{region_id}"
+                                    ].distribution
+                                    print("!=======")
+                            except AttributeError:
+                                print("AttributeError bc no distrib")
+                                content_type = f"application/{file_extension}"
+                                distribution_file = forge.attach(filepath, content_type)
+                        except KeyError:
+                            toUpdate = False
+                            content_type = f"application/{file_extension}"
+                            distribution_file = forge.attach(filepath, content_type)
+                            print("KeyError region")
+                    else:
+                        print("not fetched mask")
+                        content_type = f"application/{file_extension}"
+                        distribution_file = forge.attach(filepath, content_type)
 
                 # Use forge.reshape instead ?
                 nrrd_resources = Resource(
@@ -1598,73 +1546,120 @@ def create_volumetric_resources(
                                     "report"
                                 ]._store_metadata
                                 toUpdate = True
-                                try:
-                                    for fetched_distrib in fetched_resources[
-                                        "report"
-                                    ].distribution:
-                                        try:
-                                            if (
-                                                fetched_distrib.digest.value
-                                                != ph_report_distrib[
-                                                    fetched_distrib.encodingFormat
-                                                ][0]
-                                            ):
-                                                distribution_report = forge.attach(
-                                                    ph_report_distrib[
-                                                        fetched_distrib.encodingFormat
-                                                    ][1],
-                                                    fetched_distrib.encodingFormat,
-                                                )
-                                                distribution_file.append(
-                                                    distribution_report
-                                                )
-                                                ph_report_distrib.pop(
-                                                    fetched_distrib.encodingFormat
-                                                )
-                                        except KeyError:
-                                            pass
-                                except AttributeError:
-                                    pass
-                                    # If still keys in it then attach the remaining
-                                    # files
-                                    if ph_report_distrib:
-                                        for encoding, file in ph_report_distrib.items():
+                                if fetched_resources["report"].distribution:
+                                    if not isinstance(
+                                        fetched_resources["report"].distribution, list
+                                    ):
+                                        fetched_resources["report"].distribution = [
+                                            fetched_resources["report"].distribution
+                                        ]
+                                for fetched_distrib in fetched_resources[
+                                    "report"
+                                ].distribution:
+                                    try:
+                                        if (
+                                            fetched_distrib.digest.value
+                                            != ph_report_distrib[
+                                                fetched_distrib.encodingFormat
+                                            ][0]
+                                        ):
                                             distribution_report = forge.attach(
-                                                file[1],
-                                                encoding,
+                                                ph_report_distrib[
+                                                    fetched_distrib.encodingFormat
+                                                ][1],
+                                                fetched_distrib.encodingFormat,
                                             )
                                             distribution_file.append(
                                                 distribution_report
                                             )
+                                        else:
+                                            # If the distribution is the same, keep it
+                                            distribution_file.append(fetched_distrib)
+                                        ph_report_distrib.pop(
+                                            fetched_distrib.encodingFormat
+                                        )
+                                    # If the distribution is empty
+                                    except AttributeError:
+                                        pass
+                                    except KeyError:
+                                        pass
+                                # If still keys in it then attach the remaining
+                                # files
+                                if ph_report_distrib:
+                                    for encoding, file in ph_report_distrib.items():
+                                        distribution_report = forge.attach(
+                                            file[1],
+                                            encoding,
+                                        )
+                                        distribution_file.append(distribution_report)
                             except KeyError:
-                                pass
+                                toUpdate = False
+                                for encoding, file in ph_report_distrib.items():
+                                    distribution_report = forge.attach(
+                                        file[1], encoding
+                                    )
+                                    distribution_file.append(distribution_report)
                         else:
                             for encoding, file in ph_report_distrib.items():
                                 distribution_report = forge.attach(file[1], encoding)
                                 distribution_file.append(distribution_report)
-                        if distribution_file:
-                            nrrd_resources.distribution = distribution_file
+                        nrrd_resources.distribution = distribution_file
 
                 if derivation:
                     nrrd_resources.derivation = nrrd_resource.derivation
 
-                if dataset_name in deriv_dict_id.keys():
+                if fetched_resource_id:
+                    nrrd_resources.id = fetched_resource_id
+                elif dataset_name in deriv_dict_id.keys():
                     nrrd_resource.id = deriv_dict_id[dataset_name]["id"]
+
+                if fetched_resource_metadata:
+                    nrrd_resources._store_metadata = fetched_resource_metadata
 
                 if generation:
                     nrrd_resources.generation = nrrd_resource.generation
 
-                if action_summary_file:
-                    nrrd_resources.id = mask_id
+                if resource_flag == "isRegionMask":
+                    # Finish to fill the link_region_path file with the masks @ids
+                    if action_summary_file:
+                        if hasattr(nrrd_resources, "id"):
+                            mask_id = nrrd_resources.id
+                        else:
+                            mask_id = forge.format(
+                                "identifier", "volumetricdatalayer", str(uuid4())
+                            )
+                            nrrd_resources.id = mask_id
+                        mask_link = {"mask": {"@id": mask_id}}
+                        if action_summary_file == "append":
+                            try:
+                                if (
+                                    "mask"
+                                    not in link_summary_content[f"{region_id}"].keys()
+                                ):
+                                    link_summary_content[f"{region_id}"].update(
+                                        mask_link
+                                    )
+                                else:
+                                    link_summary_content[f"{region_id}"] = mask_link
+                            except KeyError:
+                                link_summary_content[f"{region_id}"] = mask_link
+                        else:
+                            region_summary = {
+                                f"{region_id}": {
+                                    "mask": {"@id": mask_id},
+                                }
+                            }
+                            link_summary_content.update(region_summary)
+                    if f == len(files_list) - 1:
+                        link_summary_file = open(link_regions_path, "w")
+                        link_summary_file.write(
+                            json.dumps(
+                                link_summary_content, ensure_ascii=False, indent=2
+                            )
+                        )
+                        link_summary_file.close()
 
                 if toUpdate:
-                    if fetched_resource_id:
-                        nrrd_resources.id = fetched_resource_id
-                    if fetched_resource_metadata:
-                        nrrd_resources._store_metadata = fetched_resource_metadata
-                    print("==========")
-                    print(nrrd_resources._store_metadata)
-                    print("==========")
                     resources_payloads["datasets_toUpdate"][
                         f"{const.schema_volumetricdatalayer}"
                     ].append(nrrd_resources)
@@ -1672,15 +1667,11 @@ def create_volumetric_resources(
                     resources_payloads["datasets_toPush"][
                         f"{const.schema_volumetricdatalayer}"
                     ].append(nrrd_resources)
-                    if hasattr(nrrd_resources, "_store_metadata._rev"):
-                        print("22222222222222")
-                        print(nrrd_resources._store_metadata._rev)
-                        print("22222222222222")
 
     resources_payloads["activity"] = activity_resource
 
     # Annotate the atlasrelease_config json file with the atlasrelease "id" and "tag"
-    # Do a function annotate_atlasrelease_file
+    # TODO Turn it into a function annotate_atlasrelease_file
     if not isinstance(forge._store, DemoStore):
         if atlasrelease_config_path:
             atlasrelease_id = atlasrelease_payloads["atlas_release"].id
@@ -1690,26 +1681,26 @@ def create_volumetric_resources(
                     "tag": atlasrelease_payloads["tag"],
                 }
             }
-        try:
-            with open(atlasrelease_config_path) as atlasrelease_config_file:
-                atlasrelease_config_content = json.loads(
-                    atlasrelease_config_file.read()
-                )
-                if f"{atlasrelease_choice}" in atlasrelease_config_content.keys():
-                    atlasrelease_config_content[
-                        f"{atlasrelease_choice}"
-                    ] = atlasrelease_link[f"{atlasrelease_choice}"]
-                else:
-                    atlasrelease_config_content.update(atlasrelease_link)
-            with open(atlasrelease_config_path, "w") as atlasrelease_config_file:
-                atlasrelease_config_file.write(
-                    json.dumps(
-                        atlasrelease_config_content, ensure_ascii=False, indent=2
+            try:
+                with open(atlasrelease_config_path) as atlasrelease_config_file:
+                    atlasrelease_config_content = json.loads(
+                        atlasrelease_config_file.read()
                     )
-                )
-        except json.decoder.JSONDecodeError as error:
-            L.error(f"{error} when opening the input atlasrelease json file.")
-            exit(1)
+                    if atlasrelease_choice in atlasrelease_config_content.keys():
+                        atlasrelease_config_content[
+                            f"{atlasrelease_choice}"
+                        ] = atlasrelease_link[f"{atlasrelease_choice}"]
+                    else:
+                        atlasrelease_config_content.update(atlasrelease_link)
+                with open(atlasrelease_config_path, "w") as atlasrelease_config_file:
+                    atlasrelease_config_file.write(
+                        json.dumps(
+                            atlasrelease_config_content, ensure_ascii=False, indent=2
+                        )
+                    )
+            except json.decoder.JSONDecodeError as error:
+                L.error(f"{error} when opening the input atlasrelease json file.")
+                exit(1)
 
     return resources_payloads
 

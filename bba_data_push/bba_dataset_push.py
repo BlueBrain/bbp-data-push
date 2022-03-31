@@ -17,6 +17,7 @@ from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resour
 from bba_data_push.push_brainmesh import create_mesh_resources
 from bba_data_push.push_sonata_cellrecordseries import create_cell_record_resources
 from bba_data_push.push_json_regionsummary import create_regionsummary_resources
+from bba_data_push import constants as const
 from bba_data_push.logging import log_args, close_handler
 from bba_data_push import __version__
 
@@ -26,15 +27,42 @@ L = logging.getLogger(__name__)
 
 def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag):
 
+    ############
+    # TEMPORARY: change the mba jsonLD file name from the ontology distribution to
+    # update so that the resource is compliant with the Atlas web app ontology file
+    # extraction
+    try:
+        ontology_distributions = datasets_toupdate[
+            "https://neuroshapes.org/dash/ontology"
+        ][-1].distribution
+        ontology_id = datasets_toupdate["https://neuroshapes.org/dash/ontology"][-1].id
+        mba_jsonld = const.hierarchy_dict["hierarchy_l23split"]["mba_jsonld"]
+        for i in range(0, len(ontology_distributions)):
+            if ontology_distributions[i].name == f"{mba_jsonld}.json":
+                print("nom normal trouve")
+                uid = f"{ontology_id}".rsplit("/", 1)[-1]
+                ontology_distributions[i].name = "_".join(
+                    [uid, ontology_distributions[i].name]
+                )
+                print(ontology_distributions[i].name)
+                pass
+    except AttributeError:
+        pass
+    except KeyError:
+        pass
+    ###########
     for dataset_schema, datasets in datasets_toupdate.items():
         if datasets:
             dataset_type = f"{dataset_schema}".rsplit("/", 1)[-1]
+            if not dataset_type:
+                dataset_type = "Entity"
             try:
+                if not dataset_type:
+                    dataset_type = "Entity"
                 L.info(
                     "\n-------------- Update & Validation Status ---------------"
                     f"\nUpdating '{dataset_type}' resource payloads in Nexus..."
                 )
-                print(datasets[-1]._store_metadata._rev)
                 forge.update(datasets, dataset_schema)
                 L.info(
                     f"<<Resource synchronization status>>:"
@@ -53,6 +81,8 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
     for dataset_schema, datasets in datasets_topush.items():
         if datasets:
             dataset_type = f"{dataset_schema}".rsplit("/", 1)[-1]
+            if not dataset_type:
+                dataset_type = "Entity"
             try:
                 L.info(
                     "\n----------------------- Resource content ----------------------"
@@ -77,32 +107,30 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
                 exit(1)
 
 
-def _push_activity_to_Nexus(resources_payloads, forge):
+def _push_activity_to_Nexus(activity_resource, forge):
 
     endedAtTime = {
         "@type": "xsd:dateTime",
         "@value": f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}",
     }
-    if resources_payloads["activity"]._store_metadata:
+    if activity_resource._store_metadata:
         try:
-            resources_payloads["activity"].endedAtTime = forge.from_json(
+            activity_resource.endedAtTime = forge.from_json(
                 {
-                    "@type": resources_payloads["activity"].endedAtTime.type,
+                    "@type": activity_resource.endedAtTime.type,
                     "@value": endedAtTime["@value"],
                 }
             )
             L.info("\nUpdating the Activity Resource in Nexus...")
-            forge.update(resources_payloads["activity"])
+            forge.update(activity_resource)
         except Exception as e:
             L.error(f"Error when updating the resource. {e}")
             exit(1)
     else:
         try:
-            resources_payloads["activity"].endedAtTime = endedAtTime
+            activity_resource.endedAtTime = endedAtTime
             L.info("\nRegistering the constructed Activity Resource in Nexus...")
-            forge.register(
-                resources_payloads["activity"], "https://neuroshapes.org/dash/activity"
-            )
+            forge.register(activity_resource, const.schema_activity)
         except Exception as e:
             L.error(f"Error when registering the resource. {e}")
             exit(1)
@@ -278,7 +306,7 @@ def push_volumetric(
     )
 
     if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads, ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
 
     _integrate_datasets_to_Nexus(
         ctx.obj["forge"],
@@ -306,8 +334,8 @@ def push_meshes(
     atlasrelease_config_path,
     hierarchy_path,
     hierarchy_jsonld_path,
-    link_regions_path,
     provenance_metadata_path,
+    link_regions_path,
     resource_tag,
 ):
     """Create a Mesh resource payload and push it along with the corresponding brain
@@ -325,14 +353,75 @@ def push_meshes(
         atlasrelease_config_path,
         hierarchy_path,
         hierarchy_jsonld_path,
-        link_regions_path,
         provenance_metadata_path,
+        link_regions_path,
         resource_tag,
         ctx.obj["verbose"],
     )
 
     if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads, ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+
+    _integrate_datasets_to_Nexus(
+        ctx.obj["forge"],
+        resources_payloads["datasets_toUpdate"],
+        resources_payloads["datasets_toPush"],
+        resources_payloads["tag"],
+    )
+
+
+@initialize_pusher_cli.command()
+@base_resource
+@click.option(
+    "--hierarchy-path",
+    type=click.Path(exists=True),
+    required=True,
+    multiple=True,
+    help="The path to the json hierarchy file containing an AIBS hierarchy structure.",
+)
+@click.option(
+    "--link-regions-path",
+    help="Optional json file containing link between regions and resources  (@ ids of "
+    "mask and mesh for each brain region) to be extracted by the CLI "
+    "push-regionsummary. If the file already exists it will be annoted else it will be "
+    "created.",
+)
+@click.pass_context
+@log_args(L)
+def push_regionsummary(
+    ctx,
+    dataset_path,
+    config_path,
+    atlasrelease_config_path,
+    hierarchy_path,
+    hierarchy_jsonld_path,
+    provenance_metadata_path,
+    link_regions_path,
+    resource_tag,
+):
+    """Create a RegionSummary resource payload and push it along with the corresponding
+    brain region metadata json input dataset files into Nexus. If the Resource already
+    exists in Nexus then it will be updated instead. Eventually push/update their
+    linked atlasRelease and ontology resources. Tag all these resources with the input
+    tag or, if not provided, with a timestamp\n
+    """
+    L.setLevel(ctx.obj["verbose"])
+    L.info("Filling the metadata of the RegionSummary payload...")
+    resources_payloads = create_regionsummary_resources(
+        ctx.obj["forge"],
+        dataset_path,
+        config_path,
+        atlasrelease_config_path,
+        hierarchy_path,
+        hierarchy_jsonld_path,
+        provenance_metadata_path,
+        link_regions_path,
+        resource_tag,
+        ctx.obj["verbose"],
+    )
+
+    if resources_payloads["activity"]:
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
 
     _integrate_datasets_to_Nexus(
         ctx.obj["forge"],
@@ -377,68 +466,7 @@ def push_cellrecords(
     )
 
     if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads, ctx.obj["forge"])
-
-    _integrate_datasets_to_Nexus(
-        ctx.obj["forge"],
-        resources_payloads["datasets_toUpdate"],
-        resources_payloads["datasets_toPush"],
-        resources_payloads["tag"],
-    )
-
-
-@initialize_pusher_cli.command()
-@base_resource
-@click.option(
-    "--hierarchy-path",
-    type=click.Path(exists=True),
-    required=True,
-    multiple=True,
-    help="The path to the json hierarchy file containing an AIBS hierarchy structure.",
-)
-@click.option(
-    "--link-regions-path",
-    help="Optional json file containing link between regions and resources  (@ ids of "
-    "mask and mesh for each brain region) to be extracted by the CLI "
-    "push-regionsummary. If the file already exists it will be annoted else it will be "
-    "created.",
-)
-@click.pass_context
-@log_args(L)
-def push_regionsummary(
-    ctx,
-    dataset_path,
-    config_path,
-    atlasrelease_config_path,
-    hierarchy_path,
-    hierarchy_jsonld_path,
-    link_regions_path,
-    provenance_metadata_path,
-    resource_tag,
-):
-    """Create a RegionSummary resource payload and push it along with the corresponding
-    brain region metadata json input dataset files into Nexus. If the Resource already
-    exists in Nexus then it will be updated instead. Eventually push/update their
-    linked atlasRelease and ontology resources. Tag all these resources with the input
-    tag or, if not provided, with a timestamp\n
-    """
-    L.setLevel(ctx.obj["verbose"])
-    L.info("Filling the metadata of the RegionSummary payload...")
-    resources_payloads = create_regionsummary_resources(
-        ctx.obj["forge"],
-        dataset_path,
-        config_path,
-        atlasrelease_config_path,
-        hierarchy_path,
-        hierarchy_jsonld_path,
-        link_regions_path,
-        provenance_metadata_path,
-        resource_tag,
-        ctx.obj["verbose"],
-    )
-
-    if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads, ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
 
     _integrate_datasets_to_Nexus(
         ctx.obj["forge"],

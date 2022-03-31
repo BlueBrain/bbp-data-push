@@ -162,16 +162,19 @@ def create_cell_record_resources(
     activity_resource = []
     for filepath in inputpath:
         fileFound = False
+        distribution_file = None
         fetched_resources = None
         differentAtlasrelease = False
         toUpdate = False
+        fetched_resource_id = None
+        fetched_resource_metadata = None
         for dataset in cellrecords_dict:
             try:
                 if os.path.samefile(filepath, dataset):
                     fileFound = True
                     if filepath.endswith(".h5"):
                         filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-                        cellrecord_type = ["CellRecordSeries", const.dataset_type]
+                        cellrecord_type = cellrecords_dict[dataset]["type"]
                         description = cellrecords_dict[dataset]["description"]
                         atlasrelease_choice = cellrecords_dict[dataset]["atlasrelease"]
                     else:
@@ -272,14 +275,19 @@ def create_cell_record_resources(
                         atlasrelease_config_path,
                         atlasrelease_payloads,
                         resource_tag,
+                        secondary_cli=True
                     )
                     if atlasrelease_payloads["fetched"]:
-                        L.info("atlasrelease Resource found in the Nexus project")
+                        L.info(
+                            f"atlasrelease Resource '{atlasrelease_choice}' found in "
+                            f"the Nexus destination project '{forge._store.bucket}'"
+                        )
                     else:
                         L.error(
-                            "atlasrelease Resource not found in the Nexus project. "
-                            "You need to first create it and push it into Nexus "
-                            "using the CLI push-volumetric"
+                            f"atlasrelease Resource '{atlasrelease_choice}' has not "
+                            "been found in the Nexus destination project "
+                            f"'{forge._store.bucket}'. A new one need to be created "
+                            "and pushed into Nexus using the CLI push-volumetric."
                         )
                         exit(1)
                 except Exception as e:
@@ -304,154 +312,168 @@ def create_cell_record_resources(
                 # are different before attaching it
 
                 # => check if the good hierarchy file is given in input
-                try:
-                    atlasrelease_ontology_path = get_hierarchy_file(
-                        input_hierarchy,
-                        config_content,
-                        const.atlasrelease_dict[atlasrelease_choice]["ontology"][
-                            "name"
-                        ],
-                    )
-                except KeyError:
+                # => check if the good hierarchy file is given in input
+                if differentAtlasrelease:
                     try:
-                        # If it is an update
-                        if atlasrelease_payloads["hierarchy"].distribution:
-                            pass
-                    # Then it is a brand new creation and the file is needed
-                    except AttributeError as error:
+                        atlasrelease_ontology_path = get_hierarchy_file(
+                            input_hierarchy,
+                            config_content,
+                            const.atlasrelease_dict[atlasrelease_choice]["ontology"][
+                                "name"
+                            ],
+                        )
+                    except KeyError:
+                        # If the distribution is empty the good file is needed for a new
+                        # creation
+                        if not atlasrelease_payloads["hierarchy"].distribution:
+                            L.error(
+                                "Error: the ontology file corresponding to the "
+                                "created atlasRelease resource can not be found among "
+                                "input hierarchy files."
+                            )
+                            exit(1)
+
+                    # Build the distribution dict with the input hierarchy file
+                    format_hierarchy_original = os.path.splitext(
+                        os.path.basename(atlasrelease_ontology_path)
+                    )[1][1:]
+                    content_type_original = f"application/{format_hierarchy_original}"
+                    hierarchy_original_hash = return_file_hash(
+                        atlasrelease_ontology_path
+                    )
+                    input_hierarchy_distrib = {
+                        f"{content_type_original}": (
+                            hierarchy_original_hash,
+                            atlasrelease_ontology_path,
+                        )
+                    }
+                    # If the correct hierarchy jsonld file is given in input then add it
+                    # to the distribution dict.
+                    try:
+                        hierarchy_mba = const.atlasrelease_dict[atlasrelease_choice][
+                            "ontology"
+                        ]["mba_jsonld"]
+                        if os.path.samefile(
+                            input_hierarchy_jsonld,
+                            hierarchies[hierarchy_mba],
+                        ):
+                            content_type_mba = "application/ld+json"
+                            hierarchy_mba_hash = return_file_hash(
+                                input_hierarchy_jsonld
+                            )
+                            hierarchy_mba_dict = {
+                                f"{content_type_mba}": (
+                                    hierarchy_mba_hash,
+                                    input_hierarchy_jsonld,
+                                )
+                            }
+                            input_hierarchy_distrib.update(hierarchy_mba_dict)
+                    except FileNotFoundError as error:
                         L.error(
-                            "Error: the ontology file corresponding to the "
-                            "created atlasRelease resource can not be found among "
-                            f"input hierarchy files. {error}"
+                            f"Error : {error}. Input hierarchy jsonLD file "
+                            "does not correspond to the input hierarchy "
+                            "json file"
                         )
                         exit(1)
+                    # if no input hierarchy jsonLD has been provided then
+                    # input_hierarchy_jsonld is None and os.path.samefile raises a
+                    # TypeError
+                    except TypeError:
+                        pass
 
-                # Build the distribution dict with the input hierarchy file
-                format_hierarchy_original = os.path.splitext(
-                    os.path.basename(atlasrelease_ontology_path)
-                )[1][1:]
-                content_type_original = f"application/{format_hierarchy_original}"
-                hierarchy_original_hash = return_file_hash(atlasrelease_ontology_path)
-                input_hierarchy_distrib = {
-                    f"{content_type_original}": (
-                        hierarchy_original_hash,
-                        atlasrelease_ontology_path,
-                    )
-                }
-                # If the correct hierarchy jsonld file is given in input then add it to
-                # the distribution dict.
-                try:
-                    hierarchy_mba = const.atlasrelease_dict[atlasrelease_choice][
-                        "ontology"
-                    ]["mba_jsonld"]
-                    if os.path.samefile(
-                        input_hierarchy_jsonld,
-                        hierarchies[hierarchy_mba],
-                    ):
-                        format_hierarchy_mba = os.path.splitext(
-                            os.path.basename(input_hierarchy_jsonld)
-                        )[1][1:]
-                        content_type_mba = f"application/{format_hierarchy_mba}"
-                        hierarchy_mba_hash = return_file_hash(input_hierarchy_jsonld)
-                        hierarchy_mba_dict = {
-                            f"{content_type_mba}": (
-                                hierarchy_mba_hash,
-                                input_hierarchy_jsonld,
-                            )
-                        }
-                        input_hierarchy_distrib.update(hierarchy_mba_dict)
-                except FileNotFoundError as error:
-                    L.error(
-                        f"Error : {error}. Input hierarchy jsonLD file "
-                        "does not correspond to the input hierarchy "
-                        "json file"
-                    )
-                    exit(1)
-
-                # If the hierarchy file has been fetched then the distribution will be
-                # updated with the one given in input only if it is different from the
-                # ones from the distribution dict. For a brand new file, the
-                # distribution will be attached by default.
-                distribution_file = []
-                if atlasrelease_payloads["hierarchy"].distribution:
-                    # Compare the fetched hierarchy file hash with the hash from
-                    # the input ones
-                    if not isinstance(
-                        atlasrelease_payloads["hierarchy"].distribution, list
-                    ):
-                        atlasrelease_payloads["hierarchy"].distribution = [
-                            atlasrelease_payloads["hierarchy"].distribution
-                        ]
-                    for fetched_distrib in atlasrelease_payloads[
-                        "hierarchy"
-                    ].distribution:
-                        try:
-                            if (
-                                fetched_distrib.digest.value
-                                != input_hierarchy_distrib[
-                                    fetched_distrib.encodingFormat
-                                ][0]
-                            ):
-                                distribution_hierarchy = forge.attach(
-                                    input_hierarchy_distrib[
+                    # If the hierarchy file has been fetched then the distribution will
+                    # be updated with the one given in input only if it is different
+                    # from the ones from the distribution dict. For a brand new file,
+                    # the distribution will be attached by default.
+                    distribution_ontologies = []
+                    if atlasrelease_payloads["hierarchy"].distribution:
+                        if not isinstance(
+                            atlasrelease_payloads["hierarchy"].distribution, list
+                        ):
+                            atlasrelease_payloads["hierarchy"].distribution = [
+                                atlasrelease_payloads["hierarchy"].distribution
+                            ]
+                        # Compare the fetched hierarchy file hash with the hash from
+                        # the input ones
+                        for fetched_distrib in atlasrelease_payloads[
+                            "hierarchy"
+                        ].distribution:
+                            try:
+                                if (
+                                    fetched_distrib.digest.value
+                                    != input_hierarchy_distrib[
                                         fetched_distrib.encodingFormat
-                                    ][1],
-                                    fetched_distrib.encodingFormat,
-                                )
-                                # attach the selected input distribution and pop it
-                                # from the dictionary
-                                distribution_file.append(distribution_hierarchy)
+                                    ][0]
+                                ):
+                                    distribution_hierarchy = forge.attach(
+                                        input_hierarchy_distrib[
+                                            fetched_distrib.encodingFormat
+                                        ][1],
+                                        fetched_distrib.encodingFormat,
+                                    )
+                                    # attach the selected input distribution and pop it
+                                    # from the dictionary
+                                    distribution_ontologies.append(
+                                        distribution_hierarchy
+                                    )
+                                else:
+                                    # If the distribution is the same, keep it
+                                    distribution_ontologies.append(fetched_distrib)
                                 input_hierarchy_distrib.pop(
                                     fetched_distrib.encodingFormat
                                 )
-                        except KeyError:
-                            pass
+                            # If the distribution is empty
+                            except AttributeError:
+                                pass
+                            except KeyError:
+                                pass
+
                         # If still keys in it then attach the remaining files
                         if input_hierarchy_distrib:
-                            print("ccc")
                             for encoding, file in input_hierarchy_distrib.items():
                                 distribution_hierarchy = forge.attach(
                                     file[1],
                                     encoding,
                                 )
-                                distribution_file.append(distribution_hierarchy)
-                else:
-                    # If the hierarchy file is new so it does not have a distribution
-                    # then attach the distribution from the input files
-                    for encoding, file in input_hierarchy_distrib.items():
-                        distribution_hierarchy = forge.attach(file[1], encoding)
-                        distribution_file.append(distribution_hierarchy)
+                                distribution_ontologies.append(distribution_hierarchy)
+                    else:
+                        # If the hierarchy file is new so it does not have a
+                        # distribution then attach the distribution from the input files
+                        for encoding, file in input_hierarchy_distrib.items():
+                            distribution_hierarchy = forge.attach(file[1], encoding)
+                            distribution_ontologies.append(distribution_hierarchy)
 
-                atlasrelease_payloads["hierarchy"].distribution = distribution_file
+                    atlasrelease_payloads[
+                        "hierarchy"
+                    ].distribution = distribution_ontologies
 
-                # ==================== Link atlasRelease/Ontology ====================
-                if not atlasrelease_payloads["atlas_release"].parcellationOntology:
-                    atlasrelease_payloads["atlas_release"].parcellationOntology = {
-                        "@id": atlasrelease_payloads["hierarchy"].id,
-                        "@type": ["Entity", const.ontology_type, "Ontology"],
-                    }
-                atlasrelease_payloads["hierarchy"].contribution = contribution
+                    # =================== Link atlasRelease/Ontology ===================
+                    if not atlasrelease_payloads["atlas_release"].parcellationOntology:
+                        atlasrelease_payloads["atlas_release"].parcellationOntology = {
+                            "@id": atlasrelease_payloads["hierarchy"].id,
+                            "@type": ["Entity", const.ontology_type, "Ontology"],
+                        }
+                    atlasrelease_payloads["hierarchy"].contribution = contribution
 
-                resources_payloads["datasets_toUpdate"][
-                    f"{const.schema_ontology}"
-                ].append(atlasrelease_payloads["hierarchy"])
+                    resources_payloads["datasets_toUpdate"][
+                        f"{const.schema_ontology}"
+                    ].append(atlasrelease_payloads["hierarchy"])
 
         # ==================== Fetch atlasRelease linked resources ====================
 
         if atlasrelease_payloads["fetched"]:
+            resource_type_list = list(
+                set(cellrecord_type).difference(set([const.dataset_type]))
+            )
             try:
-                L.info(
-                    "Resources in Nexus which correspond to input datasets will be "
-                    "updated..."
-                )
                 # fetched_resources will be either one resource or a dictionary of
                 # resource
                 fetched_resources = fetch_linked_resources(
                     forge,
                     atlasrelease_payloads,
-                    [cellrecord_type],
+                    resource_type_list,
                     [],
-                    "isCellRecord",
+                    None,
                 )
             except KeyError as error:
                 L.error(f"{error}")
@@ -465,6 +487,12 @@ def create_cell_record_resources(
         if provenance_metadata and not activity_resource:
             try:
                 activity_resource = return_activity_payload(forge, provenance_metadata)
+                if not activity_resource._store_metadata:
+                    L.info(
+                        "Existing activity resource not found in the Nexus destination "
+                        f"project '{forge._store.bucket}'. A new activity will be "
+                        "created and registered"
+                    )
             except Exception as e:
                 L.error(f"{e}")
                 exit(1)
@@ -473,13 +501,16 @@ def create_cell_record_resources(
             # 'value' need to be mapped back to @value
             if hasattr(activity_resource, "startedAtTime"):
                 # A Resource property that is a dict at the creation of the Resource
-                # become a Resource attribut after being synchronized on Nexus
+                # becomes a Resource attribut after being synchronized on Nexus
                 if not isinstance(activity_resource.startedAtTime, dict):
-                    if hasattr(activity_resource.startedAtTime, "@value"):
+                    if hasattr(activity_resource.startedAtTime, "@value") and hasattr(
+                        activity_resource.startedAtTime, "type"
+                    ):
                         value = getattr(activity_resource.startedAtTime, "@value")
+                        type = getattr(activity_resource.startedAtTime, "type")
                         activity_resource.startedAtTime = forge.from_json(
                             {
-                                "type": activity_resource.startedAtTime.type,
+                                "@type": type,
                                 "@value": value,
                             }
                         )
@@ -498,16 +529,17 @@ def create_cell_record_resources(
         # file, copy its id and _store_metadata
         if fetched_resources:
             filepath_hash = return_file_hash(filepath)
-            first_fetched_resource = fetched_resources
+            fetched_resource_id = fetched_resources.id
+            fetched_resource_metadata = fetched_resources._store_metadata
             toUpdate = True
-            print(f"first resource: {first_fetched_resource._store_metadata}")
             try:
-                if filepath_hash != first_fetched_resource.distribution.digest.value:
+                if filepath_hash != fetched_resources.distribution.digest.value:
                     distribution_file = forge.attach(filepath)
+                else:
+                    distribution_file = fetched_resources.distribution
+            # If no distribution in the fetched resources then attach the input file
             except AttributeError:
                 distribution_file = forge.attach(filepath)
-            fetched_resource_id = first_fetched_resource.id
-            fetched_resource_metadata = first_fetched_resource._store_metadata
         else:
             distribution_file = forge.attach(filepath)
 
@@ -537,6 +569,10 @@ def create_cell_record_resources(
 
         if generation:
             cellrecord_resource.generation = generation
+        if fetched_resource_id:
+            cellrecord_resource.id = fetched_resource_id
+        if fetched_resource_metadata:
+            cellrecord_resource._store_metadata = fetched_resource_metadata
 
         # Add the generation prop for every different atlasRelease
         if differentAtlasrelease:
@@ -548,10 +584,6 @@ def create_cell_record_resources(
             ].append(atlasrelease_payloads["atlas_release"])
 
         if toUpdate:
-            if fetched_resource_id:
-                cellrecord_resource.id = fetched_resource_id
-            if fetched_resource_metadata:
-                cellrecord_resource._store_metadata = fetched_resource_metadata
             resources_payloads["datasets_toUpdate"][
                 f"{const.schema_cellrecord}"
             ].append(cellrecord_resource)
@@ -561,5 +593,37 @@ def create_cell_record_resources(
             )
 
     resources_payloads["activity"] = activity_resource
+
+    # Annotate the atlasrelease_config json file with the atlasrelease "id" and "tag"
+    # TODO Turn it into a function annotate_atlasrelease_file
+    if not isinstance(forge._store, DemoStore):
+        if atlasrelease_config_path:
+            atlasrelease_id = atlasrelease_payloads["atlas_release"].id
+            atlasrelease_link = {
+                f"{atlasrelease_choice}": {
+                    "id": atlasrelease_id,
+                    "tag": atlasrelease_payloads["tag"],
+                }
+            }
+            try:
+                with open(atlasrelease_config_path) as atlasrelease_config_file:
+                    atlasrelease_config_content = json.loads(
+                        atlasrelease_config_file.read()
+                    )
+                    if atlasrelease_choice in atlasrelease_config_content.keys():
+                        atlasrelease_config_content[
+                            f"{atlasrelease_choice}"
+                        ] = atlasrelease_link[f"{atlasrelease_choice}"]
+                    else:
+                        atlasrelease_config_content.update(atlasrelease_link)
+                with open(atlasrelease_config_path, "w") as atlasrelease_config_file:
+                    atlasrelease_config_file.write(
+                        json.dumps(
+                            atlasrelease_config_content, ensure_ascii=False, indent=2
+                        )
+                    )
+            except json.decoder.JSONDecodeError as error:
+                L.error(f"{error} when opening the input atlasrelease json file.")
+                exit(1)
 
     return resources_payloads

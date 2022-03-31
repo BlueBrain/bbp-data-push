@@ -24,7 +24,7 @@ Store:
     project_property: "https://bluebrain.github.io/nexus/vocabulary/project"
   max_connection: 50
   versioned_id_template: "{x.id}?rev={x._store_metadata._rev}"
-  file_resource_mapping: configs/forge_configs/mappings/file-to-resource-mapping.hjson
+  file_resource_mapping: https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/configurations/nexus-store/file-to-resource-mapping.hjson
 
 Resolvers:
   ontology:
@@ -34,7 +34,7 @@ Resolvers:
       targets:
         - identifier: terms
           bucket: neurosciencegraph/datamodels
-      result_resource_mapping: configs/forge_configs/mappings/term-to-resource-mapping.hjson
+      result_resource_mapping: https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/configurations/nexus-resolver/term-to-resource-mapping.hjson
   agent:
     - resolver: AgentResolver
       origin: store
@@ -45,7 +45,7 @@ Resolvers:
       searchendpoints:
         sparql:
           endpoint: "https://bluebrain.github.io/nexus/vocabulary/defaultSparqlIndex"
-      result_resource_mapping: configs/forge_configs/mappings/agent-to-resource-mapping.hjson
+      result_resource_mapping: https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/configurations/nexus-resolver/agent-to-resource-mapping.hjson
 
 Formatters:
   identifier: https://bbp.epfl.ch/neurosciencegraph/data/{}/{}

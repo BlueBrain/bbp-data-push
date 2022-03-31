@@ -69,10 +69,10 @@ Run the dataset pusher CLI starting by the Initialisation of the Forge python fr
 
 ### Inputs
 --verbose, -v : Verbosity option. If equal True, the last resource payload from the list of resource payloads that has been constructed from input datasets will be printed. (Optional : boolean).  
---forge-config-file : Path to the configuration file used to  instantiate the Forge. (Optional, default = "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/notebooks/use-cases/prod-forge-nexus.yml"). 
---nexus-env : Nexus environment to use, can be 'dev', staging', 'prod' or the URL of a custom environment. (Optional, default="prod"). 
---nexus-org : The Nexus organisation to push into. (Optional, default='bbp'). 
---nexus-org : The Nexus project to push into. (Optional, default='atlas'). 
+--forge-config-file : Path to the configuration file used to  instantiate the Forge. (Optional, default = "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/notebooks/use-cases/prod-forge-nexus.yml").  
+--nexus-env : Nexus environment to use, can be 'dev', staging', 'prod' or the URL of a custom environment. (Optional, default="prod").  
+--nexus-org : The Nexus organisation to push into. (Optional, default='bbp').  
+--nexus-org : The Nexus project to push into. (Optional, default='atlas').  
 --nexus-token-file : Path to the text file containing the Nexus token.  
 
 
