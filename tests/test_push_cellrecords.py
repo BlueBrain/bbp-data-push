@@ -83,7 +83,7 @@ def test_create_cell_record_resources():
     )
 
     cellrecords_resource_simple = {
-        "type": ["CellRecordSeries", "Dataset"],
+        "type": ["Dataset", "CellRecordSeries"],
         "atlasRelease": const.atlasrelease_hybrid_l23split,
         "brainLocation": {
             "atlasSpatialReferenceSystem": {

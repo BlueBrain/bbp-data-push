@@ -93,7 +93,7 @@ def test_create_mesh_resources():
     )
 
     mesh_resource_simple = {
-        "type": ["BrainParcellationMesh", "Mesh", "Dataset"],
+        "type": ["Dataset", "Mesh", "BrainParcellationMesh"],
         "atlasRelease": {},
         "brainLocation": {
             "atlasSpatialReferenceSystem": {
