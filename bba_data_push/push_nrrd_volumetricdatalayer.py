@@ -632,11 +632,13 @@ def create_volumetric_resources(
                             )
                             description = dataset_dict["description"]
                             description = description.replace("XX", layer_number[0])
-                            layer = {
-                                "@id": f"layer:{layer_number[0]}",
-                                "label": f"{layer_number[0]}",
-                            }
-                            brainLocation["layer"] = layer
+                            for layer_nbr, layer_id in const.isocortex_layers.items():
+                                if layer_nbr == layer_number[0]:
+                                    layer = {
+                                        "@id": layer_id,
+                                        "label": f"layer {layer_nbr}",
+                                    }
+                                    brainLocation["layer"] = layer
                             atlasrelease_choice = dataset_dict["atlasrelease"]
                             dataSampleModality = dataset_dict["datasamplemodality"]
                             dataset_name = dataset_dict["name"]
@@ -797,7 +799,6 @@ def create_volumetric_resources(
             "sampling_time_unit": const.default_sampling_time_unit,
         }
         # ==== Create/fetch the atlasRelease Resource linked to the input datasets ====
-
         if not isinstance(forge._store, DemoStore):
             # Check that the same atlasrelease is not treated again (need to be
             # different + not been treated yet)
@@ -815,18 +816,20 @@ def create_volumetric_resources(
                         resource_tag,
                         isSecondaryCLI=False,
                     )
-                    if atlasrelease_payloads["fetched"]:
-                        L.info(
-                            f"atlasrelease Resource '{atlasrelease_choice}' found in "
-                            f"the Nexus destination project '{forge._store.bucket}'"
-                        )
-                    elif not atlasrelease_payloads["aibs_atlasrelease"]:
-                        L.info(
-                            f"atlasrelease Resource '{atlasrelease_choice}' has not "
-                            "been found in the Nexus destination project "
-                            f"'{forge._store.bucket}'. A new one will be created and "
-                            "pushed"
-                        )
+                    if not atlasrelease_payloads["aibs_atlasrelease"]:
+                        if atlasrelease_payloads["fetched"]:
+                            L.info(
+                                f"atlasrelease Resource '{atlasrelease_choice}' found "
+                                "in the Nexus destination project "
+                                f"'{forge._store.bucket}'"
+                            )
+                        else:
+                            L.info(
+                                f"atlasrelease Resource '{atlasrelease_choice}' has "
+                                "not been found in the Nexus destination project "
+                                f"'{forge._store.bucket}'. A new one will be created "
+                                "and pushed"
+                            )
                 except Exception as e:
                     L.error(f"Exception: {e}")
                     exit(1)
@@ -1402,22 +1405,19 @@ def create_volumetric_resources(
                         layer_number = re.findall(r"\d+", files_list[f])
                         description = dataset_dict["description"]
                         description = description.replace("XX", layer_number[0])
-                        layer = {
-                            "@id": f"layer:{layer_number[0]}",
-                            "label": f"{layer_number[0]}",
-                        }
-                        brainLocation["layer"] = layer
+                        for layer_nbr, layer_id in const.isocortex_layers.items():
+                            if layer_nbr == layer_number[0]:
+                                layer = {
+                                    "@id": layer_id,
+                                    "label": f"layer {layer_nbr}",
+                                }
+                                brainLocation["layer"] = layer
                     if f == 6:
                         description = "Volume containing for each voxel its distance "
                         f"from the bottom of the {annotation_description} Isocortex. "
                         "The bottom being the deepest part of the Isocortex (highest "
                         "cortical depth)."
                         layer_number = re.findall(r"\d+", files_list[f])
-                        layer = {
-                            "@id": f"layer:{layer_number[0]}",
-                            "label": f"{layer_number[0]}",
-                        }
-                        brainLocation["layer"] = layer
                     if fetched_resources:
                         try:
                             fetched_resource_id = fetched_resources[

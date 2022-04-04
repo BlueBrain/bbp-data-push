@@ -279,22 +279,22 @@ def create_cell_record_resources(
                         resource_tag,
                         isSecondaryCLI=True,
                     )
-                    if (
-                        atlasrelease_payloads["fetched"]
-                        or atlasrelease_payloads["aibs_atlasrelease"]
-                    ):
-                        L.info(
-                            f"atlasrelease Resource '{atlasrelease_choice}' found in "
-                            f"the Nexus destination project '{forge._store.bucket}'"
-                        )
-                    else:
-                        L.error(
-                            f"atlasrelease Resource '{atlasrelease_choice}' has not "
-                            "been found in the Nexus destination project "
-                            f"'{forge._store.bucket}'. A new one need to be created "
-                            "and pushed into Nexus using the CLI push-volumetric."
-                        )
-                        exit(1)
+                    if not atlasrelease_payloads["aibs_atlasrelease"]:
+                        if atlasrelease_payloads["fetched"]:
+                            L.info(
+                                f"atlasrelease Resource '{atlasrelease_choice}' found "
+                                "in the Nexus destination project "
+                                f"'{forge._store.bucket}'"
+                            )
+                        else:
+                            L.error(
+                                f"atlasrelease Resource '{atlasrelease_choice}' has "
+                                "not been found in the Nexus destination project "
+                                f"'{forge._store.bucket}'. A new one need to be "
+                                "created and pushed into Nexus using the CLI "
+                                "push-volumetric."
+                            )
+                            exit(1)
                 except Exception as e:
                     L.error(f"Exception: {e}")
                     exit(1)

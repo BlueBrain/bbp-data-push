@@ -945,7 +945,7 @@ def return_atlasrelease(
 
     # Tag that will be linked to the atlasRelease, its ontology, its parcellation and
     # every linked resources
-    if resource_tag:
+    if resource_tag and resource_tag != "None":
         tag = resource_tag
     elif atlasrelease["tag"] and isSecondaryCLI:
         tag = atlasrelease["tag"]

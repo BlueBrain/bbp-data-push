@@ -57,6 +57,17 @@ schema_cellrecord = "https://neuroshapes.org/dash/cellrecordseries"
 schema_regionsummary = ""  # https://neuroshapes.org/dash/entity
 schema_spatialref = "https://neuroshapes.org/dash/atlasspatialreferencesystem"
 
+# Isocortex layer Nexus UBERON @id_spatial_ref
+
+isocortex_layers = {
+    "1": "http://purl.obolibrary.org/obo/UBERON_0005390",
+    "2": "http://purl.obolibrary.org/obo/UBERON_0005391",
+    "3": "http://purl.obolibrary.org/obo/UBERON_0005392",
+    "4": "http://purl.obolibrary.org/obo/UBERON_0005393",
+    "5": "http://purl.obolibrary.org/obo/UBERON_0005394",
+    "6": "http://purl.obolibrary.org/obo/UBERON_0005395",
+}
+
 # atlasRelease already in Nexus bbp/atlas project
 atlasrelease_ccfv2 = {
     "@id": (
