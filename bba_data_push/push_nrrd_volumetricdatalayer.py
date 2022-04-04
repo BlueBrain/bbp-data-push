@@ -820,7 +820,7 @@ def create_volumetric_resources(
                             f"atlasrelease Resource '{atlasrelease_choice}' found in "
                             f"the Nexus destination project '{forge._store.bucket}'"
                         )
-                    else:
+                    elif not atlasrelease_payloads["aibs_atlasrelease"]:
                         L.info(
                             f"atlasrelease Resource '{atlasrelease_choice}' has not "
                             "been found in the Nexus destination project "
@@ -1066,7 +1066,7 @@ def create_volumetric_resources(
                         ].append(atlasrelease_payloads["hierarchy"])
 
         # ==================== Fetch atlasRelease linked resources ====================
-        if not isinstance(forge._store, DemoStore):
+        if not isinstance(forge._store, DemoStore) and not atlasrelease_payloads["aibs_atlasrelease"]:
             try:
                 if os.path.samefile(volumes[atlasrelease_parcellation], filepath):
                     resource_flag = "isAtlasParcellation"
