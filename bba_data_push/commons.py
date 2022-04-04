@@ -811,6 +811,7 @@ def return_atlasrelease(
         atlasrelease_payloads["atlas_release"] = atlasrelease_choice
         atlasrelease_payloads["aibs_atlasrelease"] = True
     else:
+        atlasrelease_payloads["aibs_atlasrelease"] = False
         ontology_choice = const.atlasrelease_dict[atlasrelease_choice]["ontology"]
 
         try:
