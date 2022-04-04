@@ -782,6 +782,7 @@ def return_atlasrelease(
     atlasrelease_config_path,
     atlasrelease_payloads,
     resource_tag=None,
+    isSecondaryCLI=False
 ):
     """
     Return a dictionary containing the atlasRelease and ontology resource. If their
@@ -945,7 +946,7 @@ def return_atlasrelease(
     # every linked resources
     if resource_tag:
         tag = resource_tag
-    elif atlasrelease["tag"]:
+    elif atlasrelease["tag"] and isSecondaryCLI:
         tag = atlasrelease["tag"]
     else:
         tag = f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}"

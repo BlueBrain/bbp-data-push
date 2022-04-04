@@ -813,6 +813,7 @@ def create_volumetric_resources(
                         atlasrelease_config_path,
                         atlasrelease_payloads,
                         resource_tag,
+                        isSecondaryCLI=False
                     )
                     if atlasrelease_payloads["fetched"]:
                         L.info(

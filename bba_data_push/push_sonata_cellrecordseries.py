@@ -277,6 +277,7 @@ def create_cell_record_resources(
                         atlasrelease_config_path,
                         atlasrelease_payloads,
                         resource_tag,
+                        isSecondaryCLI=True
                     )
                     if (
                         atlasrelease_payloads["fetched"]
