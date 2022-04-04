@@ -87,7 +87,7 @@ def test_create_cell_record_resources():
         "atlasRelease": const.atlasrelease_hybrid_l23split,
         "brainLocation": {
             "atlasSpatialReferenceSystem": {
-                "@id": const.atlas_reference_system_id,
+                "@id": const.atlas_spatial_reference_system_id,
                 "@type": [
                     "BrainAtlasSpatialReferenceSystem",
                     "AtlasSpatialReferenceSystem",

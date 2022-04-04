@@ -4,6 +4,7 @@ Update the content of the dictionnary accordingly with the dataset names from th
 input configuration file '--config-path'.
 """
 
+from kgforge.core import Resource
 
 # ================== Commons constants ==================
 
@@ -18,13 +19,17 @@ subject = {
         "label": "Mus musculus",
     },
 }
-atlas_reference_system_id = (
+atlas_spatial_reference_system_id = (
     "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system"
 )
+atlas_spatial_reference_system_type = [
+    "BrainAtlasSpatialReferenceSystem",
+    "AtlasSpatialReferenceSystem",
+]
 # Link to the spatial ref system
 isRegisteredIn = {
-    "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
-    "@id": atlas_reference_system_id,
+    "@id": atlas_spatial_reference_system_id,
+    "@type": atlas_spatial_reference_system_type,
 }
 # Descriptions
 description_ccfv2 = (
@@ -50,6 +55,7 @@ schema_volumetricdatalayer = "https://neuroshapes.org/dash/volumetricdatalayer"
 schema_mesh = "https://neuroshapes.org/dash/brainparcellationmesh"
 schema_cellrecord = "https://neuroshapes.org/dash/cellrecordseries"
 schema_regionsummary = ""  # https://neuroshapes.org/dash/entity
+schema_spatialref = "https://neuroshapes.org/dash/atlasspatialreferencesystem"
 
 # atlasRelease already in Nexus bbp/atlas project
 atlasrelease_ccfv2 = {
@@ -121,7 +127,6 @@ atlasrelease_dict = {
         "parcellation": annotation_ccfv3_l23split,
     },
 }
-
 # ================== VolumetricDataLayer constants ==================
 
 volumetric_type = "VolumetricDataLayer"
@@ -135,6 +140,69 @@ mesh_type = "Mesh"
 regionsummary_type = "RegionSummary"
 # ==================== CellRecordSeries constants ====================
 cellrecord_type = "CellRecordSeries"
+
+
+def return_spatial_reference(forge):
+
+    spatialref_resource = forge.retrieve(atlas_spatial_reference_system_id + "?rev")
+    if not spatialref_resource:
+        boundingBox = {
+            "@type": "BoundingBox",
+            "lowerPoint": {"@type": "Vector3D", "valueX": 0, "valueY": 0, "valueZ": 0},
+            "unitCode": "µm",
+            "upperPoint": {
+                "@type": "Vector3D",
+                "valueX": 13200,
+                "valueY": 8000,
+                "valueZ": 11400,
+            },
+        }
+        description = (
+            "This spatial reference system describes the space used by Allen "
+            "Institute for Brain Science, shared across CCFv1, CCFv2 and CCFv3 in "
+            "world coordinates, using micrometer as a spatial unit."
+        )
+        orientation = (
+            {
+                "@type": "RotationalMatrix",
+                "firstRow": {
+                    "@type": "Vector3D",
+                    "valueX": 1,
+                    "valueY": 0,
+                    "valueZ": 0,
+                },
+                "secondRow": {
+                    "@type": "Vector3D",
+                    "valueX": 0,
+                    "valueY": 1,
+                    "valueZ": 0,
+                },
+                "thirdRow": {
+                    "@type": "Vector3D",
+                    "valueX": 0,
+                    "valueY": 0,
+                    "valueZ": 1,
+                },
+            },
+        )
+        spatialAxesDirection = {
+            "x": "anterior-to-posterior",
+            "y": "superior-to-inferior",
+            "z": "left-to-right",
+        }
+        spatialref_resource = Resource(
+            type=atlas_spatial_reference_system_type,
+            name="Allen Mouse CCF",
+            description=description,
+            boundingBox=boundingBox,
+            orientation=orientation,
+            origin={"@type": "Vector3D", "valueX": 0, "valueY": 0, "valueZ": 0},
+            spatialAxesDirection=spatialAxesDirection,
+            unitCode=SPATIAL_UNIT,
+            citation="http://help.brain-map.org/display/mousebrain/API",
+        )
+
+    return spatialref_resource
 
 
 def return_volumetric_dict(volumetric_datasets):
@@ -308,6 +376,19 @@ def return_volumetric_dict(volumetric_datasets):
                     "suffixe": "CCFv3 L23 Split",
                 }
             },
+            "brain_template": {
+                f"{volumes['average_template_25']}": {
+                    "name": "average_template_25",
+                    "type": [dataset_type, volumetric_type, "BrainTemplateDataLayer"],
+                    "description": (
+                        "original Allen ccfv3 average template volume at "
+                        f"{VOXELS_RESOLUTION} {SPATIAL_UNIT}"
+                    ),
+                    "atlasrelease": atlasrelease_ccfv3,
+                    "voxel_type": "intensity",
+                    "datasamplemodality": "luminance",
+                }
+            },
             "cell_densities": {
                 f"{volumes['cell_densities_hybrid']}": {
                     "name": "cell_densities_hybrid",
@@ -456,7 +537,7 @@ def return_volumetric_dict(volumetric_datasets):
         }
     except KeyError as error:
         raise KeyError(
-            f"KeyError: {error} does not correspond to one of the datasets defined in"
+            f"KeyError: {error} does not correspond to one of the datasets defined in "
             "the VolumetricFile section of the 'generated dataset' configuration file."
         )
         exit(1)

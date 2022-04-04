@@ -39,16 +39,16 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
         mba_jsonld = const.hierarchy_dict["hierarchy_l23split"]["mba_jsonld"]
         for i in range(0, len(ontology_distributions)):
             if ontology_distributions[i].name == f"{mba_jsonld}.json":
-                print("nom normal trouve")
                 uid = f"{ontology_id}".rsplit("/", 1)[-1]
                 ontology_distributions[i].name = "_".join(
                     [uid, ontology_distributions[i].name]
                 )
-                print(ontology_distributions[i].name)
                 pass
     except AttributeError:
         pass
     except KeyError:
+        pass
+    except IndexError:
         pass
     ###########
     for dataset_schema, datasets in datasets_toupdate.items():
@@ -241,7 +241,6 @@ def base_resource(f):
     )(f)
     f = click.option(
         "--atlasrelease-config-path",
-        type=click.Path(exists=True),
         required=True,
         help="Json file containing the atlasRelease @id as well as its ontology and "
         "parcellation volume @id. It needs to contains at least these informations for "

@@ -310,10 +310,11 @@ def return_file_hash(file_path):
 
 def fetch_linked_resources(
     forge,
-    atlasrelease_payloads,
+    atlasRelease,
     resource_type_list,
     datasamplemodality_list,
     resource_flag,
+    parcellationAtlas_id=None,
 ):
     """
     Return the resources fetched from Nexus using the type, datasamplemodality and
@@ -323,7 +324,7 @@ def fetch_linked_resources(
 
     Parameters:
         forge : Instantiated and configured forge object.
-        atlasrelease_payloads : dict containing atlasRelease and ontology resources.
+        atlasRelease : dict containing atlasRelease @id and @type.
         resource_type_list : List containing the resource types to fetch.
         datasamplemodality_list : List containing the resource datasamplemodality to
                                  fetch.
@@ -336,24 +337,24 @@ def fetch_linked_resources(
     try:
         if resource_flag == "isPH":
             filters = {
-                "type": resource_type_list[0],
-                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
-                "dataSampleModality": datasamplemodality_list[0],
-            }
-            fetched_resources_PHlayer = forge.search(filters, limit=7)
-            filters = {
                 "type": resource_type_list[1],
-                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+                "atlasRelease": {"id": atlasRelease["@id"]},
                 "dataSampleModality": datasamplemodality_list[1],
             }
             fetched_resources_PHreport = forge.search(filters, limit=1)[0]
+            filters = {
+                "type": resource_type_list[0],
+                "atlasRelease": {"id": atlasRelease["@id"]},
+                "dataSampleModality": datasamplemodality_list[0],
+            }
+            fetched_resources_PHlayer = forge.search(filters, limit=7)
             for resource in fetched_resources_PHlayer:
                 fetched_resources.update[f"{resource.layer.label}"] = resource
             fetched_resources["report"] = fetched_resources_PHreport
         elif resource_flag == "isRegionMask":
             filters = {
                 "type": resource_type_list[0],
-                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+                "atlasRelease": {"id": atlasRelease["@id"]},
             }
             fetched_resources_regionmask = forge.search(filters, limit=1500)
             if fetched_resources_regionmask:
@@ -365,10 +366,9 @@ def fetch_linked_resources(
                     )[-1]
                     fetched_resources[f"{region_number}"] = resource
         elif resource_flag == "isRegionMesh":
-            print("we fetch the meshes")
             filters = {
                 "type": resource_type_list[0],
-                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+                "atlasRelease": {"id": atlasRelease["@id"]},
             }
             fetched_resources_regionmesh = forge.search(filters, limit=1500)
             if fetched_resources_regionmesh:
@@ -377,12 +377,10 @@ def fetch_linked_resources(
                         "/", 1
                     )[-1]
                     fetched_resources[f"{region_number}"] = resource
-            for k, v in fetched_resources.items():
-                print(f"{k}  :  {v.id}")
         elif resource_flag == "isRegionSummary":
             filters = {
                 "type": resource_type_list[0],
-                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+                "atlasRelease": {"id": atlasRelease["@id"]},
             }
             fetched_resources_regionsummary = forge.search(filters, limit=1500)
             if fetched_resources_regionsummary:
@@ -391,24 +389,30 @@ def fetch_linked_resources(
                         "/", 1
                     )[-1]
                     fetched_resources[f"{region_number}"] = resource
-            for k, v in fetched_resources.items():
-                print(f"{k}  :  {v.id}")
         elif resource_flag == "isAtlasParcellation":
-            fetched_resources = forge.retrieve(
-                atlasrelease_payloads["atlas_release"].parcellationVolume["@id"]
-                + "?rev"
-            )
+            if parcellationAtlas_id:
+                fetched_resources = forge.retrieve(parcellationAtlas_id + "?rev")
+            else:
+                filters = {
+                    "type": resource_type_list[0],
+                    "atlasRelease": {"id": atlasRelease["@id"]},
+                }
+                if datasamplemodality_list:
+                    filters["dataSampleModality"] = datasamplemodality_list[0]
+                fetched_resources = forge.search(filters, limit=1)[0]
         else:
             filters = {
                 "type": resource_type_list[0],
-                "atlasRelease": {"id": atlasrelease_payloads["atlas_release"].id},
+                "atlasRelease": {"id": atlasRelease["@id"]},
             }
             if datasamplemodality_list:
                 filters["dataSampleModality"] = datasamplemodality_list[0]
             fetched_resources = forge.search(filters, limit=1)[0]
     except KeyError as error:
-        raise KeyError(f"KeyError in atlasrelease_payloads. {error}")
+        raise KeyError(f"KeyError in atlasRelease dict. {error}")
     except IndexError:
+        pass
+    except TypeError:
         pass
     return fetched_resources
 
@@ -777,8 +781,7 @@ def return_atlasrelease(
     forge,
     atlasrelease_config_path,
     atlasrelease_payloads,
-    resource_tag,
-    secondary_cli=False
+    resource_tag=None,
 ):
     """
     Return a dictionary containing the atlasRelease and ontology resource. If their
@@ -797,150 +800,155 @@ def return_atlasrelease(
         atlasrelease_payloads : Fetched resource or dict containing the atlasRelease
                                 and ontology resources.
     """
-    atlasrelease_choice = atlasrelease_payloads["atlasrelease_choice"]
-    ontology_choice = const.atlasrelease_dict[atlasrelease_choice]["ontology"]
-
-    spatialReferenceSystem = {
-        "@id": const.atlas_reference_system_id,
-        "@type": "AtlasSpatialReferenceSystem",
-    }
-
     releaseDate = {
         "@type": "xsd:date",
         "@value": f"{datetime.today().strftime('%Y-%m-%d')}",
     }
-    try:
-        with open(atlasrelease_config_path, "r+") as atlasrelease_config_file:
-            atlasrelease_config_file.seek(0)
-            atlasrelease_config = json.loads(atlasrelease_config_file.read())
-    except json.decoder.JSONDecodeError as error:
-        raise json.decoder.JSONDecodeError(
-            f"JSONDecodeError when opening the file '{atlasrelease_config_path}'. "
-            f"{error}"
-        )
-    except FileNotFoundError:
-        pass
-    ontology_id = None
-    ontology_distribution = None
-    ontology_derivation = None
-    ontology_metadata = None
-    atlasrelease_id = None
-    atlas_release_metadata = None
-    parcellationOntology = None
-    parcellationVolume = None
-    # Check the content of atlasrelease_config_path
-    try:
-        atlasrelease = atlasrelease_config[atlasrelease_choice]
-        atlasrelease_resource = forge.retrieve(atlasrelease["id"])
-        if atlasrelease_resource:
-            try:
-                atlasrelease_payloads["fetched"] = True
-                atlasrelease_id = atlasrelease_resource.id
-                atlas_release_metadata = atlasrelease_resource._store_metadata
-                # why do we instanciate these :
-                parcellationOntology = {
-                    "@id": atlasrelease_resource.parcellationOntology.id,
-                    "@type": ["Entity", const.ontology_type, "Ontology"],
-                }
-                parcellationVolume = {
-                    "@id": atlasrelease_resource.parcellationVolume.id,
-                    "@type": ["Dataset", "BrainParcellationDataLayer"],
-                }
-            except AttributeError as error:
-                raise AttributeError(
-                    f"Error with the atlasRelease resource fetched. {error}"
-                )
-            try:
-                ontology_resource = forge.retrieve(
-                    atlasrelease_resource.parcellationOntology.id
-                )
-                if ontology_resource:
-                    ontology_id = ontology_resource.id
-                    ontology_derivation = ontology_resource.derivation
-                    ontology_distribution = ontology_resource.distribution
-                    ontology_metadata = ontology_resource._store_metadata
-                else:
-                    raise Exception(
-                        "Error the ontology Resource linked to "
-                        f"'{atlasrelease_resource}' has not been found destination "
-                        f"project '{forge._store.bucket}'."
-                    )
-            except AttributeError as error:
-                raise AttributeError(
-                    f"Error with the ontology resource fetched. {error}"
-                )
-        else:
+    atlasrelease = {"id": "", "tag": ""}
+    atlasrelease_choice = atlasrelease_payloads["atlasrelease_choice"]
+    if isinstance(atlasrelease_payloads["atlasrelease_choice"], dict):
+        atlasrelease_payloads["atlas_release"] = atlasrelease_choice
+        atlasrelease_payloads["aibs_atlasrelease"] = True
+    else:
+        ontology_choice = const.atlasrelease_dict[atlasrelease_choice]["ontology"]
+
+        try:
+            with open(atlasrelease_config_path, "r+") as atlasrelease_config_file:
+                atlasrelease_config_file.seek(0)
+                atlasrelease_config = json.loads(atlasrelease_config_file.read())
+        except json.decoder.JSONDecodeError as error:
+            raise json.decoder.JSONDecodeError(
+                f"JSONDecodeError when opening the file '{atlasrelease_config_path}'. "
+                f"{error}"
+            )
+        except FileNotFoundError:
+            atlasrelease_config = {}
             pass
-    except KeyError:
-        pass
+        ontology_id = None
+        ontology_distribution = None
+        ontology_derivation = None
+        ontology_metadata = None
+        atlasrelease_id = None
+        atlas_release_metadata = None
+        parcellationOntology = None
+        parcellationVolume = None
+        # Check the content of atlasrelease_config_path
+        try:
+            atlasrelease = atlasrelease_config[atlasrelease_choice]
+            atlasrelease_resource = forge.retrieve(atlasrelease["id"])
+            if atlasrelease_resource:
+                try:
+                    atlasrelease_payloads["fetched"] = True
+                    atlasrelease_id = atlasrelease_resource.id
+                    atlas_release_metadata = atlasrelease_resource._store_metadata
+                    # why do we instanciate these :
+                    parcellationOntology = {
+                        "@id": atlasrelease_resource.parcellationOntology.id,
+                        "@type": ["Entity", const.ontology_type, "Ontology"],
+                    }
+                    parcellationVolume = {
+                        "@id": atlasrelease_resource.parcellationVolume.id,
+                        "@type": ["Dataset", "BrainParcellationDataLayer"],
+                    }
+                except AttributeError as error:
+                    raise AttributeError(
+                        f"Error with the atlasRelease resource fetched. {error}"
+                    )
+                try:
+                    ontology_resource = forge.retrieve(
+                        atlasrelease_resource.parcellationOntology.id
+                    )
+                    if ontology_resource:
+                        ontology_id = ontology_resource.id
+                        ontology_derivation = ontology_resource.derivation
+                        ontology_distribution = ontology_resource.distribution
+                        ontology_metadata = ontology_resource._store_metadata
+                    else:
+                        raise Exception(
+                            "Error the ontology Resource linked to "
+                            f"'{atlasrelease_resource}' has not been found destination "
+                            f"project '{forge._store.bucket}'."
+                        )
+                except AttributeError as error:
+                    raise AttributeError(
+                        f"Error with the ontology resource fetched. {error}"
+                    )
+            else:
+                pass
+        except KeyError:
+            pass
+
+        # ontology resource creation
+        hierarchy_resource = Resource(
+            type=["Entity", "Ontology", "ParcellationOntology"],
+            label=ontology_choice["label"],
+            description=ontology_choice["description"],
+            subject=const.subject,
+        )
+        if ontology_id:
+            hierarchy_resource.id = ontology_id
+        else:
+            hierarchy_resource.id = forge.format(
+                "identifier", "ontologies", str(uuid4())
+            )
+
+        # If a distribution has been fetched we keep it and analyse it later
+        if ontology_distribution:
+            hierarchy_resource.distribution = ontology_distribution
+        else:
+            # Else we will create it after with the input hierarchy files
+            hierarchy_resource.distribution = None
+        if ontology_derivation:
+            hierarchy_resource.derivation = ontology_derivation
+        else:
+            hierarchy_resource.derivation = {
+                "@type": "Derivation",
+                "entity": {
+                    "@id": ontology_choice["derivation"],
+                    "@type": "Entity",
+                },
+            }
+        if ontology_metadata:
+            hierarchy_resource._store_metadata = ontology_metadata
+
+        atlasrelease_payloads["hierarchy"] = hierarchy_resource
+
+        # atlasRelease resource creation
+        spatialReferenceSystem = {
+            "@id": const.atlas_spatial_reference_system_id,
+            "@type": "AtlasSpatialReferenceSystem",
+        }
+        atlasrelease_resource = Resource(
+            type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
+            name=const.atlasrelease_dict[atlasrelease_choice]["name"],
+            description=const.atlasrelease_dict[atlasrelease_choice]["description"],
+            brainTemplateDataLayer=const.brainTemplateDataLayer,
+            spatialReferenceSystem=spatialReferenceSystem,
+            subject=const.subject,
+            releaseDate=releaseDate,
+            # if None, will be modified later:
+            parcellationOntology=parcellationOntology,
+            parcellationVolume=parcellationVolume,
+        )
+        if atlasrelease_id:
+            atlasrelease_resource.id = atlasrelease_id
+        else:
+            atlasrelease_resource.id = forge.format(
+                "identifier", "brainatlasrelease", str(uuid4())
+            )
+        if atlas_release_metadata:
+            atlasrelease_resource._store_metadata = atlas_release_metadata
+
+        atlasrelease_payloads["atlas_release"] = atlasrelease_resource
+
     # Tag that will be linked to the atlasRelease, its ontology, its parcellation and
     # every linked resources
     if resource_tag:
         tag = resource_tag
-    # push-brainmesh, push-regionsummary will reuse the tag pushed by push-volumetric if
-    # it is a timestamp
-    elif secondary_cli:
-        try:
-            tag = atlasrelease["tag"]
-        except KeyError:
-            pass
+    elif atlasrelease["tag"]:
+        tag = atlasrelease["tag"]
     else:
         tag = f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}"
 
     atlasrelease_payloads["tag"] = tag
-
-    # ontology resource creation
-    hierarchy_resource = Resource(
-        type=["Entity", "Ontology", "ParcellationOntology"],
-        label=ontology_choice["label"],
-        description=ontology_choice["description"],
-        subject=const.subject,
-    )
-    if ontology_id:
-        hierarchy_resource.id = ontology_id
-    else:
-        hierarchy_resource.id = forge.format("identifier", "ontologies", str(uuid4()))
-
-    # If a distribution has been fetched we keep it and analyse it later
-    if ontology_distribution:
-        hierarchy_resource.distribution = ontology_distribution
-    else:
-        # Else we will create it after with the input hierarchy files
-        hierarchy_resource.distribution = None
-    if ontology_derivation:
-        hierarchy_resource.derivation = ontology_derivation
-    else:
-        hierarchy_resource.derivation = {
-            "@type": "Derivation",
-            "entity": {
-                "@id": ontology_choice["derivation"],
-                "@type": "Entity",
-            },
-        }
-    if ontology_metadata:
-        hierarchy_resource._store_metadata = ontology_metadata
-
-    atlasrelease_payloads["hierarchy"] = hierarchy_resource
-    # atlasRelease resource creation
-    atlasrelease_resource = Resource(
-        type=["AtlasRelease", "BrainAtlasRelease", "Entity"],
-        name=const.atlasrelease_dict[atlasrelease_choice]["name"],
-        description=const.atlasrelease_dict[atlasrelease_choice]["description"],
-        brainTemplateDataLayer=const.brainTemplateDataLayer,
-        spatialReferenceSystem=spatialReferenceSystem,
-        subject=const.subject,
-        releaseDate=releaseDate,
-        parcellationOntology=parcellationOntology,  # if None, will be modified later
-        parcellationVolume=parcellationVolume,  # if None, will be modified later
-    )
-    if atlasrelease_id:
-        atlasrelease_resource.id = atlasrelease_id
-    else:
-        atlasrelease_resource.id = forge.format(
-            "identifier", "brainatlasrelease", str(uuid4())
-        )
-    if atlas_release_metadata:
-        atlasrelease_resource._store_metadata = atlas_release_metadata
-
-    atlasrelease_payloads["atlas_release"] = atlasrelease_resource
     return atlasrelease_payloads

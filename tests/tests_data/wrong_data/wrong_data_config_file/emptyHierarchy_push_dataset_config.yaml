@@ -1,9 +1,10 @@
 HierarchyJson:
   hierarchy: tests/tests_data/wrong_data/empty_hierarchy.json
   hierarchy_l23split: tests/tests_data/hierarchy_l23split.json
+  mba_hierarchy_l23split: tests/tests_data/mba_hierarchy_l23split.json
 GeneratedDatasetPath:
   VolumetricFile:
-    annotation_hybrid: tests/tests_data/annotation_v2v3_hybrid.nrrd
+    average_template_25: tests/tests_data/dataNotfound.nrrd
     annotation_ccfv3_l23split: tests/tests_data/annotation_ccfv3_l23split.nrrd
     annotation_hybrid_l23split: tests/tests_data/annotation_hybrid_l23split.nrrd
     direction_vectors_isocortex_ccfv3: tests/tests_data/direction_vectors_isocortex_ccfv3

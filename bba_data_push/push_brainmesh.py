@@ -133,9 +133,11 @@ def create_mesh_resources(
     }
     atlasrelease_payloads = {
         "atlasrelease_choice": None,
-        "hierarchy": False,
+        "atlas_release": None,
+        "hierarchy": None,
         "tag": None,
         "fetched": False,
+        "aibs_atlasrelease": False,
     }
     atlasrelease_choosen = []
     atlasRelease = {}
@@ -226,7 +228,7 @@ def create_mesh_resources(
                     "BrainAtlasSpatialReferenceSystem",
                     "AtlasSpatialReferenceSystem",
                 ],
-                "@id": const.atlas_reference_system_id,
+                "@id": const.atlas_spatial_reference_system_id,
             },
         }
         mesh_description = (
@@ -250,9 +252,11 @@ def create_mesh_resources(
                         atlasrelease_config_path,
                         atlasrelease_payloads,
                         resource_tag,
-                        secondary_cli=True
                     )
-                    if atlasrelease_payloads["fetched"]:
+                    if (
+                        atlasrelease_payloads["fetched"]
+                        or atlasrelease_payloads["aibs_atlasrelease"]
+                    ):
                         L.info(
                             f"atlasrelease Resource '{atlasrelease_choice}' found in "
                             f"the Nexus destination project '{forge._store.bucket}'"
@@ -272,10 +276,16 @@ def create_mesh_resources(
                     L.error(f"AttributeError: {e}")
                     exit(1)
 
-                atlasRelease = {
-                    "@id": atlasrelease_payloads["atlas_release"].id,
-                    "@type": atlasrelease_payloads["atlas_release"].type,
-                }
+                if isinstance(atlasrelease_payloads["atlas_release"], dict):
+                    atlasRelease = {
+                        "@id": atlasrelease_payloads["atlas_release"]["@id"],
+                        "@type": atlasrelease_payloads["atlas_release"]["@type"],
+                    }
+                else:
+                    atlasRelease = {
+                        "@id": atlasrelease_payloads["atlas_release"].id,
+                        "@type": atlasrelease_payloads["atlas_release"].type,
+                    }
 
                 resources_payloads["tag"] = atlasrelease_payloads["tag"]
 
@@ -288,7 +298,10 @@ def create_mesh_resources(
 
                 # => check if the good hierarchy file is given in input
                 # => check if the good hierarchy file is given in input
-                if differentAtlasrelease:
+                if (
+                    differentAtlasrelease
+                    and not atlasrelease_payloads["aibs_atlasrelease"]
+                ):
                     try:
                         atlasrelease_ontology_path = get_hierarchy_file(
                             input_hierarchy,
@@ -436,7 +449,10 @@ def create_mesh_resources(
 
         # ==================== Fetch atlasRelease linked resources ====================
 
-        if atlasrelease_payloads["fetched"]:
+        if (
+            atlasrelease_payloads["fetched"]
+            or atlasrelease_payloads["aibs_atlasrelease"]
+        ):
             resource_type_list = list(
                 set(mesh_type).difference(set([const.dataset_type, const.mesh_type]))
             )
@@ -445,10 +461,11 @@ def create_mesh_resources(
                 # resource
                 fetched_resources = fetch_linked_resources(
                     forge,
-                    atlasrelease_payloads,
+                    atlasRelease,
                     resource_type_list,
                     [],
                     "isRegionMesh",
+                    parcellationAtlas_id=None,
                 )
             except KeyError as error:
                 L.error(f"{error}")
@@ -506,9 +523,9 @@ def create_mesh_resources(
         # file, copy its id and _store_metadata
         if fetched_resources:
             filepath_hash = return_file_hash(meshpath)
+            first_fetched_resource = None
             try:
                 first_fetched_resource = fetched_resources[f"{region_id}"]
-                print("toUpdate?")
             except KeyError:
                 content_type = f"application/{file_extension}"
                 distribution_file = forge.attach(meshpath, content_type)
@@ -517,7 +534,6 @@ def create_mesh_resources(
                 toUpdate = True
                 fetched_resource_id = first_fetched_resource.id
                 fetched_resource_metadata = first_fetched_resource._store_metadata
-                print("toUpdate!!!")
                 try:
                     if (
                         filepath_hash
@@ -616,7 +632,7 @@ def create_mesh_resources(
                 # link_summary_content.update(region_summary)
 
         # Add the generation prop for every different atlasRelease
-        if differentAtlasrelease:
+        if differentAtlasrelease and not atlasrelease_payloads["aibs_atlasrelease"]:
             if generation:
                 atlasrelease_payloads["hierarchy"].generation = generation
                 atlasrelease_payloads["atlas_release"].generation = generation
@@ -665,7 +681,7 @@ def create_mesh_resources(
                         "BrainAtlasSpatialReferenceSystem",
                         "AtlasSpatialReferenceSystem",
                     ],
-                    "@id": const.atlas_reference_system_id,
+                    "@id": const.atlas_spatial_reference_system_id,
                 },
             }
             mesh_description = (
@@ -792,7 +808,10 @@ def create_mesh_resources(
 
     # Annotate the atlasrelease_config json file with the atlasrelease "id" and "tag"
     # TODO Turn it into a function annotate_atlasrelease_file
-    if not isinstance(forge._store, DemoStore):
+    if (
+        not isinstance(forge._store, DemoStore)
+        and not atlasrelease_payloads["aibs_atlasrelease"]
+    ):
         if atlasrelease_config_path:
             atlasrelease_id = atlasrelease_payloads["atlas_release"].id
             atlasrelease_link = {

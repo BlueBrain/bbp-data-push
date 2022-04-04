@@ -129,9 +129,11 @@ def create_regionsummary_resources(
     }
     atlasrelease_payloads = {
         "atlasrelease_choice": None,
-        "hierarchy": False,
+        "atlas_release": None,
+        "hierarchy": None,
         "tag": None,
         "fetched": False,
+        "aibs_atlasrelease": False,
     }
     atlasrelease_choosen = []
     atlasRelease = {}
@@ -141,7 +143,6 @@ def create_regionsummary_resources(
         fileFound = False
         flat_tree = {}
         fetched_resources = None
-        differentAtlasrelease = False
         for dataset in metadata_dict:
             try:
                 if os.path.samefile(filepath, dataset):
@@ -179,6 +180,7 @@ def create_regionsummary_resources(
             toUpdate = False
             fetched_resource_id = None
             fetched_resource_metadata = None
+            differentAtlasrelease = False
             try:
                 hierarchy_path = get_hierarchy_file(
                     input_hierarchy, config_content, hierarchy_tag
@@ -227,9 +229,11 @@ def create_regionsummary_resources(
                             atlasrelease_config_path,
                             atlasrelease_payloads,
                             resource_tag,
-                            secondary_cli=True
                         )
-                        if atlasrelease_payloads["fetched"]:
+                        if (
+                            atlasrelease_payloads["fetched"]
+                            or atlasrelease_payloads["aibs_atlasrelease"]
+                        ):
                             L.info(
                                 f"atlasrelease Resource '{atlasrelease_choice}' found "
                                 "in the Nexus destination project "
@@ -251,6 +255,12 @@ def create_regionsummary_resources(
                         L.error(f"AttributeError: {e}")
                         exit(1)
 
+                if isinstance(atlasrelease_payloads["atlas_release"], dict):
+                    atlasRelease = {
+                        "@id": atlasrelease_payloads["atlas_release"]["@id"],
+                        "@type": atlasrelease_payloads["atlas_release"]["@type"],
+                    }
+                else:
                     atlasRelease = {
                         "@id": atlasrelease_payloads["atlas_release"].id,
                         "@type": atlasrelease_payloads["atlas_release"].type,
@@ -266,7 +276,10 @@ def create_regionsummary_resources(
                     # distribution are different before attaching it
 
                     # => check if the good hierarchy file is given in input
-                    if differentAtlasrelease:
+                    if (
+                        differentAtlasrelease
+                        and not atlasrelease_payloads["aibs_atlasrelease"]
+                    ):
                         try:
                             atlasrelease_ontology_path = get_hierarchy_file(
                                 input_hierarchy,
@@ -422,9 +435,12 @@ def create_regionsummary_resources(
                             f"{const.schema_ontology}"
                         ].append(atlasrelease_payloads["hierarchy"])
 
-                    # =============== Fetch atlasRelease linked resources ==============
-
-                    if atlasrelease_payloads["fetched"]:
+                # ================ Fetch atlasRelease linked resources ===============
+                if differentAtlasrelease:
+                    if (
+                        atlasrelease_payloads["fetched"]
+                        or atlasrelease_payloads["aibs_atlasrelease"]
+                    ):
                         resource_type_list = list(
                             set(summary_type).difference(
                                 set([const.dataset_type, const.regionsummary_type])
@@ -435,10 +451,11 @@ def create_regionsummary_resources(
                             # dictionnary of resource
                             fetched_resources = fetch_linked_resources(
                                 forge,
-                                atlasrelease_payloads,
+                                atlasRelease,
                                 resource_type_list,
                                 [],
                                 "isRegionSummary",
+                                parcellationAtlas_id=None,
                             )
                         except KeyError as error:
                             L.error(f"{error}")
@@ -548,7 +565,7 @@ def create_regionsummary_resources(
                         "BrainAtlasSpatialReferenceSystem",
                         "AtlasSpatialReferenceSystem",
                     ],
-                    "@id": const.atlas_reference_system_id,
+                    "@id": const.atlas_spatial_reference_system_id,
                 },
             }
             layers = metadata_content[region_id]["layers"]
@@ -569,7 +586,6 @@ def create_regionsummary_resources(
                     fetched_resource_id = fetched_resource.id
                     fetched_resource_metadata = fetched_resource._store_metadata
                     toUpdate = True
-                    print("toUpdate")
                 except KeyError:
                     pass
 
@@ -597,7 +613,7 @@ def create_regionsummary_resources(
                 summary_resource._store_metadata = fetched_resource_metadata
 
             # Add the generation prop for every different atlasRelease
-            if differentAtlasrelease:
+            if differentAtlasrelease and not atlasrelease_payloads["aibs_atlasrelease"]:
                 if generation:
                     atlasrelease_payloads["hierarchy"].generation = generation
                     atlasrelease_payloads["atlas_release"].generation = generation
@@ -618,7 +634,10 @@ def create_regionsummary_resources(
 
     # Annotate the atlasrelease_config json file with the atlasrelease "id" and "tag"
     # TODO Turn it into a function annotate_atlasrelease_file
-    if not isinstance(forge._store, DemoStore):
+    if (
+        not isinstance(forge._store, DemoStore)
+        and not atlasrelease_payloads["aibs_atlasrelease"]
+    ):
         if atlasrelease_config_path:
             atlasrelease_id = atlasrelease_payloads["atlas_release"].id
             atlasrelease_link = {

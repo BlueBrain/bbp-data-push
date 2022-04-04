@@ -1,8 +1,10 @@
 HierarchyJson:
   hierarchy: tests/tests_data/hierarchy.json
   hierarchy_l23split: tests/tests_data/hierarchy_l23split.json
+  mba_hierarchy_l23split: tests/tests_data/mba_hierarchy_l23split.json
 GeneratedDatasetPath:
   VolumetricFile:
+    average_template_25: tests/tests_data/dataNotfound.nrrd
     annotation_hybrid: tests/tests_data/dataNotfound.nrrd
     annotation_ccfv3_l23split: tests/tests_data/dataNotfound.nrrd
     annotation_hybrid_l23split: tests/tests_data/dataNotfound.nrrd
