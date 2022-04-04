@@ -782,7 +782,7 @@ def return_atlasrelease(
     atlasrelease_config_path,
     atlasrelease_payloads,
     resource_tag=None,
-    isSecondaryCLI=False
+    isSecondaryCLI=False,
 ):
     """
     Return a dictionary containing the atlasRelease and ontology resource. If their

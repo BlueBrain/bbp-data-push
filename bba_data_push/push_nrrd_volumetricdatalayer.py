@@ -813,7 +813,7 @@ def create_volumetric_resources(
                         atlasrelease_config_path,
                         atlasrelease_payloads,
                         resource_tag,
-                        isSecondaryCLI=False
+                        isSecondaryCLI=False,
                     )
                     if atlasrelease_payloads["fetched"]:
                         L.info(
@@ -1066,7 +1066,10 @@ def create_volumetric_resources(
                         ].append(atlasrelease_payloads["hierarchy"])
 
         # ==================== Fetch atlasRelease linked resources ====================
-        if not isinstance(forge._store, DemoStore) and not atlasrelease_payloads["aibs_atlasrelease"]:
+        if (
+            not isinstance(forge._store, DemoStore)
+            and not atlasrelease_payloads["aibs_atlasrelease"]
+        ):
             try:
                 if os.path.samefile(volumes[atlasrelease_parcellation], filepath):
                     resource_flag = "isAtlasParcellation"

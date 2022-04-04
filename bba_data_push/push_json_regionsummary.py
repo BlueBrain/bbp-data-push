@@ -229,7 +229,7 @@ def create_regionsummary_resources(
                             atlasrelease_config_path,
                             atlasrelease_payloads,
                             resource_tag,
-                            isSecondaryCLI=True
+                            isSecondaryCLI=True,
                         )
                         if (
                             atlasrelease_payloads["fetched"]
