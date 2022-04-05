@@ -216,12 +216,13 @@ def create_regionsummary_resources(
             # ====== Fetch the atlasRelease Resource linked to the input datasets ======
 
             if not isinstance(forge._store, DemoStore):
-                # Check that the same atlasrelease is not treated again
-                if not atlasrelease_payloads["atlasrelease_choice"] or (
-                    atlasrelease_choice not in atlasrelease_choosen
-                ):
-                    differentAtlasrelease = True
-                    atlasrelease_choosen.append(atlasrelease_choice)
+                # Check that the same atlasrelease is not treated again (need to be
+                # different + not been treated yet)
+                if atlasrelease_choice != atlasrelease_payloads["atlasrelease_choice"]:
+                    if atlasrelease_choice not in atlasrelease_choosen:
+                        differentAtlasrelease = True
+                    else:
+                        differentAtlasrelease = False
                     atlasrelease_payloads["atlasrelease_choice"] = atlasrelease_choice
                     try:
                         atlasrelease_payloads = return_atlasrelease(
@@ -231,7 +232,10 @@ def create_regionsummary_resources(
                             resource_tag,
                             isSecondaryCLI=True,
                         )
-                        if not atlasrelease_payloads["aibs_atlasrelease"]:
+                        if (
+                            not atlasrelease_payloads["aibs_atlasrelease"]
+                            and atlasrelease_choice not in atlasrelease_choosen
+                        ):
                             if atlasrelease_payloads["fetched"]:
                                 L.info(
                                     f"atlasrelease Resource '{atlasrelease_choice}' "
@@ -247,13 +251,15 @@ def create_regionsummary_resources(
                                     "push-volumetric."
                                 )
                                 exit(1)
+                        atlasrelease_choosen.append(atlasrelease_choice)
                     except Exception as e:
                         L.error(f"Exception: {e}")
                         exit(1)
                     except AttributeError as e:
                         L.error(f"AttributeError: {e}")
                         exit(1)
-
+                else:
+                    differentAtlasrelease = False
                 if isinstance(atlasrelease_payloads["atlas_release"], dict):
                     atlasRelease = {
                         "@id": atlasrelease_payloads["atlas_release"]["@id"],
@@ -264,8 +270,6 @@ def create_regionsummary_resources(
                         "@id": atlasrelease_payloads["atlas_release"].id,
                         "@type": atlasrelease_payloads["atlas_release"].type,
                     }
-
-                    resources_payloads["tag"] = atlasrelease_payloads["tag"]
 
                     # ======= Check that the atlas Ontology is present in input =======
 
@@ -635,6 +639,7 @@ def create_regionsummary_resources(
                 ].append(summary_resource)
 
     resources_payloads["activity"] = activity_resource
+    resources_payloads["tag"] = atlasrelease_payloads["tag"]
 
     # Annotate the atlasrelease_config json file with the atlasrelease "id" and "tag"
     # TODO Turn it into a function annotate_atlasrelease_file

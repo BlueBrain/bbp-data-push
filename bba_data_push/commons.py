@@ -342,6 +342,7 @@ def fetch_linked_resources(
                 "dataSampleModality": datasamplemodality_list[1],
             }
             fetched_resources_PHreport = forge.search(filters, limit=1)[0]
+            fetched_resources["report"] = fetched_resources_PHreport
             filters = {
                 "type": resource_type_list[0],
                 "atlasRelease": {"id": atlasRelease["@id"]},
@@ -349,8 +350,8 @@ def fetch_linked_resources(
             }
             fetched_resources_PHlayer = forge.search(filters, limit=7)
             for resource in fetched_resources_PHlayer:
-                fetched_resources.update[f"{resource.layer.label}"] = resource
-            fetched_resources["report"] = fetched_resources_PHreport
+                layer_nbr = f"{resource.layer.label}".rsplit(" ", 1)[-1]
+                fetched_resources.update[layer_nbr] = resource
         elif resource_flag == "isRegionMask":
             filters = {
                 "type": resource_type_list[0],
@@ -413,6 +414,8 @@ def fetch_linked_resources(
     except IndexError:
         pass
     except TypeError:
+        pass
+    except AttributeError:
         pass
     return fetched_resources
 
@@ -840,7 +843,6 @@ def return_atlasrelease(
             atlasrelease_resource = forge.retrieve(atlasrelease["id"])
             if atlasrelease_resource:
                 try:
-                    atlasrelease_payloads["fetched"] = True
                     atlasrelease_id = atlasrelease_resource.id
                     atlas_release_metadata = atlasrelease_resource._store_metadata
                     # why do we instanciate these :
@@ -852,6 +854,7 @@ def return_atlasrelease(
                         "@id": atlasrelease_resource.parcellationVolume.id,
                         "@type": ["Dataset", "BrainParcellationDataLayer"],
                     }
+                    atlasrelease_payloads["fetched"] = True
                 except AttributeError as error:
                     raise AttributeError(
                         f"Error with the atlasRelease resource fetched. {error}"
@@ -876,6 +879,7 @@ def return_atlasrelease(
                         f"Error with the ontology resource fetched. {error}"
                     )
             else:
+                atlasrelease_payloads["fetched"] = False
                 pass
         except KeyError:
             pass

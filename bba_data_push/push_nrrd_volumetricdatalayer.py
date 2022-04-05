@@ -639,6 +639,8 @@ def create_volumetric_resources(
                                         "label": f"layer {layer_nbr}",
                                     }
                                     brainLocation["layer"] = layer
+                                    pass
+                                    print(brainLocation)
                             atlasrelease_choice = dataset_dict["atlasrelease"]
                             dataSampleModality = dataset_dict["datasamplemodality"]
                             dataset_name = dataset_dict["name"]
@@ -802,11 +804,11 @@ def create_volumetric_resources(
         if not isinstance(forge._store, DemoStore):
             # Check that the same atlasrelease is not treated again (need to be
             # different + not been treated yet)
-            if not atlasrelease_payloads["atlasrelease_choice"] or (
-                atlasrelease_choice not in atlasrelease_choosen
-            ):
-                differentAtlasrelease = True
-                atlasrelease_choosen.append(atlasrelease_choice)
+            if atlasrelease_choice != atlasrelease_payloads["atlasrelease_choice"]:
+                if atlasrelease_choice not in atlasrelease_choosen:
+                    differentAtlasrelease = True
+                else:
+                    differentAtlasrelease = False
                 atlasrelease_payloads["atlasrelease_choice"] = atlasrelease_choice
                 try:
                     atlasrelease_payloads = return_atlasrelease(
@@ -816,7 +818,10 @@ def create_volumetric_resources(
                         resource_tag,
                         isSecondaryCLI=False,
                     )
-                    if not atlasrelease_payloads["aibs_atlasrelease"]:
+                    if (
+                        not atlasrelease_payloads["aibs_atlasrelease"]
+                        and atlasrelease_choice not in atlasrelease_choosen
+                    ):
                         if atlasrelease_payloads["fetched"]:
                             L.info(
                                 f"atlasrelease Resource '{atlasrelease_choice}' found "
@@ -830,25 +835,27 @@ def create_volumetric_resources(
                                 f"'{forge._store.bucket}'. A new one will be created "
                                 "and pushed"
                             )
+                    atlasrelease_choosen.append(atlasrelease_choice)
                 except Exception as e:
                     L.error(f"Exception: {e}")
                     exit(1)
                 except AttributeError as e:
                     L.error(f"AttributeError: {e}")
                     exit(1)
+            else:
+                differentAtlasrelease = False
 
-                if isinstance(atlasrelease_payloads["atlas_release"], dict):
-                    atlasRelease = {
-                        "@id": atlasrelease_payloads["atlas_release"]["@id"],
-                        "@type": atlasrelease_payloads["atlas_release"]["@type"],
-                    }
-                else:
-                    atlasRelease = {
-                        "@id": atlasrelease_payloads["atlas_release"].id,
-                        "@type": atlasrelease_payloads["atlas_release"].type,
-                    }
+            if isinstance(atlasrelease_payloads["atlas_release"], dict):
+                atlasRelease = {
+                    "@id": atlasrelease_payloads["atlas_release"]["@id"],
+                    "@type": atlasrelease_payloads["atlas_release"]["@type"],
+                }
+            else:
+                atlasRelease = {
+                    "@id": atlasrelease_payloads["atlas_release"].id,
+                    "@type": atlasrelease_payloads["atlas_release"].type,
+                }
 
-                resources_payloads["tag"] = atlasrelease_payloads["tag"]
                 # ======== Check that Ontology and Parcellation are presents ========
 
                 # For a new atlas release creation verify first that the right
@@ -1059,7 +1066,7 @@ def create_volumetric_resources(
                             "@type": ["Entity", const.ontology_type, "Ontology"],
                         }
                     atlasrelease_payloads["hierarchy"].contribution = contribution
-                    if atlasrelease_payloads["fetched"]:
+                    if atlasrelease_payloads["hierarchy"]._store_metadata:
                         resources_payloads["datasets_toUpdate"][
                             f"{const.schema_ontology}"
                         ].append(atlasrelease_payloads["hierarchy"])
@@ -1098,12 +1105,17 @@ def create_volumetric_resources(
             )
             datasamplemodality_list = [dataSampleModality]
             if resource_flag == "isPH":
+                resource_type_list_2 = list(
+                    set(
+                        volumetric_dict["placement_hints"][dataset]["type_2"]
+                    ).difference(set([const.dataset_type, const.volumetric_type]))
+                )
                 resource_type_list = [
-                    resource_type_list,
-                    volumetric_dict["placement_hints"][dataset]["type_2"],
+                    resource_type_list[0],
+                    resource_type_list_2[0],
                 ]
                 datasamplemodality_list = [
-                    datasamplemodality_list,
+                    dataSampleModality,
                     volumetric_dict["placement_hints"][dataset]["datasamplemodality_2"],
                 ]
             try:
@@ -1221,14 +1233,24 @@ def create_volumetric_resources(
             # If the fetched resources are a dict full of resource per regions
             first_fetched_resource = None
             if isinstance(fetched_resources, dict):
-                try:
-                    first_fetched_resource = fetched_resources[f"{region_id}"]
-                # If the region in particular is not found then do not update this one
-                # and create it instead
-                except KeyError:
-                    content_type = f"application/{file_extension}"
-                    distribution_file = forge.attach(filepath, content_type)
-                    pass
+                if resource_flag == "isRegionMask":
+                    try:
+                        first_fetched_resource = fetched_resources[f"{region_id}"]
+                    # If the region in particular is not found then do not update this
+                    # one and create it instead
+                    except KeyError:
+                        content_type = f"application/{file_extension}"
+                        distribution_file = forge.attach(filepath, content_type)
+                        pass
+                if resource_flag == "isPH":
+                    try:
+                        first_fetched_resource = fetched_resources[f"{layer_number[0]}"]
+                    # If the region in particular is not found then do not update this
+                    # one and create it instead
+                    except KeyError:
+                        content_type = f"application/{file_extension}"
+                        distribution_file = forge.attach(filepath, content_type)
+                        pass
             else:
                 first_fetched_resource = fetched_resources
             if first_fetched_resource:
@@ -1287,6 +1309,7 @@ def create_volumetric_resources(
 
         if resource_flag == "isPH":
             nrrd_resource.name = f"{nrrd_resource.name} {suffixe}"
+            print(brainLocation)
 
         if fetched_resource_metadata:
             nrrd_resource._store_metadata = fetched_resource_metadata
@@ -1363,6 +1386,19 @@ def create_volumetric_resources(
                 toUpdate = False
                 fetched_resource_id = None
                 fetched_resource_metadata = None
+                brainLocation = {
+                    "brainRegion": {
+                        "@id": "mba:997",
+                        "label": "root",
+                    },
+                    "atlasSpatialReferenceSystem": {
+                        "@type": [
+                            "BrainAtlasSpatialReferenceSystem",
+                            "AtlasSpatialReferenceSystem",
+                        ],
+                        "@id": const.atlas_spatial_reference_system_id,
+                    },
+                }
                 filepath = os.path.join(directory, files_list[f])
                 filename_noext = os.path.splitext(os.path.basename(filepath))[0]
                 file_extension = os.path.splitext(os.path.basename(filepath))[1][1:]
@@ -1412,13 +1448,18 @@ def create_volumetric_resources(
                                     "label": f"layer {layer_nbr}",
                                 }
                                 brainLocation["layer"] = layer
+                                print(brainLocation)
+                                pass
                     if f == 6:
-                        description = "Volume containing for each voxel its distance "
-                        f"from the bottom of the {annotation_description} Isocortex. "
-                        "The bottom being the deepest part of the Isocortex (highest "
-                        "cortical depth)."
+                        description = (
+                            "Volume containing for each voxel its distance from the "
+                            f"bottom of the {annotation_description} Isocortex. The "
+                            "bottom being the deepest part of the Isocortex (highest "
+                            "cortical depth)."
+                        )
                         layer_number = re.findall(r"\d+", files_list[f])
                     if fetched_resources:
+                        print("fetched_resources in folder")
                         try:
                             fetched_resource_id = fetched_resources[
                                 f"{layer_number[0]}"
@@ -1428,6 +1469,7 @@ def create_volumetric_resources(
                             ]._store_metadata
                             toUpdate = True
                             filepath_hash = return_file_hash(filepath)
+                            print("hash in folder")
                             try:
                                 if (
                                     filepath_hash
@@ -1447,6 +1489,11 @@ def create_volumetric_resources(
                                 content_type = f"application/{file_extension}"
                                 distribution_file = forge.attach(filepath, content_type)
                         except KeyError:
+                            toUpdate = False
+                            content_type = f"application/{file_extension}"
+                            distribution_file = forge.attach(filepath, content_type)
+                        except IndexError:
+                            toUpdate = False
                             content_type = f"application/{file_extension}"
                             distribution_file = forge.attach(filepath, content_type)
                     else:
@@ -1464,11 +1511,6 @@ def create_volumetric_resources(
                             "those with a distance gap greater than the maximum "
                             "thickness...)."
                         )
-                        try:
-                            brainLocation.pop("layer")
-                        except KeyError:
-                            pass
-
                 if resource_flag == "isRegionMask":
                     try:
                         region_id = int(filename_noext)
@@ -1494,19 +1536,8 @@ def create_volumetric_resources(
                         f"{dataset_dict['description']}."
                     )
                     name = f"{region_name.title()} Mask {suffixe}"
-                    brainLocation = {
-                        "brainRegion": {
-                            "@id": f"mba:{region_id}",
-                            "label": region_name,
-                        },
-                        "atlasSpatialReferenceSystem": {
-                            "@type": [
-                                "BrainAtlasSpatialReferenceSystem",
-                                "AtlasSpatialReferenceSystem",
-                            ],
-                            "@id": const.atlas_spatial_reference_system_id,
-                        },
-                    }
+                    brainLocation["@id"] = f"mba:{region_id}"
+                    brainLocation["label"] = f"{region_name}"
                     if fetched_resources:
                         try:
                             fetched_resource_id = fetched_resources[f"{region_id}"].id
@@ -1578,13 +1609,11 @@ def create_volumetric_resources(
                         nrrd_resources = add_nrrd_props(
                             nrrd_resources, header, config, voxel_type
                         )
-                        nrrd_resources.name = f"{nrrd_resources.name} {suffixe}"
                     if f >= 7:
                         nrrd_resources.dataSampleModality = dataset_dict[
                             "datasamplemodality_2"
                         ]
                         nrrd_resources.type = dataset_dict["type_2"]
-
                         # Compare and attach the multiple distributions
                         report_json = os.path.join(directory, files_list[8])
                         format_json = os.path.splitext(os.path.basename(report_json))[
@@ -1727,6 +1756,7 @@ def create_volumetric_resources(
                         f"{const.schema_volumetricdatalayer}"
                     ].append(nrrd_resources)
 
+    resources_payloads["tag"] = atlasrelease_payloads["tag"]
     resources_payloads["activity"] = activity_resource
 
     # Annotate the atlasrelease_config json file with the atlasrelease "id" and "tag"
