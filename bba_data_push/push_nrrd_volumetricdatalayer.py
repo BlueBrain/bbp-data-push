@@ -640,7 +640,6 @@ def create_volumetric_resources(
                                     }
                                     brainLocation["layer"] = layer
                                     pass
-                                    print(brainLocation)
                             atlasrelease_choice = dataset_dict["atlasrelease"]
                             dataSampleModality = dataset_dict["datasamplemodality"]
                             dataset_name = dataset_dict["name"]
@@ -722,19 +721,8 @@ def create_volumetric_resources(
                                 f"{region_id}) - for the "
                                 f"{dataset_dict['description']}."
                             )
-                            brainLocation = {
-                                "brainRegion": {
-                                    "@id": f"mba:{region_id}",
-                                    "label": region_name,
-                                },
-                                "atlasSpatialReferenceSystem": {
-                                    "@type": [
-                                        "BrainAtlasSpatialReferenceSystem",
-                                        "AtlasSpatialReferenceSystem",
-                                    ],
-                                    "@id": const.atlas_spatial_reference_system_id,
-                                },
-                            }
+                            brainLocation["brainRegion"]["@id"] = f"mba:{region_id}"
+                            brainLocation["brainRegion"]["label"] = f"{region_name}"
                             atlasrelease_choice = dataset_dict["atlasrelease"]
                             dataSampleModality = dataset_dict["datasamplemodality"]
                             dataset_name = dataset_dict["name"]
@@ -1309,7 +1297,6 @@ def create_volumetric_resources(
 
         if resource_flag == "isPH":
             nrrd_resource.name = f"{nrrd_resource.name} {suffixe}"
-            print(brainLocation)
 
         if fetched_resource_metadata:
             nrrd_resource._store_metadata = fetched_resource_metadata
@@ -1448,7 +1435,6 @@ def create_volumetric_resources(
                                     "label": f"layer {layer_nbr}",
                                 }
                                 brainLocation["layer"] = layer
-                                print(brainLocation)
                                 pass
                     if f == 6:
                         description = (
@@ -1459,7 +1445,6 @@ def create_volumetric_resources(
                         )
                         layer_number = re.findall(r"\d+", files_list[f])
                     if fetched_resources:
-                        print("fetched_resources in folder")
                         try:
                             fetched_resource_id = fetched_resources[
                                 f"{layer_number[0]}"
@@ -1469,7 +1454,6 @@ def create_volumetric_resources(
                             ]._store_metadata
                             toUpdate = True
                             filepath_hash = return_file_hash(filepath)
-                            print("hash in folder")
                             try:
                                 if (
                                     filepath_hash
@@ -1536,8 +1520,8 @@ def create_volumetric_resources(
                         f"{dataset_dict['description']}."
                     )
                     name = f"{region_name.title()} Mask {suffixe}"
-                    brainLocation["@id"] = f"mba:{region_id}"
-                    brainLocation["label"] = f"{region_name}"
+                    brainLocation["brainRegion"]["@id"] = f"mba:{region_id}"
+                    brainLocation["brainRegion"]["label"] = f"{region_name}"
                     if fetched_resources:
                         try:
                             fetched_resource_id = fetched_resources[f"{region_id}"].id
