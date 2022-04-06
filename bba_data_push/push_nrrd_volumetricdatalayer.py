@@ -168,13 +168,12 @@ def create_volumetric_resources(
 
     atlasrelease_payloads = {
         "atlasrelease_choice": None,
-        "atlas_release": None,
+        "atlas_release": {},
         "hierarchy": None,
         "tag": None,
         "fetched": False,
         "aibs_atlasrelease": False,
     }
-    atlasrelease_choosen = []
     atlasRelease = {}
     dict_ids = {}
     generation = {}
@@ -789,14 +788,13 @@ def create_volumetric_resources(
             "sampling_time_unit": const.default_sampling_time_unit,
         }
         # ==== Create/fetch the atlasRelease Resource linked to the input datasets ====
-        if not isinstance(forge._store, DemoStore):
+        if not isinstance(forge._store, DemoStore) and not isinstance(
+            atlasrelease_choice, dict
+        ):
             # Check that the same atlasrelease is not treated again (need to be
             # different + not been treated yet)
-            if atlasrelease_choice != atlasrelease_payloads["atlasrelease_choice"]:
-                if atlasrelease_choice not in atlasrelease_choosen:
-                    differentAtlasrelease = True
-                else:
-                    differentAtlasrelease = False
+            if atlasrelease_choice not in atlasrelease_payloads["atlas_release"].keys():
+                differentAtlasrelease = True
                 atlasrelease_payloads["atlasrelease_choice"] = atlasrelease_choice
                 try:
                     atlasrelease_payloads = return_atlasrelease(
@@ -806,10 +804,7 @@ def create_volumetric_resources(
                         resource_tag,
                         isSecondaryCLI=False,
                     )
-                    if (
-                        not atlasrelease_payloads["aibs_atlasrelease"]
-                        and atlasrelease_choice not in atlasrelease_choosen
-                    ):
+                    if not atlasrelease_payloads["aibs_atlasrelease"]:
                         if atlasrelease_payloads["fetched"]:
                             L.info(
                                 f"atlasrelease Resource '{atlasrelease_choice}' found "
@@ -823,7 +818,6 @@ def create_volumetric_resources(
                                 f"'{forge._store.bucket}'. A new one will be created "
                                 "and pushed"
                             )
-                    atlasrelease_choosen.append(atlasrelease_choice)
                 except Exception as e:
                     L.error(f"Exception: {e}")
                     exit(1)
@@ -833,15 +827,19 @@ def create_volumetric_resources(
             else:
                 differentAtlasrelease = False
 
-            if isinstance(atlasrelease_payloads["atlas_release"], dict):
+            if atlasrelease_payloads["aibs_atlasrelease"]:
                 atlasRelease = {
-                    "@id": atlasrelease_payloads["atlas_release"]["@id"],
-                    "@type": atlasrelease_payloads["atlas_release"]["@type"],
+                    "@id": atlasrelease_payloads["aibs_atlasrelease"]["@id"],
+                    "@type": atlasrelease_payloads["aibs_atlasrelease"]["@type"],
                 }
             else:
                 atlasRelease = {
-                    "@id": atlasrelease_payloads["atlas_release"].id,
-                    "@type": atlasrelease_payloads["atlas_release"].type,
+                    "@id": atlasrelease_payloads["atlas_release"][
+                        atlasrelease_choice
+                    ].id,
+                    "@type": atlasrelease_payloads["atlas_release"][
+                        atlasrelease_choice
+                    ].type,
                 }
 
                 # ======== Check that Ontology and Parcellation are presents ========
@@ -1048,8 +1046,12 @@ def create_volumetric_resources(
                         hierarchy_deriv = hierarchy_deriv[0]
 
                     # =================== Link atlasRelease/Ontology ===================
-                    if not atlasrelease_payloads["atlas_release"].parcellationOntology:
-                        atlasrelease_payloads["atlas_release"].parcellationOntology = {
+                    if not atlasrelease_payloads["atlas_release"][
+                        atlasrelease_choice
+                    ].parcellationOntology:
+                        atlasrelease_payloads["atlas_release"][
+                            atlasrelease_choice
+                        ].parcellationOntology = {
                             "@id": atlasrelease_payloads["hierarchy"].id,
                             "@type": ["Entity", const.ontology_type, "Ontology"],
                         }
@@ -1064,6 +1066,7 @@ def create_volumetric_resources(
                         ].append(atlasrelease_payloads["hierarchy"])
 
         # ==================== Fetch atlasRelease linked resources ====================
+        # get the parcellation ID to fetch
         if (
             not isinstance(forge._store, DemoStore)
             and not atlasrelease_payloads["aibs_atlasrelease"]
@@ -1071,17 +1074,17 @@ def create_volumetric_resources(
             try:
                 if os.path.samefile(volumes[atlasrelease_parcellation], filepath):
                     resource_flag = "isAtlasParcellation"
-                    try:
-                        parcellationAtlas_id = atlasrelease_payloads[
-                            "atlas_release"
-                        ].parcellationVolume["@id"]
-                    except AttributeError:
-                        pass
+                    if atlasrelease_payloads["fetched"]:
+                        try:
+                            parcellationAtlas_id = atlasrelease_payloads[
+                                "atlas_release"
+                            ].parcellationVolume["@id"]
+                        except AttributeError:
+                            pass
             except FileNotFoundError:
                 pass
             except KeyError:
                 pass
-
         if (
             atlasrelease_payloads["fetched"]
             or atlasrelease_payloads["aibs_atlasrelease"]
@@ -1332,30 +1335,38 @@ def create_volumetric_resources(
             resource_flag == "isAtlasParcellation"
             and not atlasrelease_payloads["aibs_atlasrelease"]
         ):
-            if not atlasrelease_payloads["atlas_release"].parcellationVolume:
+            if not atlasrelease_payloads["atlas_release"][
+                atlasrelease_choice
+            ].parcellationVolume:
                 if not hasattr(nrrd_resource, "id"):
                     nrrd_resource.id = forge.format(
                         "identifier", "volumetricdatalayer", str(uuid4())
                     )
-                atlasrelease_payloads["atlas_release"].parcellationVolume = {
+                atlasrelease_payloads["atlas_release"][
+                    atlasrelease_choice
+                ].parcellationVolume = {
                     "@id": nrrd_resource.id,
                     "@type": ["Dataset", "BrainParcellationDataLayer"],
                 }
-            atlasrelease_payloads["atlas_release"].contribution = contribution
+            atlasrelease_payloads["atlas_release"][
+                atlasrelease_choice
+            ].contribution = contribution
 
         # Add the generation prop for every different atlasRelease
         if differentAtlasrelease and not atlasrelease_payloads["aibs_atlasrelease"]:
             if generation:
                 atlasrelease_payloads["hierarchy"].generation = generation
-                atlasrelease_payloads["atlas_release"].generation = generation
+                atlasrelease_payloads["atlas_release"][
+                    atlasrelease_choice
+                ].generation = generation
             if atlasrelease_payloads["fetched"]:
                 resources_payloads["datasets_toUpdate"][
                     f"{const.schema_atlasrelease}"
-                ].append(atlasrelease_payloads["atlas_release"])
+                ].append(atlasrelease_payloads["atlas_release"][atlasrelease_choice])
             else:
                 resources_payloads["datasets_toPush"][
                     f"{const.schema_atlasrelease}"
-                ].append(atlasrelease_payloads["atlas_release"])
+                ].append(atlasrelease_payloads["atlas_release"][atlasrelease_choice])
 
         if toUpdate:
             resources_payloads["datasets_toUpdate"][
@@ -1750,7 +1761,9 @@ def create_volumetric_resources(
         and not atlasrelease_payloads["aibs_atlasrelease"]
     ):
         if atlasrelease_config_path:
-            atlasrelease_id = atlasrelease_payloads["atlas_release"].id
+            atlasrelease_id = atlasrelease_payloads["atlas_release"][
+                atlasrelease_choice
+            ].id
             atlasrelease_link = {
                 f"{atlasrelease_choice}": {
                     "id": atlasrelease_id,

@@ -811,8 +811,7 @@ def return_atlasrelease(
     atlasrelease = {"id": "", "tag": ""}
     atlasrelease_choice = atlasrelease_payloads["atlasrelease_choice"]
     if isinstance(atlasrelease_payloads["atlasrelease_choice"], dict):
-        atlasrelease_payloads["atlas_release"] = atlasrelease_choice
-        atlasrelease_payloads["aibs_atlasrelease"] = True
+        atlasrelease_payloads["aibs_atlasrelease"] = atlasrelease_choice
     else:
         atlasrelease_payloads["aibs_atlasrelease"] = False
         ontology_choice = const.atlasrelease_dict[atlasrelease_choice]["ontology"]
@@ -945,7 +944,9 @@ def return_atlasrelease(
         if atlas_release_metadata:
             atlasrelease_resource._store_metadata = atlas_release_metadata
 
-        atlasrelease_payloads["atlas_release"] = atlasrelease_resource
+        atlasrelease_payloads["atlas_release"][
+            atlasrelease_choice
+        ] = atlasrelease_resource
 
     # Tag that will be linked to the atlasRelease, its ontology, its parcellation and
     # every linked resources
