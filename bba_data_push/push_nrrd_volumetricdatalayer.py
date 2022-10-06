@@ -223,7 +223,7 @@ def create_volumetric_resources(
                         isFolder = True
                         directory = filepath
                         files = os.listdir(directory)
-                        pattern = "*_density.nrrd"
+                        pattern = "*_densit*.nrrd"
                         files_list = fnmatch.filter(files, pattern)
                         if not files_list:
                             L.error(
@@ -1754,6 +1754,13 @@ def create_volumetric_resources(
     resources_payloads["tag"] = atlasrelease_payloads["tag"]
     resources_payloads["activity"] = activity_resource
 
+    def freeze(d):
+        if isinstance(d, dict):
+            return frozenset((key, freeze(value)) for key, value in d.items())
+        elif isinstance(d, list):
+            return tuple(freeze(value) for value in d)
+        return d
+
     # Annotate the atlasrelease_config json file with the atlasrelease "id" and "tag"
     # TODO Turn it into a function annotate_atlasrelease_file
     if (
@@ -1762,7 +1769,7 @@ def create_volumetric_resources(
     ):
         if atlasrelease_config_path:
             atlasrelease_id = atlasrelease_payloads["atlas_release"][
-                atlasrelease_choice
+                freeze(atlasrelease_choice)
             ].id
             atlasrelease_link = {
                 f"{atlasrelease_choice}": {

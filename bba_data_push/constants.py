@@ -544,6 +544,21 @@ def return_volumetric_dict(volumetric_datasets):
                     "voxel_type": "intensity",
                     "datasamplemodality": "quantity",
                 },
+                f"{volumes['mtypes_densities_probability_map_transplant_correctednissl']}": {
+                    "name": "mtypes_densities_probability_map_transplant_correctednissl",
+                    "type": [
+                        dataset_type,
+                        volumetric_type,
+                        "CellDensityDataLayer",
+                        "GliaCellDensity",
+                    ],
+                    "description": f"{description_ccfv3}. It has been generated from a "
+                    "probability mapping, using the corrected nissl volume and transplanted",
+                    "derivation": None,
+                    "atlasrelease": atlasrelease_ccfv3,
+                    "voxel_type": "intensity",
+                    "datasamplemodality": "quantity",
+                },
             },
         }
     except KeyError as error:
