@@ -233,14 +233,21 @@ def create_volumetric_resources(
                         files = os.listdir(directory)
                         pattern = "*_densit*.nrrd"
                         files_list = fnmatch.filter(files, pattern)
+                        files_list_path = [os.path.join(directory, f) for f in files_list]
+                        for f in files: # TODO: define a recursive function instead
+                            subdir = os.path.join(directory, f)
+                            if os.path.isdir(subdir):
+                                files_list_sub = fnmatch.filter(os.listdir(subdir), pattern)
+                                files_list_path.extend(os.path.join(subdir, f) for f in files_list_sub)
+                                files_list.extend(files_list_sub)
                         if not files_list:
                             L.error(
                                 f"Error: '{filepath}' do not contain any cell density "
                                 "volumetric files."
                             )
                             exit(1)
-                        # this is going ot be the "name" of the resource
-                        filepath = os.path.join(directory, files_list[0])
+                        # this is going ot be the "name" of the first resource
+                        filepath = files_list_path[0]
                         filename_noext = os.path.splitext(os.path.basename(filepath))[0]
                         file_extension = os.path.splitext(os.path.basename(filepath))[
                             1
@@ -1394,9 +1401,8 @@ def create_volumetric_resources(
 
         # If the input is a folder containing several dataset to push
         if isFolder:
-            print("\nLooping over %d files" % (len(files_list) -1))
-            for f in range(1, len(files_list)):  # start at the 2nd file
-                print("\nresource_flag: ", resource_flag)
+            print("\nLooping over %d files" % (len(files_list_path) -1))
+            for f in range(1, len(files_list_path)):  # start at the 2nd file
                 toUpdate = False
                 fetched_resource_id = None
                 fetched_resource_metadata = None
@@ -1413,7 +1419,7 @@ def create_volumetric_resources(
                         "@id": const.atlas_spatial_reference_system_id,
                     },
                 }
-                filepath = os.path.join(directory, files_list[f])
+                filepath = files_list_path[f]
                 filename_noext = os.path.splitext(os.path.basename(filepath))[0]
                 file_extension = os.path.splitext(os.path.basename(filepath))[1][1:]
                 name = filename_noext.replace("_", " ").title()
