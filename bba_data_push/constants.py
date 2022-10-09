@@ -517,10 +517,10 @@ def return_volumetric_dict(volumetric_datasets):
                 f"{volumes['mtypes_densities_profile_ccfv2_correctednissl']}": {
                     "name": "mtypes_densities_profile_ccfv2_correctednissl",
                     "type": [
-                        dataset_type,
+                        "NeuronDensity",
                         volumetric_type,
                         "CellDensityDataLayer",
-                        "GliaCellDensity",
+                        "MTypeDensity",
                     ],
                     "description": f"{description_ccfv2}. It has been generated from "
                     "density profiles and using the corrected nissl volume",
@@ -532,10 +532,10 @@ def return_volumetric_dict(volumetric_datasets):
                 f"{volumes['mtypes_densities_probability_map_ccfv2_correctednissl']}": {
                     "name": "mtypes_densities_probability_map_ccfv2_correctednissl",
                     "type": [
-                        dataset_type,
+                        "NeuronDensity",
                         volumetric_type,
                         "CellDensityDataLayer",
-                        "GliaCellDensity",
+                        "MTypeDensity",
                     ],
                     "description": f"{description_ccfv2}. It has been generated from a "
                     "probability mapping and using the corrected nissl volume",
@@ -547,10 +547,10 @@ def return_volumetric_dict(volumetric_datasets):
                 f"{volumes['mtypes_densities_probability_map_transplant_correctednissl']}": {
                     "name": "mtypes_densities_probability_map_transplant_correctednissl",
                     "type": [
-                        dataset_type,
+                        "NeuronDensity",
                         volumetric_type,
                         "CellDensityDataLayer",
-                        "GliaCellDensity",
+                        "MTypeDensity",
                     ],
                     "description": f"{description_ccfv3}. It has been generated from a "
                     "probability mapping, using the corrected nissl volume and transplanted",

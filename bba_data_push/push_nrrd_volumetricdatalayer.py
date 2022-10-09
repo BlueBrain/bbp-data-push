@@ -83,6 +83,13 @@ def create_volumetric_resources(
     """
     L.setLevel(verbose)
 
+    def freeze(d):
+        if isinstance(d, dict):
+            return frozenset((key, freeze(value)) for key, value in d.items())
+        elif isinstance(d, list):
+            return tuple(freeze(value) for value in d)
+        return d
+
     config_file = open(config_path)
     config_content = yaml.safe_load(config_file.read().strip())
     config_file.close()
@@ -107,6 +114,7 @@ def create_volumetric_resources(
     else:
         provenance_metadata = None
         deriv_dict_id = {}
+    print("\nprovenance_metadata: ", provenance_metadata)
 
     # Dict containing all the pipeline generated volumetric datasets and their
     # informations
@@ -788,12 +796,11 @@ def create_volumetric_resources(
             "sampling_time_unit": const.default_sampling_time_unit,
         }
         # ==== Create/fetch the atlasRelease Resource linked to the input datasets ====
-        if not isinstance(forge._store, DemoStore) and not isinstance(
-            atlasrelease_choice, dict
-        ):
+        print("atlasrelease_choice: %s" % atlasrelease_choice)
+        if not isinstance(forge._store, DemoStore): #and not isinstance(atlasrelease_choice, dict):
             # Check that the same atlasrelease is not treated again (need to be
             # different + not been treated yet)
-            if atlasrelease_choice not in atlasrelease_payloads["atlas_release"].keys():
+            if freeze(atlasrelease_choice) not in atlasrelease_payloads["atlas_release"].keys():
                 differentAtlasrelease = True
                 atlasrelease_payloads["atlasrelease_choice"] = atlasrelease_choice
                 try:
@@ -1065,6 +1072,7 @@ def create_volumetric_resources(
                             f"{const.schema_ontology}"
                         ].append(atlasrelease_payloads["hierarchy"])
 
+        print("differentAtlasrelease: ", differentAtlasrelease)
         # ==================== Fetch atlasRelease linked resources ====================
         # get the parcellation ID to fetch
         if (
@@ -1171,6 +1179,7 @@ def create_volumetric_resources(
                     derivation = derivation[0]
 
         # ==================== add Activity and generation prop ====================
+        print("\nactivity_resource: ", activity_resource)
         if provenance_metadata and not activity_resource:
             try:
                 activity_resource = return_activity_payload(forge, provenance_metadata)
@@ -1182,7 +1191,7 @@ def create_volumetric_resources(
                     )
             except Exception as e:
                 L.error(f"{e}")
-                exit(1)
+                #exit(1) # "activity" metadata not necessary for the moment
 
             # if the activity Resource has been fetched from Nexus, the property
             # 'value' need to be mapped back to @value
@@ -1243,7 +1252,9 @@ def create_volumetric_resources(
                         distribution_file = forge.attach(filepath, content_type)
                         pass
             else:
-                first_fetched_resource = fetched_resources
+                for res in fetched_resources:
+                    if res.distribution.name in filepath:
+                        first_fetched_resource = res
             if first_fetched_resource:
                 toUpdate = True
                 fetched_resource_id = first_fetched_resource.id
@@ -1291,6 +1302,8 @@ def create_volumetric_resources(
             nrrd_resource.id = dict_ids[dataset]
         elif dataset_name in deriv_dict_id.keys():
             nrrd_resource.id = deriv_dict_id[dataset_name]["id"]
+        else:
+            print("\nNo nrrd_resource.id set for ", name)
 
         if dimension_name:
             nrrd_resource.dimension[0]["name"] = dimension_name
@@ -1301,6 +1314,7 @@ def create_volumetric_resources(
         if resource_flag == "isPH":
             nrrd_resource.name = f"{nrrd_resource.name} {suffixe}"
 
+        print("\nfetched_resource_metadata: ", fetched_resource_metadata)
         if fetched_resource_metadata:
             nrrd_resource._store_metadata = fetched_resource_metadata
 
@@ -1380,7 +1394,9 @@ def create_volumetric_resources(
 
         # If the input is a folder containing several dataset to push
         if isFolder:
+            print("\nLooping over %d files" % (len(files_list) -1))
             for f in range(1, len(files_list)):  # start at the 2nd file
+                print("\nresource_flag: ", resource_flag)
                 toUpdate = False
                 fetched_resource_id = None
                 fetched_resource_metadata = None
@@ -1428,6 +1444,11 @@ def create_volumetric_resources(
                     name = cell_density_file.title()
                     if atlasrelease_choice == "atlasrelease_ccfv2":
                         name = f"{name} Ccfv2 Corrected Nissl"
+                    for res in fetched_resources:
+                        if files_list[f] == res.distribution.name:
+                            toUpdate = True
+                            fetched_resource_id = res.id
+                            fetched_resource_metadata = res._store_metadata
 
                 if resource_flag == "isPH":
                     # Do not create specific payload for the json report because it is
@@ -1698,6 +1719,8 @@ def create_volumetric_resources(
 
                 if fetched_resource_metadata:
                     nrrd_resources._store_metadata = fetched_resource_metadata
+                else:
+                    print("\nNo metadata for nrrd_resources.name: ", nrrd_resources.name)
 
                 if generation:
                     nrrd_resources.generation = nrrd_resource.generation
@@ -1743,23 +1766,19 @@ def create_volumetric_resources(
                         link_summary_file.close()
 
                 if toUpdate:
-                    resources_payloads["datasets_toUpdate"][
-                        f"{const.schema_volumetricdatalayer}"
-                    ].append(nrrd_resources)
+                    resources_payloads["datasets_toUpdate"][f"{const.schema_volumetricdatalayer}"].append(nrrd_resources)
                 else:
-                    resources_payloads["datasets_toPush"][
-                        f"{const.schema_volumetricdatalayer}"
-                    ].append(nrrd_resources)
+                    resources_payloads["datasets_toPush"][f"{const.schema_volumetricdatalayer}"].append(nrrd_resources)
 
     resources_payloads["tag"] = atlasrelease_payloads["tag"]
-    resources_payloads["activity"] = activity_resource
 
-    def freeze(d):
-        if isinstance(d, dict):
-            return frozenset((key, freeze(value)) for key, value in d.items())
-        elif isinstance(d, list):
-            return tuple(freeze(value) for value in d)
-        return d
+    #maxRev = 0
+    #for res in resources_payloads["datasets_toUpdate"][f"{const.schema_volumetricdatalayer}"]:
+    #    if res._store_metadata["_rev"] > maxRev: maxRev = res._store_metadata["_rev"]
+    #activity_resource._store_metadata = forge.from_json( {'_rev': 2} )
+
+    print("\nactivity_resource._store_metadata: ", activity_resource._store_metadata)
+    resources_payloads["activity"] = activity_resource
 
     # Annotate the atlasrelease_config json file with the atlasrelease "id" and "tag"
     # TODO Turn it into a function annotate_atlasrelease_file
@@ -1768,6 +1787,7 @@ def create_volumetric_resources(
         and not atlasrelease_payloads["aibs_atlasrelease"]
     ):
         if atlasrelease_config_path:
+            print("atlasrelease_payloads: %s" % atlasrelease_payloads)
             atlasrelease_id = atlasrelease_payloads["atlas_release"][
                 freeze(atlasrelease_choice)
             ].id
@@ -1919,7 +1939,7 @@ def create_deriv_dict_id(forge, inputpath, provenance_metadata, volumes, hierarc
                                     "configuration json but the file has not been "
                                     "found among the input 'dataset-path'"
                                 )
-                                exit(1)
+                                #exit(1) # TODO: check whether really needed
                             deriv_dict_id = create_deriv_id(
                                 forge,
                                 deriv_dict_id,

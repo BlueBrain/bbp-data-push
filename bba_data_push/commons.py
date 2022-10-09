@@ -408,7 +408,9 @@ def fetch_linked_resources(
             }
             if datasamplemodality_list:
                 filters["dataSampleModality"] = datasamplemodality_list[0]
-            fetched_resources = forge.search(filters, limit=1)[0]
+            print("\nSearching forge with filters: ", filters)
+            fetched_resources = forge.search(filters)
+        print("\nlen(fetched_resources): ", len(fetched_resources))
     except KeyError as error:
         raise KeyError(f"KeyError in atlasRelease dict. {error}")
     except IndexError:

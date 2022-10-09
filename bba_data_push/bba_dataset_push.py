@@ -304,8 +304,9 @@ def push_volumetric(
         ctx.obj["verbose"],
     )
 
-    if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+    #print("\nresources_payloads[\"activity\"]: ", resources_payloads["activity"])
+    #if resources_payloads["activity"]:
+    #    _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
 
     _integrate_datasets_to_Nexus(
         ctx.obj["forge"],
