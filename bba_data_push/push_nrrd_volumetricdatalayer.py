@@ -1290,6 +1290,8 @@ def create_volumetric_resources(
             name=name,
             distribution=distribution_file,
             description=description,
+            annotation=get_cellAnnotation(forge, name),
+            cellType=get_cellType(forge, name),
             isRegisteredIn=const.isRegisteredIn,
             brainLocation=brainLocation,
             atlasRelease=atlasRelease,
@@ -1600,6 +1602,8 @@ def create_volumetric_resources(
                     name=name,
                     distribution=distribution_file,
                     description=description,
+                    annotation=get_cellAnnotation(forge, name),
+                    cellType=get_cellType(forge, name),
                     contribution=nrrd_resource.contribution,
                     isRegisteredIn=nrrd_resource.isRegisteredIn,
                     brainLocation=brainLocation,
@@ -2206,3 +2210,37 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
     resource.resolution = {"value": r[0][0], "unitCode": config["sampling_space_unit"]}
 
     return resource
+
+
+def get_cellAnnotation(forge, label):
+    annotation = {
+        "@type": [
+            "MTypeAnnotation",
+            "Annotation"],
+        "hasBody": {
+            "@type": [
+                "MType",
+                "AnnotationBody"]
+        },
+        "name": "M-type Annotation"
+    }
+    annotation["hasBody"].update(get_cellType(forge, label))
+
+    return annotation
+
+
+def get_cellType(forge, name):
+    label = name.split("Densities")[0].replace(" ","_")[:-1]
+    res = forge_resolve(forge, label)
+    cellType = {
+        "@id": res.id,
+        "label": res.label,
+        "prefLabel": "" # to define
+    }
+
+    return cellType
+
+
+def forge_resolve(forge, label):
+    #return forge.resolve(label, scope="ontology", target="terms", strategy="EXACT_MATCH")
+    return forge.resolve(label, scope="ontology", target="terms")
