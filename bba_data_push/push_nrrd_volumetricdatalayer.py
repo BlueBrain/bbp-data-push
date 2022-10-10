@@ -1260,7 +1260,7 @@ def create_volumetric_resources(
                         pass
             else:
                 for res in fetched_resources:
-                    if res.distribution.name in filepath:
+                    if res.distribution.name == os.path.basename(filepath):
                         first_fetched_resource = res
             if first_fetched_resource:
                 toUpdate = True
@@ -1421,16 +1421,16 @@ def create_volumetric_resources(
                         "@id": const.atlas_spatial_reference_system_id,
                     },
                 }
-                filepath = files_list_path[f]
-                filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-                file_extension = os.path.splitext(os.path.basename(filepath))[1][1:]
+                filepath_f = files_list_path[f]
+                filename_noext = os.path.splitext(os.path.basename(filepath_f))[0]
+                file_extension = os.path.splitext(os.path.basename(filepath_f))[1][1:]
                 name = filename_noext.replace("_", " ").title()
 
                 # ============ CELL DENSITY = TO REWORK LIKE THE OTHERS ============
                 if resource_flag == "isCellDensity":
                     file_split = filename_noext.split("_")
                     content_type = f"application/{file_extension}"
-                    distribution_file = forge.attach(filepath, content_type)
+                    distribution_file = forge.attach(filepath_f, content_type)
                     v = "mtypes_densities_probability_map_ccfv2_correctednissl"
                     try:
                         if os.path.samefile(
@@ -1493,7 +1493,7 @@ def create_volumetric_resources(
                                 f"{layer_number[0]}"
                             ]._store_metadata
                             toUpdate = True
-                            filepath_hash = return_file_hash(filepath)
+                            filepath_hash = return_file_hash(filepath_f)
                             try:
                                 if (
                                     filepath_hash
@@ -1503,7 +1503,7 @@ def create_volumetric_resources(
                                 ):
                                     content_type = f"application/{file_extension}"
                                     distribution_file = forge.attach(
-                                        filepath, content_type
+                                        filepath_f, content_type
                                     )
                                 else:
                                     distribution_file = fetched_resources[
@@ -1511,18 +1511,18 @@ def create_volumetric_resources(
                                     ].distribution
                             except AttributeError:
                                 content_type = f"application/{file_extension}"
-                                distribution_file = forge.attach(filepath, content_type)
+                                distribution_file = forge.attach(filepath_f, content_type)
                         except KeyError:
                             toUpdate = False
                             content_type = f"application/{file_extension}"
-                            distribution_file = forge.attach(filepath, content_type)
+                            distribution_file = forge.attach(filepath_f, content_type)
                         except IndexError:
                             toUpdate = False
                             content_type = f"application/{file_extension}"
-                            distribution_file = forge.attach(filepath, content_type)
+                            distribution_file = forge.attach(filepath_f, content_type)
                     else:
                         content_type = f"application/{file_extension}"
-                        distribution_file = forge.attach(filepath, content_type)
+                        distribution_file = forge.attach(filepath_f, content_type)
                     if f == 7:
                         description = (
                             f"3D mask volume of the {annotation_description}. It "
@@ -1540,7 +1540,7 @@ def create_volumetric_resources(
                         region_id = int(filename_noext)
                     except ValueError as error:
                         L.error(
-                            f"ValueError in '{filepath}' file name. {error}. "
+                            f"ValueError in '{filepath_f}' file name. {error}. "
                             "The mask file names have to be integer "
                             "representing their region"
                         )
@@ -1569,7 +1569,7 @@ def create_volumetric_resources(
                                 f"{region_id}"
                             ]._store_metadata
                             toUpdate = True
-                            filepath_hash = return_file_hash(filepath)
+                            filepath_hash = return_file_hash(filepath_f)
                             try:
                                 if (
                                     filepath_hash
@@ -1579,7 +1579,7 @@ def create_volumetric_resources(
                                 ):
                                     content_type = f"application/{file_extension}"
                                     distribution_file = forge.attach(
-                                        filepath, content_type
+                                        filepath_f, content_type
                                     )
                                 else:
                                     distribution_file = fetched_resources[
@@ -1587,14 +1587,14 @@ def create_volumetric_resources(
                                     ].distribution
                             except AttributeError:
                                 content_type = f"application/{file_extension}"
-                                distribution_file = forge.attach(filepath, content_type)
+                                distribution_file = forge.attach(filepath_f, content_type)
                         except KeyError:
                             toUpdate = False
                             content_type = f"application/{file_extension}"
-                            distribution_file = forge.attach(filepath, content_type)
+                            distribution_file = forge.attach(filepath_f, content_type)
                     else:
                         content_type = f"application/{file_extension}"
-                        distribution_file = forge.attach(filepath, content_type)
+                        distribution_file = forge.attach(filepath_f, content_type)
 
                 # Use forge.reshape instead ?
                 nrrd_resources = Resource(
@@ -1623,7 +1623,7 @@ def create_volumetric_resources(
                 if resource_flag == "isPH":
                     if 5 < f < 8:
                         try:
-                            header = nrrd.read_header(filepath)
+                            header = nrrd.read_header(filepath_f)
                         except nrrd.errors.NRRDError as e:
                             L.error(f"NrrdError: {e}")
                             L.info("Aborting pushing process.")
@@ -1646,11 +1646,11 @@ def create_volumetric_resources(
                             1
                         ][1:]
                         report_json_hash = return_file_hash(report_json)
-                        filepath_hash = return_file_hash(filepath)
+                        filepath_hash = return_file_hash(filepath_f)
                         report_content_type = f"application/{format_json}"
                         ph_report_distrib = {
                             f"{report_content_type}": (report_json_hash, report_json),
-                            f"{content_type}": (filepath_hash, filepath),
+                            f"{content_type}": (filepath_hash, filepath_f),
                         }
                         distribution_file = []
                         if fetched_resources:
