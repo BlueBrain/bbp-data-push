@@ -177,6 +177,7 @@ def create_volumetric_resources(
     atlasrelease_payloads = {
         "atlasrelease_choice": None,
         "atlas_release": {},
+        #"atlas_release": const.atlasrelease_dict,
         "hierarchy": None,
         "tag": None,
         "fetched": False,
@@ -803,10 +804,11 @@ def create_volumetric_resources(
             "sampling_time_unit": const.default_sampling_time_unit,
         }
         # ==== Create/fetch the atlasRelease Resource linked to the input datasets ====
-        print("atlasrelease_choice: %s" % atlasrelease_choice)
+        print("\natlasrelease_choice: %s" % atlasrelease_choice)
         if not isinstance(forge._store, DemoStore): #and not isinstance(atlasrelease_choice, dict):
             # Check that the same atlasrelease is not treated again (need to be
             # different + not been treated yet)
+            print("atlasrelease_payloads[\"atlas_release\"].keys():", atlasrelease_payloads["atlas_release"].keys())
             if freeze(atlasrelease_choice) not in atlasrelease_payloads["atlas_release"].keys():
                 differentAtlasrelease = True
                 atlasrelease_payloads["atlasrelease_choice"] = atlasrelease_choice
@@ -818,6 +820,7 @@ def create_volumetric_resources(
                         resource_tag,
                         isSecondaryCLI=False,
                     )
+                    print("atlasrelease_payloads returned:", atlasrelease_payloads)
                     if not atlasrelease_payloads["aibs_atlasrelease"]:
                         if atlasrelease_payloads["fetched"]:
                             L.info(
@@ -867,6 +870,7 @@ def create_volumetric_resources(
                     differentAtlasrelease
                     and not atlasrelease_payloads["aibs_atlasrelease"]
                 ):
+                    atlasrelease_ontology_path = None
                     try:
                         atlasrelease_ontology_path = get_hierarchy_file(
                             input_hierarchy,
@@ -886,20 +890,22 @@ def create_volumetric_resources(
                             )
                             exit(1)
 
-                    # Build the distribution dict with the input hierarchy file
-                    format_hierarchy_original = os.path.splitext(
-                        os.path.basename(atlasrelease_ontology_path)
-                    )[1][1:]
-                    content_type_original = f"application/{format_hierarchy_original}"
-                    hierarchy_original_hash = return_file_hash(
-                        atlasrelease_ontology_path
-                    )
-                    input_hierarchy_distrib = {
-                        f"{content_type_original}": (
-                            hierarchy_original_hash,
-                            atlasrelease_ontology_path,
+                    input_hierarchy_distrib = None
+                    if atlasrelease_ontology_path:
+                        # Build the distribution dict with the input hierarchy file
+                        format_hierarchy_original = os.path.splitext(
+                            os.path.basename(atlasrelease_ontology_path)
+                        )[1][1:]
+                        content_type_original = f"application/{format_hierarchy_original}"
+                        hierarchy_original_hash = return_file_hash(
+                            atlasrelease_ontology_path
                         )
-                    }
+                        input_hierarchy_distrib = {
+                            f"{content_type_original}": (
+                                hierarchy_original_hash,
+                                atlasrelease_ontology_path,
+                            )
+                        }
                     # If the correct hierarchy jsonld file is given in input then add it
                     # to the distribution dict.
                     try:
@@ -950,6 +956,7 @@ def create_volumetric_resources(
                         for fetched_distrib in atlasrelease_payloads[
                             "hierarchy"
                         ].distribution:
+                            if not input_hierarchy_distrib: continue
                             try:
                                 if (
                                     fetched_distrib.digest.value
@@ -1230,8 +1237,8 @@ def create_volumetric_resources(
 
         # We create a 1st payload that will be recycled in case of multiple files to
         # push
-
         name = filename_noext.replace("_", " ").title()
+        print("\nName of the first resource:", name)
 
         # If the resource has been fetched, we compare its distribution to the input
         # file, copy its id and _store_metadata
@@ -1262,6 +1269,7 @@ def create_volumetric_resources(
                 for res in fetched_resources:
                     if res.distribution.name == os.path.basename(filepath):
                         first_fetched_resource = res
+
             if first_fetched_resource:
                 toUpdate = True
                 fetched_resource_id = first_fetched_resource.id
@@ -1403,8 +1411,8 @@ def create_volumetric_resources(
 
         # If the input is a folder containing several dataset to push
         if isFolder:
-            print("\nLooping over %d files" % (len(files_list_path) -1))
-            for f in range(1, len(files_list_path)):  # start at the 2nd file
+            print("\nLooping over %d input files" % (len(files_list_path) -1))
+            for f in range(1, len(files_list_path)): # start at the 2nd file as the 1st is used for first_fetched_resource
                 toUpdate = False
                 fetched_resource_id = None
                 fetched_resource_metadata = None
@@ -1453,6 +1461,8 @@ def create_volumetric_resources(
                     if atlasrelease_choice == "atlasrelease_ccfv2":
                         name = f"{name} Ccfv2 Corrected Nissl"
                     for res in fetched_resources:
+                        if res.id == first_fetched_resource.id:
+                            continue
                         if files_list[f] == res.distribution.name:
                             toUpdate = True
                             fetched_resource_id = res.id
@@ -1781,12 +1791,6 @@ def create_volumetric_resources(
                     resources_payloads["datasets_toPush"][f"{const.schema_volumetricdatalayer}"].append(nrrd_resources)
 
     resources_payloads["tag"] = atlasrelease_payloads["tag"]
-
-    #maxRev = 0
-    #for res in resources_payloads["datasets_toUpdate"][f"{const.schema_volumetricdatalayer}"]:
-    #    if res._store_metadata["_rev"] > maxRev: maxRev = res._store_metadata["_rev"]
-    #activity_resource._store_metadata = forge.from_json( {'_rev': 2} )
-
     print("\nactivity_resource._store_metadata: ", activity_resource._store_metadata)
     resources_payloads["activity"] = activity_resource
 
@@ -2230,13 +2234,18 @@ def get_cellAnnotation(forge, label):
 
 
 def get_cellType(forge, name):
-    label = name.split("Densities")[0].replace(" ","_")[:-1]
-    res = forge_resolve(forge, label)
+    label = name.split("Densities")[0].replace(" ","_")[:-1].split("-")[0]
     cellType = {
-        "@id": res.id,
-        "label": res.label,
+        "label": label,
         "prefLabel": "" # to define
     }
+    res = forge_resolve(forge, label)
+    if res:
+        cellType["@id"] = res.id
+        cellType["label"] = res.label
+    else:
+        print("\nlabel %s not resolved" % label)
+        cellType["@id"] = "label not resolved"
 
     return cellType
 

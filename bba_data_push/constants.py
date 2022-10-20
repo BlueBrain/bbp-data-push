@@ -43,6 +43,7 @@ description_hybrid = (
     f"{SPATIAL_UNIT}"
 )
 description_split = "with the isocortex layer 2 and 3 split"
+description_ccfv2_split = f"{description_ccfv2} {description_split}"
 description_ccfv3_split = f"{description_ccfv3} {description_split}"
 description_hybrid_split = f"{description_hybrid} {description_split}"
 
@@ -138,6 +139,7 @@ atlasrelease_dict = {
         "parcellation": annotation_ccfv3_l23split,
     },
 }
+
 # ================== VolumetricDataLayer constants ==================
 
 volumetric_type = "VolumetricDataLayer"
@@ -544,6 +546,21 @@ def return_volumetric_dict(volumetric_datasets):
                     "voxel_type": "intensity",
                     "datasamplemodality": "quantity",
                 },
+                f"{volumes['mtypes_densities_probability_map_ccfv2_l23split_correctednissl']}": {
+                    "name": "mtypes_densities_probability_map_ccfv2_l23split_correctednissl",
+                    "type": [
+                        "NeuronDensity",
+                        volumetric_type,
+                        "CellDensityDataLayer",
+                        "MTypeDensity",
+                    ],
+                    "description": f"{description_ccfv2_split}. It has been generated from a "
+                    "probability mapping and using the corrected nissl volume",
+                    "derivation": None,
+                    "atlasrelease": atlasrelease_ccfv2,
+                    "voxel_type": "intensity",
+                    "datasamplemodality": "quantity",
+                },
                 f"{volumes['mtypes_densities_probability_map_transplant_correctednissl']}": {
                     "name": "mtypes_densities_probability_map_transplant_correctednissl",
                     "type": [
@@ -556,6 +573,21 @@ def return_volumetric_dict(volumetric_datasets):
                     "probability mapping, using the corrected nissl volume and transplanted",
                     "derivation": None,
                     "atlasrelease": atlasrelease_ccfv3,
+                    "voxel_type": "intensity",
+                    "datasamplemodality": "quantity",
+                },
+                f"{volumes['mtypes_densities_probability_map_l23split_transplant_correctednissl']}": {
+                    "name": "mtypes_densities_probability_map_l23split_transplant_correctednissl",
+                    "type": [
+                        "NeuronDensity",
+                        volumetric_type,
+                        "CellDensityDataLayer",
+                        "MTypeDensity",
+                    ],
+                    "description": f"{description_ccfv3_split}. It has been generated from a "
+                    "probability mapping, using the corrected nissl volume and transplanted",
+                    "derivation": None,
+                    "atlasrelease": "atlasrelease_ccfv3split",
                     "voxel_type": "intensity",
                     "datasamplemodality": "quantity",
                 },

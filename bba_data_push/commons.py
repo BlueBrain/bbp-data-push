@@ -409,7 +409,7 @@ def fetch_linked_resources(
             if datasamplemodality_list:
                 filters["dataSampleModality"] = datasamplemodality_list[0]
             print("\nSearching forge with filters: ", filters)
-            fetched_resources = forge.search(filters)
+            fetched_resources = forge.search(filters, limit=1000) # default limit=100
         print("\nlen(fetched_resources): ", len(fetched_resources))
     except KeyError as error:
         raise KeyError(f"KeyError in atlasRelease dict. {error}")
@@ -819,9 +819,9 @@ def return_atlasrelease(
         ontology_choice = const.atlasrelease_dict[atlasrelease_choice]["ontology"]
 
         try:
-            with open(atlasrelease_config_path, "r+") as atlasrelease_config_file:
+            with open(atlasrelease_config_path, "r") as atlasrelease_config_file:
                 atlasrelease_config_file.seek(0)
-                atlasrelease_config = json.loads(atlasrelease_config_file.read())
+                atlasrelease_config = json.load(atlasrelease_config_file)
         except json.decoder.JSONDecodeError as error:
             raise json.decoder.JSONDecodeError(
                 f"JSONDecodeError when opening the file '{atlasrelease_config_path}'. "
@@ -841,7 +841,7 @@ def return_atlasrelease(
         # Check the content of atlasrelease_config_path
         try:
             atlasrelease = atlasrelease_config[atlasrelease_choice]
-            atlasrelease_resource = forge.retrieve(atlasrelease["id"])
+            atlasrelease_resource = forge.retrieve(atlasrelease["@id"])
             if atlasrelease_resource:
                 try:
                     atlasrelease_id = atlasrelease_resource.id
@@ -952,9 +952,10 @@ def return_atlasrelease(
 
     # Tag that will be linked to the atlasRelease, its ontology, its parcellation and
     # every linked resources
+    tag = ""
     if resource_tag and resource_tag != "None":
         tag = resource_tag
-    elif atlasrelease["tag"] and isSecondaryCLI:
+    elif atlasrelease.get("tag") and isSecondaryCLI:
         tag = atlasrelease["tag"]
     else:
         tag = f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}"
