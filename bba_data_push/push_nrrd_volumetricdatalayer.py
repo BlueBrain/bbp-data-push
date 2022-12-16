@@ -33,6 +33,11 @@ from bba_data_push.commons import (
     return_activity_payload,
     return_file_hash,
     fetch_linked_resources,
+    create_unresolved_payload,
+    return_base_annotation,
+    resolve_cellType,
+    get_layer,
+    forge_resolve,
 )
 import bba_data_push.constants as const
 from bba_data_push.logging import create_log_handler
@@ -44,6 +49,7 @@ def create_volumetric_resources(
     forge,
     inputpath: list,
     config_path,
+    new_atlas,
     atlasrelease_config_path,
     input_hierarchy,
     input_hierarchy_jsonld,
@@ -146,21 +152,18 @@ def create_volumetric_resources(
     # Constants
 
     resources_payloads = {
-        "datasets_toUpdate": {
-            f"{const.schema_volumetricdatalayer}": [],
-            f"{const.schema_atlasrelease}": [],
-            f"{const.schema_ontology}": [],
-            f"{const.schema_spatialref}": [],
-        },
-        "datasets_toPush": {
-            f"{const.schema_volumetricdatalayer}": [],
-            f"{const.schema_atlasrelease}": [],
-            f"{const.schema_ontology}": [],
-            f"{const.schema_spatialref}": [],
-        },
         "activity": [],
         "tag": "",
     }
+    actions = ["toUpdate","toPush"]
+    dataset_structure = {
+        f"{const.schema_volumetricdatalayer}": [],
+        f"{const.schema_atlasrelease}": [],
+        f"{const.schema_ontology}": [],
+        f"{const.schema_spatialref}": [],
+    }
+    for action in actions:
+        resources_payloads.update({"datasets_"+action: copy.deepcopy(dataset_structure)})
 
     # Return the atlas spatial reference system resource
     spatialref_resource = const.return_spatial_reference(forge)
@@ -176,8 +179,7 @@ def create_volumetric_resources(
 
     atlasrelease_payloads = {
         "atlasrelease_choice": None,
-        "atlas_release": {},
-        #"atlas_release": const.atlasrelease_dict,
+        "atlas_release": copy.deepcopy(const.atlasrelease_dict),
         "hierarchy": None,
         "tag": None,
         "fetched": False,
@@ -188,7 +190,18 @@ def create_volumetric_resources(
     generation = {}
     activity_resource = []
     atlasrelease_parcellation = None
+
+    region_id = 997  # default: 997 --> root, whole brain
+    region_name = "root"
+    brainLocation_def = {
+        "brainRegion": {"@id": f"mba:{region_id}", "label": f"{region_name}"},
+        "atlasSpatialReferenceSystem": {
+            "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
+            "@id": const.atlas_spatial_reference_system_id}
+    }
+
     for filepath in inputpath:
+        print("\n", filepath)
         fileFound = False
         isFolder = False
         resource_flag = ""
@@ -206,202 +219,78 @@ def create_volumetric_resources(
         fetched_resource_id = None
         fetched_resource_metadata = None
         parcellationAtlas_id = None
-        region_id = 997  # default: 997 --> root, whole brain
-        region_name = "root"
-        brainLocation = {
-            "brainRegion": {"@id": f"mba:{region_id}", "label": f"{region_name}"},
-            "atlasSpatialReferenceSystem": {
-                "@type": [
-                    "BrainAtlasSpatialReferenceSystem",
-                    "AtlasSpatialReferenceSystem",
-                ],
-                "@id": const.atlas_spatial_reference_system_id,
-            },
-        }
-        # ============================== CELL DENSITIES ==============================
-        # OUTDATED. Oldschool messy derivation links. The goal was to add to the
-        # volumetric cell density file payload the derivation to the cell density
-        # dataset that is the folder containing the cell density volumetric files
-        for dataset in volumetric_dict["cell_densities"]:
-            try:
-                if os.path.samefile(filepath, dataset):
-                    fileFound = True
-                    resource_flag = "isCellDensity"
-                    dataset_dict = volumetric_dict["cell_densities"][dataset]
-                    if os.path.isdir(filepath):
-                        isFolder = True
-                        directory = filepath
-                        files = os.listdir(directory)
-                        pattern = "*_densit*.nrrd"
-                        files_list = fnmatch.filter(files, pattern)
-                        files_list_path = [os.path.join(directory, f) for f in files_list]
-                        for f in files: # TODO: define a recursive function instead
-                            subdir = os.path.join(directory, f)
-                            if os.path.isdir(subdir):
-                                files_list_sub = fnmatch.filter(os.listdir(subdir), pattern)
-                                files_list_path.extend(os.path.join(subdir, f) for f in files_list_sub)
-                                files_list.extend(files_list_sub)
-                        if not files_list:
-                            L.error(
-                                f"Error: '{filepath}' do not contain any cell density "
-                                "volumetric files."
-                            )
-                            exit(1)
-                        # this is going ot be the "name" of the first resource
-                        filepath = files_list_path[0]
-                        filename_noext = os.path.splitext(os.path.basename(filepath))[0]
-                        file_extension = os.path.splitext(os.path.basename(filepath))[
-                            1
-                        ][1:]
-                        file_split = filename_noext.split("_")
-                        v = "mtypes_densities_probability_map_ccfv2_correctednissl"
-                        try:
-                            if os.path.samefile(
-                                directory,
-                                volumes[
-                                    "mtypes_densities_profile_ccfv2_correctednissl"
-                                ],
-                            ) or os.path.samefile(
-                                directory,
-                                volumes[v],
-                            ):
-                                file_split.insert(0, "Mtype")
-                        except FileNotFoundError:
-                            pass
-                        cell_density_file = " ".join(file_split)
-                        atlasrelease_choice = dataset_dict["atlasrelease"]
-                        filename_noext = cell_density_file
-                        if atlasrelease_choice == "atlasrelease_ccfv2":
-                            filename_noext = f"{filename_noext} Ccfv2 Corrected Nissl"
-                        description = (
-                            f"{cell_density_file[0].upper()}{cell_density_file[1:]} "
-                            "volume for the "
-                            f"{dataset_dict['description']}."
-                        )
-                        voxel_type = dataset_dict["voxel_type"]
-                        resource_types = dataset_dict["type"]
+        brainLocation = copy.deepcopy(brainLocation_def)
 
-                        if dataset_dict["derivation"]:
-                            if not isinstance(
-                                dataset_dict["derivation"],
-                                dict,
-                            ):
-                                if isinstance(
-                                    dataset_dict["derivation"],
-                                    tuple,
+        if not fileFound:
+            # ============================== CELL DENSITIES ==============================
+            # OUTDATED. Oldschool messy derivation links. The goal was to add to the
+            # volumetric cell density file payload the derivation to the cell density
+            # dataset that is the folder containing the cell density volumetric files
+            for dataset in volumetric_dict["cell_densities"]:
+                try:
+                    if os.path.samefile(filepath, dataset):
+                        fileFound = True
+                        resource_flag = "isCellDensity"
+                        dataset_dict = volumetric_dict["cell_densities"][dataset]
+                        print("\n", dataset_dict)
+                        if os.path.isdir(filepath):
+                            isFolder = True
+                            directory = filepath
+                            files = os.listdir(directory)
+                            pattern = "*_densit*.nrrd"
+                            files_list = fnmatch.filter(files, pattern)
+                            files_list_path = [os.path.join(directory, f) for f in files_list]
+                            for f in files: # TODO: define a recursive function instead
+                                subdir = os.path.join(directory, f)
+                                if os.path.isdir(subdir):
+                                    files_list_sub = fnmatch.filter(os.listdir(subdir), pattern)
+                                    files_list_path.extend(os.path.join(subdir, f) for f in files_list_sub)
+                                    files_list.extend(files_list_sub)
+                            if not files_list:
+                                L.error(
+                                    f"Error: '{filepath}' do not contain any cell density "
+                                    "volumetric files."
+                                )
+                                exit(1)
+                            # this is going ot be the "name" of the first resource
+                            filepath = files_list_path[0]
+                            filename_noext = os.path.splitext(os.path.basename(filepath))[0]
+                            file_extension = os.path.splitext(os.path.basename(filepath))[
+                                1
+                            ][1:]
+                            file_split = filename_noext.split("_")
+                            v = "mtypes_densities_probability_map_ccfv2_correctednissl"
+                            try:
+                                if os.path.samefile(
+                                    directory,
+                                    volumes[
+                                        "mtypes_densities_profile_ccfv2_correctednissl"
+                                    ],
+                                ) or os.path.samefile(
+                                    directory,
+                                    volumes[v],
                                 ):
-                                    data_deriv = dataset_dict["derivation"][0]
-                                    subdata_deriv = dataset_dict["derivation"][1]
-                                    fulldata_deriv = f"{data_deriv}/{subdata_deriv}"
-                                else:
-                                    data_deriv = dataset_dict["derivation"]
-                                # Search for the file to derive from in the input files
-                                # and if it is already a resource or not
-                                for inputdata in inputpath:
-                                    if os.path.samefile(
-                                        data_deriv,
-                                        inputdata,
-                                    ):
-                                        derivationDataFound = True
-                                        for r in range(
-                                            0, len(resources_payloads["datasets"])
-                                        ):
-                                            distrib = resources_payloads["datasets"][
-                                                r
-                                            ].distribution.args[0]
-                                            if isinstance(
-                                                dataset_dict["derivation"],
-                                                tuple,
-                                            ):
-                                                data_deriv = fulldata_deriv
-                                            # check if a previous resource is the one
-                                            # from which it derives
-                                            if os.path.samefile(data_deriv, distrib):
-                                                # Check if the previous resource has
-                                                # an id already
-                                                try:
-                                                    if resources_payloads["datasets"][
-                                                        r
-                                                    ].id:
-                                                        pass
-                                                except AttributeError:
-                                                    dataset_id = forge.format(
-                                                        "identifier",
-                                                        "volumetricdatalayer",
-                                                        str(uuid4()),
-                                                    )
-                                                    resources_payloads["datasets"][
-                                                        r
-                                                    ].id = f"{dataset_id}"
-                                                derivation = copy.deepcopy(
-                                                    deriv_celldensities_template
-                                                )
-                                                derivation["entity"][
-                                                    "@id"
-                                                ] = f"{dataset_id}"
-                                                break
-                                        # if the parent resource has not been created
-                                        # yet
-                                        if not derivation:
-                                            dict_ids[f"{data_deriv}"] = forge.format(
-                                                "identifier",
-                                                "volumetricdatalayer",
-                                                str(uuid4()),
-                                            )
-                                            derivation = copy.deepcopy(
-                                                deriv_celldensities_template
-                                            )
-                                            derivation["entity"]["@id"] = dict_ids[
-                                                f"{data_deriv}"
-                                            ]
-                                if not derivationDataFound:
-                                    L.info(
-                                        f"The file '{data_deriv}' whose "
-                                        "resource corresponding to the file "
-                                        f"'{dataset}' derivates is absent from the "
-                                        "input dataset. The property 'derivation' "
-                                        "from the latter resource will be thus left "
-                                        "empty."
-                                    )
-                            else:
-                                derivation = dataset_dict["derivation"]
-                        dataset_name = dataset_dict["name"]
-                        dataSampleModality = dataset_dict["datasamplemodality"]
-                        break
-                    else:
-                        if filepath.endswith(".nrrd"):
-                            fileFound = True
-                            # this is going ot be the "name" of the resource
-                            filename_noext = os.path.splitext(
-                                os.path.basename(filepath)
-                            )[0]
-                            file_extension = os.path.splitext(
-                                os.path.basename(filepath)
-                            )[1][1:]
-                            file_split = filename_noext.split("_")[:3]
+                                    file_split.insert(0, "Mtype")
+                            except FileNotFoundError:
+                                pass
                             cell_density_file = " ".join(file_split)
                             atlasrelease_choice = dataset_dict["atlasrelease"]
                             filename_noext = cell_density_file
                             if atlasrelease_choice == "atlasrelease_ccfv2":
-                                filename_noext = (
-                                    f"{filename_noext} Ccfv2 Corrected Nissl"
-                                )
+                                filename_noext = f"{filename_noext} Ccfv2 Corrected Nissl"
                             description = (
-                                f"{cell_density_file[0].upper()}"
-                                f"{cell_density_file[1:]} volume for the "
+                                f"{cell_density_file[0].upper()}{cell_density_file[1:]} "
+                                "volume for the "
                                 f"{dataset_dict['description']}."
                             )
                             voxel_type = dataset_dict["voxel_type"]
                             resource_types = dataset_dict["type"]
-                            # Derivation
+
                             if dataset_dict["derivation"]:
                                 if not isinstance(
                                     dataset_dict["derivation"],
                                     dict,
                                 ):
-
-                                    # Search for the file to derive from in the input
-                                    # files and if it is already a resource or not
                                     if isinstance(
                                         dataset_dict["derivation"],
                                         tuple,
@@ -411,70 +300,47 @@ def create_volumetric_resources(
                                         fulldata_deriv = f"{data_deriv}/{subdata_deriv}"
                                     else:
                                         data_deriv = dataset_dict["derivation"]
+                                    # Search for the file to derive from in the input files
+                                    # and if it is already a resource or not
                                     for inputdata in inputpath:
-                                        if os.path.samefile(
-                                            data_deriv,
-                                            inputdata,
-                                        ):
-                                            derivationDataFound = True
-                                            for r in range(
-                                                0, len(resources_payloads["datasets"])
-                                            ):
-                                                distrib = resources_payloads[
-                                                    "datasets"
-                                                ][r].distribution.args[0]
-                                                if isinstance(
-                                                    dataset_dict["derivation"],
-                                                    tuple,
-                                                ):
-                                                    data_deriv = fulldata_deriv
-                                                if os.path.samefile(
-                                                    data_deriv, distrib
-                                                ):
-                                                    try:
-                                                        if resources_payloads[
-                                                            "datasets"
-                                                        ][r].id:
-                                                            pass
-                                                    except AttributeError:
-                                                        resources_payloads["datasets"][
-                                                            r
-                                                        ].id = forge.format(
-                                                            "identifier",
-                                                            "volumetricdatalayer",
-                                                            str(uuid4()),
-                                                        )
-                                                    derivation = copy.deepcopy(
-                                                        deriv_celldensities_template
-                                                    )
-                                                    derivation["entity"][
-                                                        "@id"
-                                                    ] = resources_payloads["datasets"][
-                                                        r
-                                                    ].id
-                                                    break
-                                            if not derivation:
-                                                dict_ids[
-                                                    f"{data_deriv}"
-                                                ] = forge.format(
-                                                    "identifier",
-                                                    "volumetricdatalayer",
-                                                    str(uuid4()),
-                                                )
-                                                derivation = copy.deepcopy(
-                                                    deriv_celldensities_template
-                                                )
-                                                derivation["entity"]["@id"] = dict_ids[
-                                                    f"{data_deriv}"
-                                                ]
+                                        try:
+                                            if os.path.samefile(data_deriv, inputdata):
+                                                derivationDataFound = True
+                                                for r in range(0, len(resources_payloads["datasets"])):
+                                                    distrib = resources_payloads["datasets"][r].distribution.args[0]
+                                                    if isinstance(dataset_dict["derivation"], tuple):
+                                                        data_deriv = fulldata_deriv
+                                                    # check if a previous resource is the one
+                                                    # from which it derives
+                                                    if os.path.samefile(data_deriv, distrib):
+                                                        # Check if the previous resource has
+                                                        # an id already
+                                                        try:
+                                                            if resources_payloads["datasets"][r].id:
+                                                                pass
+                                                        except AttributeError:
+                                                            dataset_id = forge.format("identifier", "volumetricdatalayer", str(uuid4()))
+                                                            resources_payloads["datasets"][r].id = f"{dataset_id}"
+                                                        derivation = copy.deepcopy(deriv_celldensities_template)
+                                                        derivation["entity"]["@id"] = f"{dataset_id}"
+                                                        break
+                                                # if the parent resource has not been created
+                                                # yet
+                                                if not derivation:
+                                                    dict_ids[f"{data_deriv}"] = forge.format("identifier", "volumetricdatalayer", str(uuid4()))
+                                                    derivation = copy.deepcopy(deriv_celldensities_template)
+                                                    derivation["entity"]["@id"] = dict_ids[f"{data_deriv}"]
+                                        except FileNotFoundError:
+                                            print("data_deriv '%s' not found for filepath %s" % (data_deriv, filepath))
+                                            pass
                                     if not derivationDataFound:
                                         L.info(
                                             f"The file '{data_deriv}' whose "
                                             "resource corresponding to the file "
                                             f"'{dataset}' derivates is absent from the "
                                             "input dataset. The property 'derivation' "
-                                            "from the latter resource will be thus "
-                                            "left empty."
+                                            "from the latter resource will be thus left "
+                                            "empty."
                                         )
                                 else:
                                     derivation = dataset_dict["derivation"]
@@ -482,13 +348,126 @@ def create_volumetric_resources(
                             dataSampleModality = dataset_dict["datasamplemodality"]
                             break
                         else:
-                            L.error(
-                                f"Error: parcellation dataset '{filepath}' is not a "
-                                "volumetric .nrrd file"
-                            )
-                            exit(1)
-            except FileNotFoundError:
-                pass
+                            if filepath.endswith(".nrrd"):
+                                fileFound = True
+                                # this is going ot be the "name" of the resource
+                                filename_noext = os.path.splitext(
+                                    os.path.basename(filepath)
+                                )[0]
+                                file_extension = os.path.splitext(
+                                    os.path.basename(filepath)
+                                )[1][1:]
+                                file_split = filename_noext.split("_")[:3]
+                                cell_density_file = " ".join(file_split)
+                                atlasrelease_choice = dataset_dict["atlasrelease"]
+                                filename_noext = cell_density_file
+                                if atlasrelease_choice == "atlasrelease_ccfv2":
+                                    filename_noext = (
+                                        f"{filename_noext} Ccfv2 Corrected Nissl"
+                                    )
+                                description = (
+                                    f"{cell_density_file[0].upper()}"
+                                    f"{cell_density_file[1:]} volume for the "
+                                    f"{dataset_dict['description']}."
+                                )
+                                voxel_type = dataset_dict["voxel_type"]
+                                resource_types = dataset_dict["type"]
+                                # Derivation
+                                if dataset_dict["derivation"]:
+                                    if not isinstance(
+                                        dataset_dict["derivation"],
+                                        dict,
+                                    ):
+
+                                        # Search for the file to derive from in the input
+                                        # files and if it is already a resource or not
+                                        if isinstance(
+                                            dataset_dict["derivation"],
+                                            tuple,
+                                        ):
+                                            data_deriv = dataset_dict["derivation"][0]
+                                            subdata_deriv = dataset_dict["derivation"][1]
+                                            fulldata_deriv = f"{data_deriv}/{subdata_deriv}"
+                                        else:
+                                            data_deriv = dataset_dict["derivation"]
+                                        for inputdata in inputpath:
+                                            if os.path.samefile(
+                                                data_deriv,
+                                                inputdata,
+                                            ):
+                                                derivationDataFound = True
+                                                for r in range(
+                                                    0, len(resources_payloads["datasets"])
+                                                ):
+                                                    distrib = resources_payloads[
+                                                        "datasets"
+                                                    ][r].distribution.args[0]
+                                                    if isinstance(
+                                                        dataset_dict["derivation"],
+                                                        tuple,
+                                                    ):
+                                                        data_deriv = fulldata_deriv
+                                                    if os.path.samefile(
+                                                        data_deriv, distrib
+                                                    ):
+                                                        try:
+                                                            if resources_payloads[
+                                                                "datasets"
+                                                            ][r].id:
+                                                                pass
+                                                        except AttributeError:
+                                                            resources_payloads["datasets"][
+                                                                r
+                                                            ].id = forge.format(
+                                                                "identifier",
+                                                                "volumetricdatalayer",
+                                                                str(uuid4()),
+                                                            )
+                                                        derivation = copy.deepcopy(
+                                                            deriv_celldensities_template
+                                                        )
+                                                        derivation["entity"][
+                                                            "@id"
+                                                        ] = resources_payloads["datasets"][
+                                                            r
+                                                        ].id
+                                                        break
+                                                if not derivation:
+                                                    dict_ids[
+                                                        f"{data_deriv}"
+                                                    ] = forge.format(
+                                                        "identifier",
+                                                        "volumetricdatalayer",
+                                                        str(uuid4()),
+                                                    )
+                                                    derivation = copy.deepcopy(
+                                                        deriv_celldensities_template
+                                                    )
+                                                    derivation["entity"]["@id"] = dict_ids[
+                                                        f"{data_deriv}"
+                                                    ]
+                                        if not derivationDataFound:
+                                            L.info(
+                                                f"The file '{data_deriv}' whose "
+                                                "resource corresponding to the file "
+                                                f"'{dataset}' derivates is absent from the "
+                                                "input dataset. The property 'derivation' "
+                                                "from the latter resource will be thus "
+                                                "left empty."
+                                            )
+                                    else:
+                                        derivation = dataset_dict["derivation"]
+                                dataset_name = dataset_dict["name"]
+                                dataSampleModality = dataset_dict["datasamplemodality"]
+                                break
+                            else:
+                                L.error(
+                                    f"Error: parcellation dataset '{filepath}' is not a "
+                                    "volumetric .nrrd file"
+                                )
+                                exit(1)
+                except FileNotFoundError:
+                    pass
 
         # ============================== PARCELLATIONS ==============================
         if not fileFound:
@@ -797,30 +776,43 @@ def create_volumetric_resources(
             L.info("Aborting pushing process.")  # setLevel(logging.INFO)
             exit(1)
 
-        config = {
-            "file_extension": file_extension,
-            "sampling_space_unit": const.SPATIAL_UNIT,
-            "sampling_period": const.default_sampling_period,
-            "sampling_time_unit": const.default_sampling_time_unit,
-        }
+        config = copy.deepcopy(const.config)
+        config["file_extension"] = file_extension
         # ==== Create/fetch the atlasRelease Resource linked to the input datasets ====
-        print("\natlasrelease_choice: %s" % atlasrelease_choice)
-        if not isinstance(forge._store, DemoStore): #and not isinstance(atlasrelease_choice, dict):
+        print("\natlasrelease_choice from dataset_dict: %s" % atlasrelease_choice)
+        atlasrelease_config = None
+        if new_atlas:
+            try:
+                with open(atlasrelease_config_path, "r") as atlasrelease_config_file:
+                    atlasrelease_config_file.seek(0)
+                    atlasrelease_config = json.load(atlasrelease_config_file)
+            except json.decoder.JSONDecodeError as error:
+                raise json.decoder.JSONDecodeError(
+                    f"JSONDecodeError when opening the file '{atlasrelease_config_path}':\n{error}")
+            except FileNotFoundError:
+                atlasrelease_config = {}
+            atlasrelease_choice = list(atlasrelease_config.keys())[0]
+
+        #if not isinstance(forge._store, DemoStore) and not isinstance(atlasrelease_choice, dict):
+        if not isinstance(forge._store, DemoStore):
             # Check that the same atlasrelease is not treated again (need to be
             # different + not been treated yet)
             print("atlasrelease_payloads[\"atlas_release\"].keys():", atlasrelease_payloads["atlas_release"].keys())
-            if freeze(atlasrelease_choice) not in atlasrelease_payloads["atlas_release"].keys():
-                differentAtlasrelease = True
+            if (new_atlas  or  (freeze(atlasrelease_choice) not in atlasrelease_payloads["atlas_release"].keys())):
+                if (freeze(atlasrelease_choice) not in atlasrelease_payloads["atlas_release"].keys()):
+                    differentAtlasrelease = True
                 atlasrelease_payloads["atlasrelease_choice"] = atlasrelease_choice
                 try:
                     atlasrelease_payloads = return_atlasrelease(
                         forge,
-                        atlasrelease_config_path,
+                        new_atlas,
+                        atlasrelease_config,
                         atlasrelease_payloads,
                         resource_tag,
                         isSecondaryCLI=False,
                     )
-                    print("atlasrelease_payloads returned:", atlasrelease_payloads)
+                    #print("atlasrelease_payloads returned:", atlasrelease_payloads)
+                    atlasrelease_choice = atlasrelease_payloads["atlasrelease_choice"]
                     if not atlasrelease_payloads["aibs_atlasrelease"]:
                         if atlasrelease_payloads["fetched"]:
                             L.info(
@@ -844,6 +836,7 @@ def create_volumetric_resources(
             else:
                 differentAtlasrelease = False
 
+            print("\natlasrelease_choice:", atlasrelease_choice)
             if atlasrelease_payloads["aibs_atlasrelease"]:
                 atlasRelease = {
                     "@id": atlasrelease_payloads["aibs_atlasrelease"]["@id"],
@@ -866,7 +859,7 @@ def create_volumetric_resources(
                 # the distribution. For an update, compare first if they distribution
                 # are different before attaching it
                 # => check if the good hierarchy file is given in input
-                if (
+                if new_atlas or (
                     differentAtlasrelease
                     and not atlasrelease_payloads["aibs_atlasrelease"]
                 ):
@@ -1012,14 +1005,10 @@ def create_volumetric_resources(
                     ]["parcellation"]
                     for datasetpath in inputpath:
                         try:
-                            if os.path.samefile(
-                                datasetpath, volumes[atlasrelease_parcellation]
-                            ):
-                                pass
+                            if os.path.samefile(datasetpath, volumes[atlasrelease_parcellation]):
+                                continue
                         except FileNotFoundError:
-                            if atlasrelease_payloads[
-                                "atlas_release"
-                            ].parcellationVolume:
+                            if getattr(atlasrelease_payloads["atlas_release"], "parcellationVolume", None):
                                 L.error(
                                     "Error: the parcellation file corresponding to "
                                     "the created atlasRelease resource can not be "
@@ -1082,9 +1071,12 @@ def create_volumetric_resources(
                             f"{const.schema_ontology}"
                         ].append(atlasrelease_payloads["hierarchy"])
                     else:
-                        resources_payloads["datasets_toPush"][
-                            f"{const.schema_ontology}"
-                        ].append(atlasrelease_payloads["hierarchy"])
+                        if new_atlas and resources_payloads["datasets_toPush"][f"{const.schema_ontology}"]:
+                            pass
+                        else:
+                            resources_payloads["datasets_toPush"][
+                                f"{const.schema_ontology}"
+                            ].append(atlasrelease_payloads["hierarchy"])
 
         print("differentAtlasrelease: ", differentAtlasrelease)
         # ==================== Fetch atlasRelease linked resources ====================
@@ -1111,11 +1103,8 @@ def create_volumetric_resources(
             atlasrelease_payloads["fetched"]
             or atlasrelease_payloads["aibs_atlasrelease"]
         ):
-            resource_type_list = list(
-                set(resource_types).difference(
-                    set([const.dataset_type, const.volumetric_type])
-                )
-            )
+            print("resource_types:", resource_types)
+            resource_type_list = [x for x in resource_types if x not in set([const.dataset_type, const.volumetric_type])]
             datasamplemodality_list = [dataSampleModality]
             if resource_flag == "isPH":
                 resource_type_list_2 = list(
@@ -1193,10 +1182,11 @@ def create_volumetric_resources(
                     derivation = derivation[0]
 
         # ==================== add Activity and generation prop ====================
-        print("\nactivity_resource: ", activity_resource)
+        #print("\nactivity_resource:", activity_resource)
         if provenance_metadata and not activity_resource:
             try:
                 activity_resource = return_activity_payload(forge, provenance_metadata)
+                #print("\nactivity_resource returned: ", activity_resource)
                 if not activity_resource._store_metadata:
                     L.info(
                         "Existing activity resource not found in the Nexus destination "
@@ -1205,25 +1195,7 @@ def create_volumetric_resources(
                     )
             except Exception as e:
                 L.error(f"{e}")
-                #exit(1) # "activity" metadata not necessary for the moment
-
-            # if the activity Resource has been fetched from Nexus, the property
-            # 'value' need to be mapped back to @value
-            if hasattr(activity_resource, "startedAtTime"):
-                # A Resource property that is a dict at the creation of the Resource
-                # becomes a Resource attribut after being synchronized on Nexus
-                if not isinstance(activity_resource.startedAtTime, dict):
-                    if hasattr(activity_resource.startedAtTime, "@value") and hasattr(
-                        activity_resource.startedAtTime, "type"
-                    ):
-                        value = getattr(activity_resource.startedAtTime, "@value")
-                        type = getattr(activity_resource.startedAtTime, "type")
-                        activity_resource.startedAtTime = forge.from_json(
-                            {
-                                "@type": type,
-                                "@value": value,
-                            }
-                        )
+                exit(1)
 
             generation = {
                 "@type": "Generation",
@@ -1233,12 +1205,14 @@ def create_volumetric_resources(
                 },
             }
 
+        nrrd_resources = {"toUpdate": [], "toPush": []}
+
         # =========================== 1st Payload creation ===========================
 
         # We create a 1st payload that will be recycled in case of multiple files to
         # push
         name = filename_noext.replace("_", " ").title()
-        print("\nName of the first resource:", name)
+        print("\nName of the first resource: '%s'" % name)
 
         # If the resource has been fetched, we compare its distribution to the input
         # file, copy its id and _store_metadata
@@ -1266,8 +1240,10 @@ def create_volumetric_resources(
                         distribution_file = forge.attach(filepath, content_type)
                         pass
             else:
-                for res in fetched_resources:
-                    if res.distribution.name == os.path.basename(filepath):
+                for res in fetched_resources if isinstance(fetched_resources, list) else [fetched_resources]:
+                    basename = os.path.basename(filepath).casefold()
+                    #print("res, base:", res.distribution.name.casefold(), basename)
+                    if res.distribution.name.casefold() in [basename, basename.replace("density","densities"), basename.replace("densities","density")]:
                         first_fetched_resource = res
 
             if first_fetched_resource:
@@ -1293,20 +1269,24 @@ def create_volumetric_resources(
         else:
             content_type = f"application/{file_extension}"
             distribution_file = forge.attach(filepath, content_type)
+
         nrrd_resource = Resource(
-            type=resource_types,
-            name=name,
-            distribution=distribution_file,
-            description=description,
-            annotation=get_cellAnnotation(forge, name),
-            cellType=get_cellType(forge, name),
-            isRegisteredIn=const.isRegisteredIn,
-            brainLocation=brainLocation,
-            atlasRelease=atlasRelease,
-            dataSampleModality=dataSampleModality,
-            subject=const.subject,
-            contribution=contribution,
+            type = resource_types,
+            name = name,
+            distribution = distribution_file,
+            description = description,
+            isRegisteredIn = const.isRegisteredIn,
+            brainLocation = brainLocation,
+            atlasRelease = atlasRelease,
+            dataSampleModality = dataSampleModality,
+            subject = const.subject,
+            contribution = contribution,
         )
+
+        if resource_flag == "isCellDensity":
+            nrrd_resource.annotation = get_cellAnnotation(forge, name)
+            nrrd_resource.cellType = get_cellType(forge, name)
+            nrrd_resource.brainLocation["layer"] = get_layer(forge, nrrd_resource.cellType[0]["label"])
 
         nrrd_resource = add_nrrd_props(nrrd_resource, header, config, voxel_type)
 
@@ -1320,7 +1300,7 @@ def create_volumetric_resources(
         elif dataset_name in deriv_dict_id.keys():
             nrrd_resource.id = deriv_dict_id[dataset_name]["id"]
         else:
-            print("\nNo nrrd_resource.id set for ", name)
+            print("No nrrd_resource.id set for", name)
 
         if dimension_name:
             nrrd_resource.dimension[0]["name"] = dimension_name
@@ -1384,7 +1364,7 @@ def create_volumetric_resources(
             ].contribution = contribution
 
         # Add the generation prop for every different atlasRelease
-        if differentAtlasrelease and not atlasrelease_payloads["aibs_atlasrelease"]:
+        if new_atlas or (differentAtlasrelease and not atlasrelease_payloads["aibs_atlasrelease"]):
             if generation:
                 atlasrelease_payloads["hierarchy"].generation = generation
                 atlasrelease_payloads["atlas_release"][
@@ -1395,44 +1375,32 @@ def create_volumetric_resources(
                     f"{const.schema_atlasrelease}"
                 ].append(atlasrelease_payloads["atlas_release"][atlasrelease_choice])
             else:
-                resources_payloads["datasets_toPush"][
-                    f"{const.schema_atlasrelease}"
-                ].append(atlasrelease_payloads["atlas_release"][atlasrelease_choice])
+                if new_atlas and resources_payloads["datasets_toPush"][f"{const.schema_atlasrelease}"]:
+                   pass
+                else:
+                    resources_payloads["datasets_toPush"][
+                        f"{const.schema_atlasrelease}"
+                    ].append(atlasrelease_payloads["atlas_release"][atlasrelease_choice])
 
         if toUpdate:
-            resources_payloads["datasets_toUpdate"][
-                f"{const.schema_volumetricdatalayer}"
-            ].append(nrrd_resource)
+            nrrd_resources["toUpdate"].append(nrrd_resource)
         else:
-            resources_payloads["datasets_toPush"][
-                f"{const.schema_volumetricdatalayer}"
-            ].append(nrrd_resource)
+            nrrd_resources["toPush"].append(nrrd_resource)
         # =========================== Directory Datasets ===========================
 
         # If the input is a folder containing several dataset to push
         if isFolder:
-            print("\nLooping over %d input files" % (len(files_list_path) -1))
+            print("\nLooping over %d more input files ..." % (len(files_list_path) -1))
             for f in range(1, len(files_list_path)): # start at the 2nd file as the 1st is used for first_fetched_resource
                 toUpdate = False
                 fetched_resource_id = None
                 fetched_resource_metadata = None
-                brainLocation = {
-                    "brainRegion": {
-                        "@id": "mba:997",
-                        "label": "root",
-                    },
-                    "atlasSpatialReferenceSystem": {
-                        "@type": [
-                            "BrainAtlasSpatialReferenceSystem",
-                            "AtlasSpatialReferenceSystem",
-                        ],
-                        "@id": const.atlas_spatial_reference_system_id,
-                    },
-                }
+                brainLocation = copy.deepcopy(brainLocation_def)
                 filepath_f = files_list_path[f]
                 filename_noext = os.path.splitext(os.path.basename(filepath_f))[0]
                 file_extension = os.path.splitext(os.path.basename(filepath_f))[1][1:]
                 name = filename_noext.replace("_", " ").title()
+                print("\nfile %d of %d: '%s'" % (f, len(files_list_path) -1, name))
 
                 # ============ CELL DENSITY = TO REWORK LIKE THE OTHERS ============
                 if resource_flag == "isCellDensity":
@@ -1460,13 +1428,15 @@ def create_volumetric_resources(
                     name = cell_density_file.title()
                     if atlasrelease_choice == "atlasrelease_ccfv2":
                         name = f"{name} Ccfv2 Corrected Nissl"
-                    for res in fetched_resources:
-                        if res.id == first_fetched_resource.id:
-                            continue
-                        if files_list[f] == res.distribution.name:
-                            toUpdate = True
-                            fetched_resource_id = res.id
-                            fetched_resource_metadata = res._store_metadata
+                    if fetched_resources:
+                        #print("fetched_resources:", fetched_resources)
+                        for res in fetched_resources:
+                            if first_fetched_resource and (res.id == first_fetched_resource.id):
+                                continue
+                            if files_list[f] == res.distribution.name:
+                                toUpdate = True
+                                fetched_resource_id = res.id
+                                fetched_resource_metadata = res._store_metadata
 
                 if resource_flag == "isPH":
                     # Do not create specific payload for the json report because it is
@@ -1607,28 +1577,31 @@ def create_volumetric_resources(
                         distribution_file = forge.attach(filepath_f, content_type)
 
                 # Use forge.reshape instead ?
-                nrrd_resources = Resource(
-                    type=nrrd_resource.type,
-                    name=name,
-                    distribution=distribution_file,
-                    description=description,
-                    annotation=get_cellAnnotation(forge, name),
-                    cellType=get_cellType(forge, name),
-                    contribution=nrrd_resource.contribution,
-                    isRegisteredIn=nrrd_resource.isRegisteredIn,
-                    brainLocation=brainLocation,
-                    atlasRelease=nrrd_resource.atlasRelease,
-                    componentEncoding=nrrd_resource.componentEncoding,
-                    fileExtension=nrrd_resource.fileExtension,
-                    dimension=nrrd_resource.dimension,
-                    sampleType=nrrd_resource.sampleType,
-                    worldMatrix=nrrd_resource.worldMatrix,
-                    resolution=nrrd_resource.resolution,
-                    bufferEncoding=nrrd_resource.bufferEncoding,
-                    endianness=nrrd_resource.endianness,
-                    dataSampleModality=nrrd_resource.dataSampleModality,
-                    subject=nrrd_resource.subject,
+                nrrd_resource = Resource(
+                    type = nrrd_resource.type,
+                    name = name,
+                    distribution = distribution_file,
+                    description = description,
+                    contribution = nrrd_resource.contribution,
+                    isRegisteredIn = nrrd_resource.isRegisteredIn,
+                    brainLocation = brainLocation,
+                    atlasRelease = nrrd_resource.atlasRelease,
+                    componentEncoding = nrrd_resource.componentEncoding,
+                    fileExtension = nrrd_resource.fileExtension,
+                    dimension = nrrd_resource.dimension,
+                    sampleType = nrrd_resource.sampleType,
+                    worldMatrix = nrrd_resource.worldMatrix,
+                    resolution = nrrd_resource.resolution,
+                    bufferEncoding = nrrd_resource.bufferEncoding,
+                    endianness = nrrd_resource.endianness,
+                    dataSampleModality = nrrd_resource.dataSampleModality,
+                    subject = nrrd_resource.subject,
                 )
+
+                if resource_flag == "isCellDensity":
+                    nrrd_resource.annotation = get_cellAnnotation(forge, name)
+                    nrrd_resource.cellType = get_cellType(forge, name)
+                    nrrd_resource.brainLocation["layer"] = get_layer(forge, nrrd_resource.cellType[0]["label"])
 
                 if resource_flag == "isPH":
                     if 5 < f < 8:
@@ -1642,14 +1615,14 @@ def create_volumetric_resources(
                             os.path.basename(files_list[f])
                         )[1][1:]
                         voxel_type = dataset_dict["voxel_type_2"]
-                        nrrd_resources = add_nrrd_props(
-                            nrrd_resources, header, config, voxel_type
+                        nrrd_resource = add_nrrd_props(
+                            nrrd_resource, header, config, voxel_type
                         )
                     if f >= 7:
-                        nrrd_resources.dataSampleModality = dataset_dict[
+                        nrrd_resource.dataSampleModality = dataset_dict[
                             "datasamplemodality_2"
                         ]
-                        nrrd_resources.type = dataset_dict["type_2"]
+                        nrrd_resource.type = dataset_dict["type_2"]
                         # Compare and attach the multiple distributions
                         report_json = os.path.join(directory, files_list[8])
                         format_json = os.path.splitext(os.path.basename(report_json))[
@@ -1727,34 +1700,36 @@ def create_volumetric_resources(
                             for encoding, file in ph_report_distrib.items():
                                 distribution_report = forge.attach(file[1], encoding)
                                 distribution_file.append(distribution_report)
-                        nrrd_resources.distribution = distribution_file
+                        nrrd_resource.distribution = distribution_file
 
                 if derivation:
-                    nrrd_resources.derivation = nrrd_resource.derivation
+                    nrrd_resource.derivation = nrrd_resource.derivation
 
                 if fetched_resource_id:
-                    nrrd_resources.id = fetched_resource_id
+                    nrrd_resource.id = fetched_resource_id
                 elif dataset_name in deriv_dict_id.keys():
                     nrrd_resource.id = deriv_dict_id[dataset_name]["id"]
+                else:
+                    print("No nrrd_resource.id set for", name)
 
                 if fetched_resource_metadata:
-                    nrrd_resources._store_metadata = fetched_resource_metadata
+                    nrrd_resource._store_metadata = fetched_resource_metadata
                 else:
-                    print("\nNo metadata for nrrd_resources.name: ", nrrd_resources.name)
+                    print("No metadata for nrrd_resource.name: '%s'" % nrrd_resource.name)
 
                 if generation:
-                    nrrd_resources.generation = nrrd_resource.generation
+                    nrrd_resource.generation = generation
 
                 if resource_flag == "isRegionMask":
                     # Finish to fill the link_region_path file with the masks @ids
                     if action_summary_file:
-                        if hasattr(nrrd_resources, "id"):
-                            mask_id = nrrd_resources.id
+                        if hasattr(nrrd_resource, "id"):
+                            mask_id = nrrd_resource.id
                         else:
                             mask_id = forge.format(
                                 "identifier", "volumetricdatalayer", str(uuid4())
                             )
-                            nrrd_resources.id = mask_id
+                            nrrd_resource.id = mask_id
                         mask_link = {"mask": {"@id": mask_id}}
                         if action_summary_file == "append":
                             try:
@@ -1786,12 +1761,44 @@ def create_volumetric_resources(
                         link_summary_file.close()
 
                 if toUpdate:
-                    resources_payloads["datasets_toUpdate"][f"{const.schema_volumetricdatalayer}"].append(nrrd_resources)
+                    nrrd_resources["toUpdate"].append(nrrd_resource)
                 else:
-                    resources_payloads["datasets_toPush"][f"{const.schema_volumetricdatalayer}"].append(nrrd_resources)
+                    nrrd_resources["toPush"].append(nrrd_resource)
+
+
+        if (resource_flag == "isCellDensity"):
+            unresolved = []
+            for action in actions:
+                for res in nrrd_resources[action]:
+                    unres = False
+                    # check for unresolved cell-types
+                    for ct in res.cellType:
+                        if not ct["@id"]:
+                            unres = True
+                            unresolved.append(res)
+                    # check for unresolved layers
+                    for layer in nrrd_resource.brainLocation["layer"]:
+                        if not layer["@id"]:
+                            unres = True
+                            unresolved.append(res)
+                    if unres:
+                        continue
+                    if new_atlas:
+                        resources_payloads["datasets_toPush"][f"{const.schema_volumetricdatalayer}"].append(res)
+                    else:
+                        resources_payloads["datasets_"+action][f"{const.schema_volumetricdatalayer}"].append(res)
+
+            if unresolved:
+                unresolved_dir = "unresolved_densities"
+                create_unresolved_payload(forge, unresolved, "unresolved_densities", filepath)
+            else:
+                print("No unresolved resources!")
 
     resources_payloads["tag"] = atlasrelease_payloads["tag"]
-    print("\nactivity_resource._store_metadata: ", activity_resource._store_metadata)
+    if getattr(activity_resource, "_store_metadata", None):
+        print("\nactivity_resource._store_metadata:", activity_resource._store_metadata)
+    else:
+        print("\nactivity_resource:", activity_resource)
     resources_payloads["activity"] = activity_resource
 
     # Annotate the atlasrelease_config json file with the atlasrelease "id" and "tag"
@@ -1801,7 +1808,7 @@ def create_volumetric_resources(
         and not atlasrelease_payloads["aibs_atlasrelease"]
     ):
         if atlasrelease_config_path:
-            print("atlasrelease_payloads: %s" % atlasrelease_payloads)
+            print("\natlasrelease_payloads: %s" % atlasrelease_payloads)
             atlasrelease_id = atlasrelease_payloads["atlas_release"][
                 freeze(atlasrelease_choice)
             ].id
@@ -1822,12 +1829,10 @@ def create_volumetric_resources(
                         ] = atlasrelease_link[f"{atlasrelease_choice}"]
                     else:
                         atlasrelease_config_content.update(atlasrelease_link)
-                with open(atlasrelease_config_path, "w") as atlasrelease_config_file:
-                    atlasrelease_config_file.write(
-                        json.dumps(
-                            atlasrelease_config_content, ensure_ascii=False, indent=2
-                        )
-                    )
+                #with open(atlasrelease_config_path, "w") as atlasrelease_config_file:
+                #    atlasrelease_config_file.write(json.dumps(
+                #        atlasrelease_config_content, ensure_ascii=False, indent=2
+                #    ))
             except FileNotFoundError:
                 with open(atlasrelease_config_path, "w") as atlasrelease_config_file:
                     atlasrelease_config_file.write(
@@ -1904,6 +1909,7 @@ def create_deriv_dict_id(forge, inputpath, provenance_metadata, volumes, hierarc
     deriv_dict_id = {}
     try:
         for key_dataset, val_dataset in provenance_metadata["derivations"].items():
+            print(key_dataset, val_dataset)
             derivation_found = False
             try:
                 # first check if the derivation is in input_dataset_used
@@ -1940,32 +1946,31 @@ def create_deriv_dict_id(forge, inputpath, provenance_metadata, volumes, hierarc
                             "type": val_dataset_type,
                         }
                     else:
+                        #deriv_dict_id[val_dataset].setdefault("datasets", [])
                         deriv_dict_id[val_dataset]["datasets"].append(key_dataset)
-                # Then search if the dataset is part of the volumetric datasets
                 if not derivation_found:
-                    for dataset in volumes.keys():
-                        if dataset == key_dataset:
-                            derivation_found = True
-                            if volumes[val_dataset] not in inputpath:
-                                L.error(
-                                    f"Error: The derivation dataset '{val_dataset}' "
-                                    "correspond to a volumetric dataset from the input "
-                                    "configuration json but the file has not been "
-                                    "found among the input 'dataset-path'"
-                                )
-                                #exit(1) # TODO: check whether really needed
-                            deriv_dict_id = create_deriv_id(
-                                forge,
-                                deriv_dict_id,
-                                val_dataset,
-                                key_dataset,
-                                "volumetricdatalayer",
+                    # Then search if the dataset is part of the volumetric datasets
+                    if key_dataset in volumes.keys():
+                        if volumes[val_dataset] not in inputpath:
+                            L.error(
+                                f"Error: The derivation dataset '{val_dataset}' "
+                                "correspond to a volumetric dataset from the input "
+                                "configuration json but the file has not been "
+                                "found among the input 'dataset-path'"
                             )
+                            exit(1) # TODO: check whether really needed
+                        derivation_found = True
+                        deriv_dict_id = create_deriv_id(
+                            forge,
+                            deriv_dict_id,
+                            val_dataset,
+                            key_dataset,
+                            "volumetricdatalayer",
+                        )
+                    else:
                     # Lastly search if the dataset is a hierarchy file
-                    if not derivation_found:
                         for dataset in hierarchies.keys():
                             if dataset == key_dataset:
-                                derivation_found = True
                                 if hierarchies[val_dataset] not in inputpath:
                                     L.error(
                                         f"Error: The derivation dataset "
@@ -1975,6 +1980,7 @@ def create_deriv_dict_id(forge, inputpath, provenance_metadata, volumes, hierarc
                                         "'hierarchy-path'"
                                     )
                                     exit(1)
+                                derivation_found = True
                                 deriv_dict_id = create_deriv_id(
                                     forge,
                                     deriv_dict_id,
@@ -2217,39 +2223,34 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
 
 
 def get_cellAnnotation(forge, label):
-    annotation = {
-        "@type": [
-            "MTypeAnnotation",
-            "Annotation"],
-        "hasBody": {
-            "@type": [
-                "MType",
-                "AnnotationBody"]
-        },
-        "name": "M-type Annotation"
-    }
-    annotation["hasBody"].update(get_cellType(forge, label))
+    annotations = []
 
-    return annotation
+    types = ["M", "E"] # assuming same order of cellTypes:
+    cellTypes = get_cellType(forge, label)
+    for i in range(len(cellTypes)):
+        itype = types[i] if i<len(types) else "Unknown"
+        annotation = return_base_annotation(itype)
+        annotation["hasBody"].update(cellTypes[i])
+
+        annotations.append(annotation)
+
+    return annotations
 
 
 def get_cellType(forge, name):
-    label = name.split("Densities")[0].replace(" ","_")[:-1].split("-")[0]
-    cellType = {
-        "label": label,
-        "prefLabel": "" # to define
-    }
-    res = forge_resolve(forge, label)
-    if res:
-        cellType["@id"] = res.id
-        cellType["label"] = res.label
+    label = name.split("Densit")[0].replace(" ","_")[:-1]
+    types = label.split("-")
+    if len(types) > 1:
+        mtype = "-".join(types[0:-1])
+        etype = types[-1]
+        me_types = [mtype, etype]
     else:
-        print("\nlabel %s not resolved" % label)
-        cellType["@id"] = "label not resolved"
+        me_types = types
 
-    return cellType
+    cellTypes = []
+    for t in me_types:
+        cellType = resolve_cellType(forge, t, name)
+        cellTypes.append(cellType)
 
+    return cellTypes
 
-def forge_resolve(forge, label):
-    #return forge.resolve(label, scope="ontology", target="terms", strategy="EXACT_MATCH")
-    return forge.resolve(label, scope="ontology", target="terms")

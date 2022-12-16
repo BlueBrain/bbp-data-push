@@ -404,13 +404,13 @@ def fetch_linked_resources(
         else:
             filters = {
                 "type": resource_type_list[0],
-                "atlasRelease": {"id": atlasRelease["@id"]},
+                "atlasRelease": {"@id": atlasRelease["@id"]},
             }
             if datasamplemodality_list:
                 filters["dataSampleModality"] = datasamplemodality_list[0]
             print("\nSearching forge with filters: ", filters)
             fetched_resources = forge.search(filters, limit=1000) # default limit=100
-        print("\nlen(fetched_resources): ", len(fetched_resources))
+        print("\nlen(fetched_resources):", len(fetched_resources))
     except KeyError as error:
         raise KeyError(f"KeyError in atlasRelease dict. {error}")
     except IndexError:
@@ -422,7 +422,7 @@ def fetch_linked_resources(
     return fetched_resources
 
 
-def return_contribution(forge):
+def return_contribution(forge, cellComp=False):
     """
     Create and return a Contribution Resource from the user informations extracted
     from its token.
@@ -445,7 +445,9 @@ def return_contribution(forge):
     user_family_name = token_info["family_name"]
     user_given_name = token_info["given_name"]
     user_email = token_info["email"]
+    user_id = f"{forge._store.endpoint}/realms/bbp/users/{token_info['preferred_username']}"
     log_info = []
+
     try:
         user_resource = forge.resolve(
             user_family_name, target="agents", scope="agent", type="Person"
@@ -455,7 +457,7 @@ def return_contribution(forge):
             "Error when resolving the Person Resource in the agent bucket project. "
             f"{e}"
         )
-    if not user_resource:
+    if cellComp or not user_resource:
         log_info.append(
             f"\nThe user {user_name} extracted from the user token did not "
             "correspond to an agent registered in the 'agents' project in Nexus."
@@ -471,7 +473,7 @@ def return_contribution(forge):
                 f"project '{forge._store.bucket}'. {e}"
             )
 
-        if user_resource:
+        if user_resource and not cellComp:
             log_info.append(
                 "A Person Resource with this user name has been found in the "
                 f"project '{forge._store.bucket}'. It will be used for the "
@@ -486,20 +488,22 @@ def return_contribution(forge):
                 "contributor in the dataset payload."
             )
             contributor = Resource(
-                type=["Agent", "Person"],
-                name=user_name,
-                familyName=user_family_name,
-                givenName=user_given_name,
-            )
-            if user_email:
-                contributor.user_email = user_email
-            try:
-                forge.register(contributor, "https://neuroshapes.org/dash/person")
-            except Exception as e:
-                raise Exception(
-                    "Error when registering the user Person-type resource into "
-                    f"Nexus. {e}"
-                )
+                type = ["Agent", "Person"],
+                name = user_name)
+            if not cellComp:
+                contributor.familyName = user_family_name
+                contributor.givenName = user_given_name
+                if user_email:
+                    contributor.user_email = user_email
+            else:
+                contributor.id = user_id
+            if not cellComp:
+                try:
+                    forge.register(contributor, "https://neuroshapes.org/dash/person")
+                except Exception as e:
+                    raise Exception(
+                        "Error when registering the user Person-type resource into "
+                        f"Nexus. {e}")
     else:
         # If multiple agents have the same family_name
         if isinstance(user_resource, list):
@@ -508,14 +512,18 @@ def return_contribution(forge):
         else:
             contributor = user_resource[0]
 
-    agent = {"@id": contributor.id, "@type": contributor.type}
-    hadRole = {
-        "@id": "nsg:BrainAtlasPipelineExecutionRole",
-        "label": "Brain Atlas Pipeline Executor role",
-    }
+    if not cellComp:
+        agent = {"@id": contributor.id, "@type": contributor.type}
+        hadRole = {
+            "@id": "nsg:BrainAtlasPipelineExecutionRole",
+            "label": "Brain Atlas Pipeline Executor role"}
+    else:
+        agent = forge.as_json(contributor)
+
     contribution_contributor = Resource(
-        type="Contribution", agent=agent, hadRole=hadRole
-    )
+        type="Contribution", agent=agent)
+    if not cellComp:
+        contribution_contributor.hadRole = hadRole
     # contribution = Resource(type="Contribution", agent=contributor)
     # my_derived_dataset.add_contribution(john.id, versioned=False)
 
@@ -587,7 +595,9 @@ def return_contribution(forge):
         agent=agent,
     )
 
-    contribution = [contribution_contributor, contribution_institution]
+    contribution = [contribution_contributor]
+    if not cellComp:
+        contribution.append(contribution_institution)
 
     return contribution, log_info
 
@@ -712,6 +722,21 @@ def return_activity_payload(
             activity_resource = activity_resource[0]
         else:
             activity_resource = activity_resource
+
+        # when the activity Resource is fetched from Nexus, the property
+        # 'value' needs to be mapped back to @value
+        if hasattr(activity_resource, "startedAtTime"):
+            # A Resource property that is a dict at the creation of the Resource
+            # becomes a Resource attribute after being synchronized on Nexus
+            if not isinstance(activity_resource.startedAtTime, dict):
+                if hasattr(activity_resource.startedAtTime, "@value") and hasattr(activity_resource.startedAtTime, "type"):
+                    value = getattr(activity_resource.startedAtTime, "@value")
+                    type = getattr(activity_resource.startedAtTime, "type")
+                    activity_resource.startedAtTime = forge.from_json({
+                        "@type": type,
+                        "@value": value}
+                    )
+
     else:
         try:
             softwareagent_resource = return_softwareagent(forge, activity_metadata)
@@ -739,7 +764,7 @@ def return_activity_payload(
         # Resource attribut after being synchronized on Nexus
         if isinstance(softwaresourcecode, dict):
             softwareSourceCode = {
-                "@type": softwaresourcecode["type"],
+                "@type": softwaresourcecode["@type"],
                 "codeRepository": softwaresourcecode["codeRepository"],
                 "programmingLanguage": softwaresourcecode["programmingLanguage"],
                 "version": activity_metadata["software_version"],
@@ -784,7 +809,8 @@ def return_activity_payload(
 
 def return_atlasrelease(
     forge,
-    atlasrelease_config_path,
+    new_atlas,
+    atlasrelease_config,
     atlasrelease_payloads,
     resource_tag=None,
     isSecondaryCLI=False,
@@ -811,25 +837,19 @@ def return_atlasrelease(
         "@value": f"{datetime.today().strftime('%Y-%m-%d')}",
     }
     atlasrelease = {"id": "", "tag": ""}
-    atlasrelease_choice = atlasrelease_payloads["atlasrelease_choice"]
-    if isinstance(atlasrelease_payloads["atlasrelease_choice"], dict):
+    if new_atlas:
+        if not atlasrelease_config:
+            raise Exception("New atlas requested but no config provided:", atlasrelease_config)
+        atlasrelease_choice = list(atlasrelease_config.keys())[0]
+    else:
+        atlasrelease_choice = atlasrelease_payloads["atlasrelease_choice"]
+
+    atlasrelease_payloads["atlasrelease_choice"] = atlasrelease_choice
+    if ((not new_atlas)  and  isinstance(atlasrelease_payloads["atlasrelease_choice"], dict)):
         atlasrelease_payloads["aibs_atlasrelease"] = atlasrelease_choice
     else:
         atlasrelease_payloads["aibs_atlasrelease"] = False
         ontology_choice = const.atlasrelease_dict[atlasrelease_choice]["ontology"]
-
-        try:
-            with open(atlasrelease_config_path, "r") as atlasrelease_config_file:
-                atlasrelease_config_file.seek(0)
-                atlasrelease_config = json.load(atlasrelease_config_file)
-        except json.decoder.JSONDecodeError as error:
-            raise json.decoder.JSONDecodeError(
-                f"JSONDecodeError when opening the file '{atlasrelease_config_path}'. "
-                f"{error}"
-            )
-        except FileNotFoundError:
-            atlasrelease_config = {}
-            pass
         ontology_id = None
         ontology_distribution = None
         ontology_derivation = None
@@ -838,11 +858,14 @@ def return_atlasrelease(
         atlas_release_metadata = None
         parcellationOntology = None
         parcellationVolume = None
-        # Check the content of atlasrelease_config_path
-        try:
-            atlasrelease = atlasrelease_config[atlasrelease_choice]
-            atlasrelease_resource = forge.retrieve(atlasrelease["@id"])
-            if atlasrelease_resource:
+        # Check the content of atlasrelease_config
+        if not new_atlas:
+            try:
+                atlasrelease = atlasrelease_config[atlasrelease_choice]
+                atlasrelease_resource = forge.retrieve(atlasrelease["@id"])
+                #print("atlasrelease_resource retrieved:", atlasrelease_resource)
+                if not atlasrelease_resource:
+                    raise KeyError("No resource found with id %s" % atlasrelease["@id"])
                 try:
                     atlasrelease_id = atlasrelease_resource.id
                     atlas_release_metadata = atlasrelease_resource._store_metadata
@@ -879,11 +902,10 @@ def return_atlasrelease(
                     raise AttributeError(
                         f"Error with the ontology resource fetched. {error}"
                     )
-            else:
-                atlasrelease_payloads["fetched"] = False
+            except KeyError:
+                print("The atlasRelease '%s' can not be found in\n%s" % (atlasrelease_choice, atlasrelease_config))
+                print("\nA new atlasRelease resource ('%s') will be created and pushed into Nexus" % const.atlasrelease_dict[atlasrelease_choice]["name"])
                 pass
-        except KeyError:
-            pass
 
         # ontology resource creation
         hierarchy_resource = Resource(
@@ -961,4 +983,72 @@ def return_atlasrelease(
         tag = f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}"
 
     atlasrelease_payloads["tag"] = tag
+
     return atlasrelease_payloads
+
+
+def create_unresolved_payload(forge, unresolved, unresolved_dir, path=None):
+    if not os.path.exists(unresolved_dir):
+        os.makedirs(unresolved_dir)
+    if path:
+        unresolved_filename = os.path.join(unresolved_dir, path.split("/")[-2])
+    else:
+        unresolved_filename = os.path.join(unresolved_dir, "densities")
+    print("%d unresolved resources, listed in %s" % (len(unresolved), unresolved_filename))
+    with open(unresolved_filename+".json", "w") as unresolved_file:
+        unresolved_file.write( json.dumps([forge.as_json(res) for res in unresolved]) )
+
+
+def return_base_annotation(t):
+    base_annotation = {
+        "@type": [
+            "Annotation",
+            t+"TypeAnnotation" ],
+        "hasBody": {"@type": [
+            "AnnotationBody",
+            t+"Type" ] },
+        "name": t+"-type Annotation"
+    }
+    return base_annotation
+
+
+def resolve_cellType(forge, t, name=None):
+    cellType = {
+        "@id": None,
+        "label": "not_resolved",
+        #"prefLabel": "" # to define
+    }
+    res = forge_resolve(forge, t, name)
+    if res:
+        cellType["@id"] = res.id
+        cellType["label"] = res.label
+    return cellType
+
+
+def get_layer(forge, label):
+    layer = []
+    l = "L"
+    if label.startswith(l) and "_" in label:
+        layers = label.split("_")[0]
+        ls = []
+        if len(layers) > 1:
+            ls.append(forge_resolve(forge, l+layers[1], label))
+            if len(layers) > 2: # 'L23' for instance
+                ls.append(forge_resolve(forge, l+layers[2], label))
+        for res in ls:
+            if res:
+                layer.append({"@id": res.id, "label": res.label})
+            else:
+                layer.append({"@id": None, "label": "not_resolved"})
+    return layer
+
+
+def forge_resolve(forge, label, name=None):
+    res = forge.resolve(label, scope="ontology", target="terms", strategy="EXACT_CASEINSENSITIVE_MATCH")
+    if not res:
+        from_ = "" if not name else f" from '{name}'"
+        print("\nlabel '%s'%s not resolved" % (label, from_))
+    else:
+        if res.label.upper() != label.upper():
+            print(f"\nDifferent case-insensitive resolved label: input '{label}', resolved '{res.label}'")
+    return res

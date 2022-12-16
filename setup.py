@@ -11,9 +11,9 @@ setup(
         "with the corresponding dataset files into Nexus."
     ),
     license="BBP-internal-confidential",
-    python_requires=">=3.6.0",
+    python_requires=">=3.7",
     install_requires=[
-        "nexusforge>=0.5.0",
+        "nexusforge>=0.8.0rc3",
         "click>=7.0",
         "numpy>=1.19",
         "h5py>=2.10.0",

@@ -522,24 +522,6 @@ def create_cell_record_resources(
                 L.error(f"{e}")
                 exit(1)
 
-            # if the activity Resource has been fetched from Nexus, the property
-            # 'value' need to be mapped back to @value
-            if hasattr(activity_resource, "startedAtTime"):
-                # A Resource property that is a dict at the creation of the Resource
-                # becomes a Resource attribut after being synchronized on Nexus
-                if not isinstance(activity_resource.startedAtTime, dict):
-                    if hasattr(activity_resource.startedAtTime, "@value") and hasattr(
-                        activity_resource.startedAtTime, "type"
-                    ):
-                        value = getattr(activity_resource.startedAtTime, "@value")
-                        type = getattr(activity_resource.startedAtTime, "type")
-                        activity_resource.startedAtTime = forge.from_json(
-                            {
-                                "@type": type,
-                                "@value": value,
-                            }
-                        )
-
             generation = {
                 "@type": "Generation",
                 "activity": {

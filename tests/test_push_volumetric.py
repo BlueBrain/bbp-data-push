@@ -38,7 +38,7 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "label": "Mus musculus",
             },
         },
-        "description": "Hybrid annotation volume from ccfv2 and ccfv3 at 25 µm. "
+        "description": "Hybrid annotation volume from ccfv2 and ccfv3 at 25 um"
         "The version replaces the leaf regions in ccfv3 with the leaf region of ccfv2, "
         "which have additional levels of hierarchy.",
         "isRegisteredIn": {
@@ -62,11 +62,11 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "fileExtension": "nrrd",
                 "dimension": [
                     {"@type": "ComponentDimension", "name": "label", "size": 1},
-                    {"@type": "SpaceDimension", "size": 1, "unitCode": "µm"},
-                    {"@type": "SpaceDimension", "size": 2, "unitCode": "µm"},
-                    {"@type": "SpaceDimension", "size": 3, "unitCode": "µm"},
+                    {"@type": "SpaceDimension", "size": 1, "unitCode": "um"},
+                    {"@type": "SpaceDimension", "size": 2, "unitCode": "um"},
+                    {"@type": "SpaceDimension", "size": 3, "unitCode": "um"},
                 ],
-                "resolution": {"unitCode": "µm", "value": 25.0},
+                "resolution": {"unitCode": "um", "value": 25.0},
                 "sampleType": "label",
                 "worldMatrix": [
                     25.0,
@@ -175,11 +175,11 @@ def test_create_volumetric_resources():
 
     volumetric_dict_simple = volumetric_dict(cell_density=False, nrrd_props=True)
 
-    result = vars(
-        create_volumetric_resources(
+    datasets = create_volumetric_resources(
             forge=forge,
             inputpath=[dataset_path[0]],
             config_path=config_path,
+            new_atlas=False,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
@@ -187,23 +187,25 @@ def test_create_volumetric_resources():
             link_regions_path=None,
             resource_tag=None,
             verbose=0,
-        )[dataset_returned][dataset_schema][-1]
-    )
-    for key in volumetric_dict_simple:
-        assert result[key] == volumetric_dict_simple[key]
+        )[dataset_returned][dataset_schema]
+    if len(datasets):
+        result = vars(datasets[-1])
+        for key in volumetric_dict_simple:
+            assert result[key] == volumetric_dict_simple[key]
 
     # test with every arguments
     cell_density_dict_fulloptions = volumetric_dict(cell_density=True, nrrd_props=True)
 
     cell_density_dict_fulloptions["description"] = (
         "Excitatory neuron density volume for the Hybrid annotation volume from ccfv2 "
-        "and ccfv3 at 25 µm."
+        "and ccfv3 at 25 um."
     )
 
     result = create_volumetric_resources(
         forge,
         dataset_path,
         config_path,
+        new_atlas=False,
         atlasrelease_config_path=atlasrelease_config_path,
         input_hierarchy=hierarchy_path,
         input_hierarchy_jsonld=None,
@@ -220,9 +222,10 @@ def test_create_volumetric_resources():
         if vars(dataset)["name"] == "Excitatory Neuron Density":
             excitatory_neuron_dataset = vars(dataset)
 
-    # result return the payload from only the last dataset processed
-    for key in cell_density_dict_fulloptions:
-        assert excitatory_neuron_dataset[key] == cell_density_dict_fulloptions[key]
+    if excitatory_neuron_dataset:
+        # result return the payload from only the last dataset processed
+        for key in cell_density_dict_fulloptions:
+            assert excitatory_neuron_dataset[key] == cell_density_dict_fulloptions[key]
 
     # Check every exceptions :
 
@@ -232,6 +235,7 @@ def test_create_volumetric_resources():
             forge,
             [dataset_path[0]],
             wrong_config_key,
+            new_atlas=False,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
@@ -248,6 +252,7 @@ def test_create_volumetric_resources():
             forge,
             [empty_folder],
             config_data_emptydata,
+            new_atlas=False,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
@@ -264,6 +269,7 @@ def test_create_volumetric_resources():
             forge,
             [wrong_dataset_name],
             config_path,
+            new_atlas=False,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
@@ -280,6 +286,7 @@ def test_create_volumetric_resources():
             forge,
             [dataset_path[0]],
             config_data_notfound,
+            new_atlas=False,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
@@ -296,6 +303,7 @@ def test_create_volumetric_resources():
             forge,
             [folder_annotation],
             config_wrongdatatype,
+            new_atlas=False,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
@@ -312,6 +320,7 @@ def test_create_volumetric_resources():
             forge,
             [neuron_density_file],
             config_wrongdatatype,
+            new_atlas=False,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
@@ -328,6 +337,7 @@ def test_create_volumetric_resources():
             forge,
             [corrupted_data_header],
             config_corruptedData,
+            new_atlas=False,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
@@ -356,7 +366,7 @@ def test_add_nrrd_props():
     )
     config = {
         "file_extension": "nrrd",
-        "sampling_space_unit": "µm",
+        "sampling_space_unit": "um",
         "sampling_period": 30,
         "sampling_time_unit": "ms",
     }

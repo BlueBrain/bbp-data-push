@@ -16,12 +16,11 @@ subject = {
     "@type": "Subject",
     "species": {
         "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
-        "label": "Mus musculus",
-    },
+        "label": "Mus musculus"},
 }
 atlas_spatial_reference_system_id = (
-    "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system"
-)
+    "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system") # no need for '_ccfv3', it's unique across all Allen versions
+
 atlas_spatial_reference_system_type = [
     "BrainAtlasSpatialReferenceSystem",
     "AtlasSpatialReferenceSystem",
@@ -85,6 +84,13 @@ atlasrelease_ccfv3 = {
     "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
 }
 atlasrelease_ccfv2v3 = [atlasrelease_ccfv2, atlasrelease_ccfv3]
+atlasrelease_ccfv3_split = {
+    "@id": (
+        "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
+        "c96c71a8-4c0d-4bc1-8a1a-141d9ed6693d"
+    ),
+    "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
+}
 atlasrelease_hybrid_l23split = {
     "@id": (
         "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -110,7 +116,9 @@ hierarchy_dict = {
 # ================== atlasRelease constants ==================
 
 # Parcellations used by atlasReleases
+annotation_hybrid = "annotation_hybrid"
 annotation_hybrid_l23split = "annotation_hybrid_l23split"
+annotation_ccfv2_l23split = "annotation_ccfv2_l23split"
 annotation_ccfv3_l23split = "annotation_ccfv3_l23split"
 
 # average brain model ccfv3
@@ -146,6 +154,14 @@ volumetric_type = "VolumetricDataLayer"
 ontology_type = "ParcellationOntology"
 default_sampling_period = 30
 default_sampling_time_unit = "ms"
+config = {
+    "sampling_space_unit": SPATIAL_UNIT,
+    "sampling_period": default_sampling_period,
+    "sampling_time_unit": default_sampling_time_unit, }
+
+cell_densiry_dsm = "quantity"
+me_type = ["NeuronDensity", volumetric_type, "CellDensityDataLayer", "METypeDensity"]
+voxel_vol = "intensity"
 
 # ========================= Mesh constants =========================
 mesh_type = "Mesh"
@@ -272,12 +288,25 @@ def return_volumetric_dict(volumetric_datasets):
 
     # Dictionary containing the possible volumetric dataset to push
     linprog = "inhibitory_neuron_densities_linprog_ccfv2_correctednissl"
+    linprog_trans = "inhibitory_neuron_densities_linprog_l23split_transplant_correctednissl"
     preserveprop = "inhibitory_neuron_densities_preserveprop_ccfv2_correctednissl"
     cell_density = "overall_cell_density_ccfv2_correctednissl"
     volumes = volumetric_datasets
     try:
         volumetric_dict = {
             "parcellations": {
+                f"{volumes[annotation_ccfv2_l23split]}": {
+                    "name": annotation_ccfv2_l23split,
+                    "type": [
+                        dataset_type,
+                        volumetric_type,
+                        "BrainParcellationDataLayer",
+                    ],
+                    "description": description_ccfv2_split,
+                    "atlasrelease": "atlasrelease_ccfv3split",
+                    "voxel_type": "label",
+                    "datasamplemodality": "parcellationId",
+                },
                 f"{volumes['annotation_hybrid']}": {
                     "name": "annotation_hybrid",
                     "type": [
@@ -398,7 +427,7 @@ def return_volumetric_dict(volumetric_datasets):
                         f"{VOXELS_RESOLUTION} {SPATIAL_UNIT}"
                     ),
                     "atlasrelease": atlasrelease_ccfv3,
-                    "voxel_type": "intensity",
+                    "voxel_type": voxel_vol,
                     "datasamplemodality": "luminance",
                 }
             },
@@ -414,8 +443,8 @@ def return_volumetric_dict(volumetric_datasets):
                     "description": description_hybrid,
                     "derivation": None,
                     "atlasrelease": atlasrelease_hybrid_l23split,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['neuron_densities_hybrid']}": {
                     "name": "neuron_densities_hybrid",
@@ -428,8 +457,8 @@ def return_volumetric_dict(volumetric_datasets):
                     "description": description_hybrid,
                     "derivation": None,
                     "atlasrelease": atlasrelease_hybrid_l23split,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes[cell_density]}": {
                     "name": cell_density,
@@ -443,8 +472,8 @@ def return_volumetric_dict(volumetric_datasets):
                     "the corrected nissl volume",
                     "derivation": derivation_correctednissl,
                     "atlasrelease": atlasrelease_ccfv2,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['cell_densities_ccfv2_correctednissl']}": {
                     "name": "cell_densities_ccfv2_correctednissl",
@@ -458,8 +487,8 @@ def return_volumetric_dict(volumetric_datasets):
                     "the corrected nissl volume",
                     "derivation": f"{volumes[cell_density]}",
                     "atlasrelease": atlasrelease_ccfv2,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['neuron_densities_ccfv2_correctednissl']}": {
                     "name": "neuron_densities_ccfv2_correctednissl",
@@ -476,8 +505,26 @@ def return_volumetric_dict(volumetric_datasets):
                         "neuron_density.nrrd",
                     ),
                     "atlasrelease": atlasrelease_ccfv2,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
+                },
+                f"{volumes['glia_cell_densities_l23split_transplant_correctednissl']}": {
+                    "name": "glia_cell_densities_l23split_transplant_correctednissl",
+                    "type": [
+                        dataset_type,
+                        volumetric_type,
+                        "CellDensityDataLayer",
+                        "GliaCellDensity",
+                    ],
+                    "description": f"{description_ccfv3_split}. It has been generated using "
+                    "the corrected nissl volume",
+                    "derivation": (
+                        f"{volumes['cell_densities_ccfv2_correctednissl']}",
+                        "neuron_density.nrrd",
+                    ),
+                    "atlasrelease": atlasrelease_ccfv3_split,
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes[linprog]}": {
                     "name": linprog,
@@ -494,8 +541,26 @@ def return_volumetric_dict(volumetric_datasets):
                         "neuron_density.nrrd",
                     ),
                     "atlasrelease": atlasrelease_ccfv2,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
+                },
+                f"{volumes[linprog_trans]}": {
+                    "name": linprog_trans,
+                    "type": [
+                        dataset_type,
+                        volumetric_type,
+                        "CellDensityDataLayer",
+                        "GliaCellDensity",
+                    ],
+                    "description": f"{description_ccfv3_split}. It has been generated with "
+                    "the corrected nissl volume and using the algorithm linprog",
+                    "derivation": (
+                        f"{volumes['cell_densities_ccfv3_correctednissl']}",
+                        "neuron_density.nrrd",
+                    ),
+                    "atlasrelease": atlasrelease_ccfv3_split,
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes[preserveprop]}": {
                     "name": preserveprop,
@@ -513,83 +578,58 @@ def return_volumetric_dict(volumetric_datasets):
                         "neuron_density.nrrd",
                     ),
                     "atlasrelease": atlasrelease_ccfv2,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['mtypes_densities_profile_ccfv2_correctednissl']}": {
                     "name": "mtypes_densities_profile_ccfv2_correctednissl",
-                    "type": [
-                        "NeuronDensity",
-                        volumetric_type,
-                        "CellDensityDataLayer",
-                        "MTypeDensity",
-                    ],
+                    "type": me_type,
                     "description": f"{description_ccfv2}. It has been generated from "
                     "density profiles and using the corrected nissl volume",
                     "derivation": None,
                     "atlasrelease": atlasrelease_ccfv2,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['mtypes_densities_probability_map_ccfv2_correctednissl']}": {
                     "name": "mtypes_densities_probability_map_ccfv2_correctednissl",
-                    "type": [
-                        "NeuronDensity",
-                        volumetric_type,
-                        "CellDensityDataLayer",
-                        "MTypeDensity",
-                    ],
+                    "type": me_type,
                     "description": f"{description_ccfv2}. It has been generated from a "
                     "probability mapping and using the corrected nissl volume",
                     "derivation": None,
                     "atlasrelease": atlasrelease_ccfv2,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['mtypes_densities_probability_map_ccfv2_l23split_correctednissl']}": {
                     "name": "mtypes_densities_probability_map_ccfv2_l23split_correctednissl",
-                    "type": [
-                        "NeuronDensity",
-                        volumetric_type,
-                        "CellDensityDataLayer",
-                        "MTypeDensity",
-                    ],
+                    "type": me_type,
                     "description": f"{description_ccfv2_split}. It has been generated from a "
                     "probability mapping and using the corrected nissl volume",
                     "derivation": None,
                     "atlasrelease": atlasrelease_ccfv2,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['mtypes_densities_probability_map_transplant_correctednissl']}": {
                     "name": "mtypes_densities_probability_map_transplant_correctednissl",
-                    "type": [
-                        "NeuronDensity",
-                        volumetric_type,
-                        "CellDensityDataLayer",
-                        "MTypeDensity",
-                    ],
+                    "type": me_type,
                     "description": f"{description_ccfv3}. It has been generated from a "
                     "probability mapping, using the corrected nissl volume and transplanted",
                     "derivation": None,
                     "atlasrelease": atlasrelease_ccfv3,
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['mtypes_densities_probability_map_l23split_transplant_correctednissl']}": {
                     "name": "mtypes_densities_probability_map_l23split_transplant_correctednissl",
-                    "type": [
-                        "NeuronDensity",
-                        volumetric_type,
-                        "CellDensityDataLayer",
-                        "MTypeDensity",
-                    ],
+                    "type": me_type,
                     "description": f"{description_ccfv3_split}. It has been generated from a "
                     "probability mapping, using the corrected nissl volume and transplanted",
                     "derivation": None,
-                    "atlasrelease": "atlasrelease_ccfv3split",
-                    "voxel_type": "intensity",
-                    "datasamplemodality": "quantity",
+                    "atlasrelease": atlasrelease_ccfv3_split,
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
                 },
             },
         }
