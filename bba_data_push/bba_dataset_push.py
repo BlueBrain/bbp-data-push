@@ -18,6 +18,7 @@ from bba_data_push.push_brainmesh import create_mesh_resources
 from bba_data_push.push_sonata_cellrecordseries import create_cell_record_resources
 from bba_data_push.push_json_regionsummary import create_regionsummary_resources
 from bba_data_push.push_cellComposition import create_densityPayloads, create_cellCompositionVolume, create_cellCompositionSummary, create_cellComposition
+from bba_data_push.push_cellComposition import COMP_SCHEMA
 from bba_data_push import constants as const
 from bba_data_push.logging import log_args, close_handler
 from bba_data_push import __version__
@@ -521,7 +522,7 @@ def push_cellcomposition(
     summary_path,
     name, description,
     resource_tag=None
-):
+) -> str:
 
     cellComps = {"tag": resource_tag}
     resources_payloads = create_densityPayloads(ctx.obj["forge"],
@@ -577,6 +578,13 @@ def push_cellcomposition(
 
     if resources_payloads.get("activity"):
         _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+
+    cellComp_id = ""
+    if getattr(cellComps[COMP_SCHEMA], 'id', None):
+        cellComp_id = cellComps[COMP_SCHEMA].id
+    else:
+        print(f"The following {COMP_SCHEMA} has no id, probably it has not been registered:\n{cellComps[COMP_SCHEMA]}")
+    return cellComp_id
 
 def start():
     initialize_pusher_cli(obj={})
