@@ -36,7 +36,7 @@ COMMON_TYPES = ["Dataset", "Entity"]
 
 subject = Resource.from_json(const.subject)
 
-L = create_log_handler(__name__, "./update_resources.log")
+L = create_log_handler(__name__, "./push_cellComposition.log")
 
 region_id = "http://api.brain-map.org/api/v2/data/Structure/997"
 region_name = "root"
@@ -231,7 +231,7 @@ def create_cellCompositionVolume(
             et_name = et["label"]
             dens_name = get_densName(mt_name, et_name)
             if et[PART_KEY][0].get("@id"):
-                print(f"Density {dens_name} has an '@id', will not be modified")
+                print(f"Density {dens_name} has an '@id' key, will not be modified")
                 continue
 
             if dens_name in cellComps[DENSITY_SCHEMA]:
@@ -243,7 +243,7 @@ def create_cellCompositionVolume(
                     et_part["@type"] = res.type
                     et_part["_rev"] = res._store_metadata["_rev"]
                 else:
-                    print(f"Resource {dens_name} has no 'id', maybe it has not been registered.")
+                    print(f"Resource {dens_name} has no 'id', probably it has not been registered.")
             else:
                 print(f"No Resource {dens_name} found in cellComps[{DENSITY_SCHEMA}].")
 

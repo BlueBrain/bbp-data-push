@@ -141,6 +141,10 @@ def _push_activity_to_Nexus(activity_resource, forge):
             exit(1)
 
 
+def validate_token(ctx, param, value):
+    if len(value) < 1:
+        raise click.BadParameter("The string provided is empty'")
+
 @click.group()
 @click.version_option(__version__)
 @click.option("-v", "--verbose", count=True)
@@ -163,12 +167,19 @@ def _push_activity_to_Nexus(activity_resource, forge):
 @click.option("--nexus-proj", default="atlas", help="The Nexus project to push into")
 @click.option(
     "--nexus-token",
+    type=click.STRING,
+    callback=validate_token,
     required=True,
     help="Value of the Nexus token",
 )
 @click.pass_context
 @log_args(L)
 def initialize_pusher_cli(
+    ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
+):
+    initialize_pusher_cli_plain(ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
+
+def initialize_pusher_cli_plain(
     ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
 ):
     """Run the dataset pusher CLI starting by the Initialisation of the Forge python
@@ -523,7 +534,9 @@ def push_cellcomposition(
     name, description,
     resource_tag=None
 ) -> str:
+    return push_cellcomposition_plain(ctx, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None)
 
+def push_cellcomposition_plain(ctx, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None) -> str:
     cellComps = {"tag": resource_tag}
     resources_payloads = create_densityPayloads(ctx.obj["forge"],
         atlasrelease_id,
