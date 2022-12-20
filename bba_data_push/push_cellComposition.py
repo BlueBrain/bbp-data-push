@@ -109,6 +109,11 @@ def create_densityPayloads(
         print(f"\nParsing {len(ets)} E-types for M-type '{mt_name}'...")
         for et in ets:
             et_name = et["label"]
+            e_ct = resolve_cellType(forge, et_name)
+            if not e_ct["@id"]:
+                unresolved.append( et )
+                continue
+
             et_part = et[PART_KEY][0]
             if not et_part.get(PATH_KEY):
                 print(f"No 'path' available for m-type {mt_name}, e-type {et_name}. Skipping such density!")
@@ -127,10 +132,6 @@ def create_densityPayloads(
             file_ext = os.path.splitext(os.path.basename(filepath))[1][1:]
             config["file_extension"] = file_ext
 
-            e_ct = resolve_cellType(forge, et_name)
-            if not e_ct["@id"]:
-                unresolved.append( et )
-                continue
             e_annotation = get_cellAnnotation("E", e_ct)
             met = Resource(
                 type = const.me_type,
@@ -200,7 +201,6 @@ def create_cellCompositionVolume(
     cell_compostion_volume_release.atlasRelease = get_atlasrelease_dict(atlasrelease_id)
 
     cell_compostion_volume_release.about = ["https://bbp.epfl.ch/ontologies/core/bmo/METypeDensity"]
-    #cell_compostion_volume_release.atlasRelease = Resource(id=atlas_release.id, type=atlas_release.type, _rev=atlas_release._store_metadata._rev)
     #cell_compostion_volume_release.atlasSpatialReferenceSystem = Resource(id=atlas_release.spatialReferenceSystem.id,
     #    type=atlas_release.spatialReferenceSystem.type,
     #    _rev=atlas_release._store_metadata._rev)
@@ -230,6 +230,10 @@ def create_cellCompositionVolume(
         for et in mt[PART_KEY]:
             et_name = et["label"]
             dens_name = get_densName(mt_name, et_name)
+            if et[PART_KEY][0].get("@id"):
+                print(f"Density {dens_name} has an '@id', will not be modified")
+                continue
+
             if dens_name in cellComps[DENSITY_SCHEMA]:
                 res = cellComps[DENSITY_SCHEMA][dens_name]
                 if getattr(res, 'id', None):
