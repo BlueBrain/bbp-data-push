@@ -11,14 +11,13 @@ include:
       - /ci/jobs/build-package.yml
       - /ci/jobs/build-wheels.yml
       - /ci/jobs/publish-package.yml
-      - /ci/jobs/tag.yml
+      #- /ci/jobs/tag.yml
 
 stages:
   - unit-test
   - lint-check
   - build
   - publish
-  - release
 
 build-package:
   rules:
@@ -26,19 +25,18 @@ build-package:
 publish-package:
   rules:
     - if: $CI_COMMIT_TAG
-tag:
+.tag:
   rules:
     - if: $CI_COMMIT_TAG
   variables:
     OAUTH2_TOKEN: $OAUTH2_TOKEN
 
-before_script:
-  - pip install -r requirements.txt
-  - pip install .[dev]
-
 unit_test:
   stage: unit-test
   extends: .unit-tests
+  before_script:
+    - pip install -r requirements.txt
+    - pip install .[dev]
   variables:
    SRC_PROJECT: '$CI_PROJECT_PATH'
    TEST_FOLDER: 'tests'
