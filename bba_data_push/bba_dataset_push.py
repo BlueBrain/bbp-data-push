@@ -144,40 +144,35 @@ def _push_activity_to_Nexus(activity_resource, forge):
 def validate_token(ctx, param, value):
     if len(value) < 1:
         raise click.BadParameter("The string provided is empty'")
+    else:
+        return value
 
 @click.group()
 @click.version_option(__version__)
 @click.option("-v", "--verbose", count=True)
-@click.option(
-    "--forge-config-file",
-    type=click.Path(),
-    default=(
-        "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/"
-        "notebooks/use-cases/prod-forge-nexus.yml"
-    ),
-    help="Path to the configuration file used to instantiate the Forge",
-)
-@click.option(
-    "--nexus-env",
-    default="prod",
-    help="Nexus environment to use, can be 'dev',"
-    "'staging', 'prod' or the URL of a custom environment",
-)
+@click.option("--forge-config-file",
+    type = click.Path(),
+    default = ("https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/"
+        "notebooks/use-cases/prod-forge-nexus.yml"),
+    help = "Path to the configuration file used to instantiate the Forge",)
+@click.option("--nexus-env",
+    default = "prod",
+    help = "Nexus environment to use, can be 'dev',"
+    "'staging', 'prod' or the URL of a custom environment",)
 @click.option("--nexus-org", default="bbp", help="The Nexus organisation to push into")
 @click.option("--nexus-proj", default="atlas", help="The Nexus project to push into")
-@click.option(
-    "--nexus-token",
-    type=click.STRING,
-    callback=validate_token,
-    required=True,
-    help="Value of the Nexus token",
-)
+@click.option("--nexus-token",
+    type = click.STRING,
+    callback = validate_token,
+    required = True,
+    help = "Value of the Nexus token",)
 @click.pass_context
 @log_args(L)
 def initialize_pusher_cli(
     ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
 ):
-    initialize_pusher_cli_plain(ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
+    ctx_obj = ctx.obj
+    initialize_pusher_cli_plain(ctx_obj, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
 
 def initialize_pusher_cli_plain(
     ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
@@ -212,14 +207,13 @@ def initialize_pusher_cli_plain(
     try:
         L.info("Initializing the forge...")
         forge = KnowledgeGraphForge(
-            forge_config_file, endpoint=nexus_env, bucket=bucket, token=nexus_token
-        )
+            forge_config_file, endpoint=nexus_env, bucket=bucket, token=nexus_token)
     except Exception as e:
         L.error(f"Error when initializing the forge. {e}")
         exit(1)
 
-    ctx.obj["forge"] = forge
-    ctx.obj["verbose"] = L.level
+    ctx["forge"] = forge
+    ctx["verbose"] = L.level
 
     close_handler(L)
 
@@ -312,10 +306,10 @@ def push_volumetric(
     linked atlasRelease and ontology resources. Tag all these resources with the input
     tag or, if not provided, with a timestamp\n
     """
-    L.setLevel(ctx.obj["verbose"])
+    L.setLevel(ctx["verbose"])
     L.info("Filling the metadata of the volumetric payloads...")
     resources_payloads = create_volumetric_resources(
-        ctx.obj["forge"],
+        ctx["forge"],
         dataset_path,
         config_path,
         new_atlas,
@@ -325,15 +319,15 @@ def push_volumetric(
         provenance_metadata_path,
         link_regions_path,
         resource_tag,
-        ctx.obj["verbose"],
+        ctx["verbose"],
     )
 
     #print("\nresources_payloads[\"activity\"]: ", resources_payloads["activity"])
     if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])
 
     _integrate_datasets_to_Nexus(
-        ctx.obj["forge"],
+        ctx["forge"],
         resources_payloads["datasets_toUpdate"],
         resources_payloads["datasets_toPush"],
         resources_payloads["tag"],
@@ -368,10 +362,10 @@ def push_meshes(
     atlasRelease and ontology resources. Tag all these resources with the input tag or,
     if not provided, with a timestamp\n
     """
-    L.setLevel(ctx.obj["verbose"])
+    L.setLevel(ctx["verbose"])
     L.info("Filling the metadata of the mesh payloads...")
     resources_payloads = create_mesh_resources(
-        ctx.obj["forge"],
+        ctx["forge"],
         dataset_path,
         config_path,
         atlasrelease_config_path,
@@ -380,14 +374,14 @@ def push_meshes(
         provenance_metadata_path,
         link_regions_path,
         resource_tag,
-        ctx.obj["verbose"],
+        ctx["verbose"],
     )
 
     if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])
 
     _integrate_datasets_to_Nexus(
-        ctx.obj["forge"],
+        ctx["forge"],
         resources_payloads["datasets_toUpdate"],
         resources_payloads["datasets_toPush"],
         resources_payloads["tag"],
@@ -422,10 +416,10 @@ def push_regionsummary(
     linked atlasRelease and ontology resources. Tag all these resources with the input
     tag or, if not provided, with a timestamp\n
     """
-    L.setLevel(ctx.obj["verbose"])
+    L.setLevel(ctx["verbose"])
     L.info("Filling the metadata of the RegionSummary payload...")
     resources_payloads = create_regionsummary_resources(
-        ctx.obj["forge"],
+        ctx["forge"],
         dataset_path,
         config_path,
         atlasrelease_config_path,
@@ -434,14 +428,14 @@ def push_regionsummary(
         provenance_metadata_path,
         link_regions_path,
         resource_tag,
-        ctx.obj["verbose"],
+        ctx["verbose"],
     )
 
     if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])
 
     _integrate_datasets_to_Nexus(
-        ctx.obj["forge"],
+        ctx["forge"],
         resources_payloads["datasets_toUpdate"],
         resources_payloads["datasets_toPush"],
         resources_payloads["tag"],
@@ -468,10 +462,10 @@ def push_cellrecords(
     their linked atlasRelease and ontology resources. Tag all these resources with the
     input tag or, if not provided, with a timestamp\n
     """
-    L.setLevel(ctx.obj["verbose"])
+    L.setLevel(ctx["verbose"])
     L.info("Filling the metadata of the CellRecord payloads...")
     resources_payloads = create_cell_record_resources(
-        ctx.obj["forge"],
+        ctx["forge"],
         dataset_path,
         config_path,
         atlasrelease_config_path,
@@ -479,14 +473,14 @@ def push_cellrecords(
         hierarchy_jsonld_path,
         provenance_metadata_path,
         resource_tag,
-        ctx.obj["verbose"],
+        ctx["verbose"],
     )
 
     if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])
 
     _integrate_datasets_to_Nexus(
-        ctx.obj["forge"],
+        ctx["forge"],
         resources_payloads["datasets_toUpdate"],
         resources_payloads["datasets_toPush"],
         resources_payloads["tag"],
@@ -534,23 +528,28 @@ def push_cellcomposition(
     name, description,
     resource_tag=None
 ) -> str:
-    return push_cellcomposition_plain(ctx, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None)
+    """Create a CellComposition resource payload and push it along with the "
+    corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
+    Tag all these resources with the input tag or, if not provided, with a timestamp\n
+    """
+    ctx_obj = ctx.obj
+    return push_cellcomposition_plain(ctx_obj, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None)
 
 def push_cellcomposition_plain(ctx, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None) -> str:
     cellComps = {"tag": resource_tag}
-    resources_payloads = create_densityPayloads(ctx.obj["forge"],
+    resources_payloads = create_densityPayloads(ctx["forge"],
         atlasrelease_id,
         volume_path,
         resource_tag,
         cellComps,
-        ctx.obj["verbose"])
+        ctx["verbose"])
 
-    _integrate_datasets_to_Nexus(ctx.obj["forge"],
+    _integrate_datasets_to_Nexus(ctx["forge"],
         resources_payloads["datasets_toUpdate"],
         resources_payloads["datasets_toPush"],
         resources_payloads["tag"])
 
-    create_cellCompositionVolume(ctx.obj["forge"],
+    create_cellCompositionVolume(ctx["forge"],
         atlasrelease_id,
         volume_path,
         resources_payloads,
@@ -558,39 +557,39 @@ def push_cellcomposition_plain(ctx, atlasrelease_id, volume_path, summary_path, 
         description,
         resource_tag,
         cellComps,
-        ctx.obj["verbose"])
+        ctx["verbose"])
 
     if summary_path:
-        create_cellCompositionSummary(ctx.obj["forge"],
+        create_cellCompositionSummary(ctx["forge"],
             atlasrelease_id,
             resources_payloads,
             summary_path,
             name,
             description,
             cellComps,
-            ctx.obj["verbose"])
+            ctx["verbose"])
 
-    _integrate_datasets_to_Nexus(ctx.obj["forge"],
+    _integrate_datasets_to_Nexus(ctx["forge"],
         cellComps["datasets_toUpdate"],
         cellComps["datasets_toPush"],
         cellComps["tag"])
 
-    create_cellComposition(ctx.obj["forge"],
+    create_cellComposition(ctx["forge"],
         atlasrelease_id,
         resources_payloads,
         name,
         description,
         resource_tag,
         cellComps,
-        ctx.obj["verbose"])
+        ctx["verbose"])
 
-    _integrate_datasets_to_Nexus(ctx.obj["forge"],
+    _integrate_datasets_to_Nexus(ctx["forge"],
         cellComps["datasets_toUpdate"],
         cellComps["datasets_toPush"],
         cellComps["tag"])
 
     if resources_payloads.get("activity"):
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])
 
     cellComp_id = ""
     if getattr(cellComps[COMP_SCHEMA], 'id', None):

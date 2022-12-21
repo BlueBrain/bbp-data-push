@@ -120,7 +120,6 @@ def create_densityPayloads(
                 continue
 
             filepath = et_part[PATH_KEY]
-            #filepath = "/gpfs/bbp.cscs.ch/data/project/proj39/nexus/bbp/atlas/1/6/a/6/e/b/b/1/L1_SLAC-CNAC_densities_v3.nrrd"
             header = None
             try:
                 header = nrrd.read_header(filepath)
@@ -230,8 +229,13 @@ def create_cellCompositionVolume(
         for et in mt[PART_KEY]:
             et_name = et["label"]
             dens_name = get_densName(mt_name, et_name)
-            if et[PART_KEY][0].get("@id"):
-                print(f"Density {dens_name} has an '@id' key, will not be modified")
+            et_part = et[PART_KEY][0]
+            if et_part.get("@id"):
+                has_id = f"Density {dens_name} has an '@id' key, hence will not be modified"
+                if et_part.get(PATH_KEY):
+                    print(f"Warning! {has_id} and the path provided will be ignored")
+                else:
+                    print(has_id)
                 continue
 
             if dens_name in cellComps[DENSITY_SCHEMA]:
