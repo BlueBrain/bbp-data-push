@@ -18,9 +18,8 @@ volume_path = folder+"cellCompVolume_path"
 summary_path = folder+"cellCompSummary_density"
 
 def test_push_cellcomposition():
-    ctx = {}
     verbose = 2
 
-    initialize_pusher_cli_plain(ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
-    cc_id = push_cellcomposition_plain(ctx, atlasrelease_id, volume_path, summary_path, "my_name", "my_description")
-    print("The Nexus ID of the registered CellComposition is", cc_id)
+    forge, verbose_L = initialize_pusher_cli_plain(verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
+    cc_id = push_cellcomposition_plain(forge, verbose_L, atlasrelease_id, volume_path, summary_path, "my_name", "my_description")
+    L.info("The Nexus ID of the registered CellComposition is", cc_id)

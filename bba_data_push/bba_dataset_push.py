@@ -171,11 +171,12 @@ def validate_token(ctx, param, value):
 def initialize_pusher_cli(
     ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
 ):
-    ctx_obj = ctx.obj
-    initialize_pusher_cli_plain(ctx_obj, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
+    forge, verbose_L = initialize_pusher_cli_plain(verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
+    ctx.obj["forge"] = forge
+    ctx.obj["verbose"] = verbose_L
 
 def initialize_pusher_cli_plain(
-    ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
+    verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
 ):
     """Run the dataset pusher CLI starting by the Initialisation of the Forge python
     framework to communicate with Nexus.\n
@@ -212,11 +213,9 @@ def initialize_pusher_cli_plain(
         L.error(f"Error when initializing the forge. {e}")
         exit(1)
 
-    ctx["forge"] = forge
-    ctx["verbose"] = L.level
-
     close_handler(L)
 
+    return forge, L.level
 
 def base_resource(f):
     f = click.option(
@@ -532,24 +531,23 @@ def push_cellcomposition(
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
     Tag all these resources with the input tag or, if not provided, with a timestamp\n
     """
-    ctx_obj = ctx.obj
-    return push_cellcomposition_plain(ctx_obj, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None)
+    return push_cellcomposition_plain(ctx.obj["forge"], ctx.obj["verbose"], atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None)
 
-def push_cellcomposition_plain(ctx, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None) -> str:
+def push_cellcomposition_plain(forge, verbose, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None) -> str:
     cellComps = {"tag": resource_tag}
-    resources_payloads = create_densityPayloads(ctx["forge"],
+    resources_payloads = create_densityPayloads(forge,
         atlasrelease_id,
         volume_path,
         resource_tag,
         cellComps,
-        ctx["verbose"])
+        verbose)
 
-    _integrate_datasets_to_Nexus(ctx["forge"],
+    _integrate_datasets_to_Nexus(forge,
         resources_payloads["datasets_toUpdate"],
         resources_payloads["datasets_toPush"],
         resources_payloads["tag"])
 
-    create_cellCompositionVolume(ctx["forge"],
+    create_cellCompositionVolume(forge,
         atlasrelease_id,
         volume_path,
         resources_payloads,
@@ -557,39 +555,39 @@ def push_cellcomposition_plain(ctx, atlasrelease_id, volume_path, summary_path, 
         description,
         resource_tag,
         cellComps,
-        ctx["verbose"])
+        verbose)
 
     if summary_path:
-        create_cellCompositionSummary(ctx["forge"],
+        create_cellCompositionSummary(forge,
             atlasrelease_id,
             resources_payloads,
             summary_path,
             name,
             description,
             cellComps,
-            ctx["verbose"])
+            verbose)
 
-    _integrate_datasets_to_Nexus(ctx["forge"],
+    _integrate_datasets_to_Nexus(forge,
         cellComps["datasets_toUpdate"],
         cellComps["datasets_toPush"],
         cellComps["tag"])
 
-    create_cellComposition(ctx["forge"],
+    create_cellComposition(forge,
         atlasrelease_id,
         resources_payloads,
         name,
         description,
         resource_tag,
         cellComps,
-        ctx["verbose"])
+        verbose)
 
-    _integrate_datasets_to_Nexus(ctx["forge"],
+    _integrate_datasets_to_Nexus(forge,
         cellComps["datasets_toUpdate"],
         cellComps["datasets_toPush"],
         cellComps["tag"])
 
     if resources_payloads.get("activity"):
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], forge)
 
     cellComp_id = ""
     if getattr(cellComps[COMP_SCHEMA], 'id', None):

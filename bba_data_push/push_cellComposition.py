@@ -321,6 +321,11 @@ def create_cellComposition(
     schema = COMP_SCHEMA
     schema_id = forge._model.schema_id(type = schema)
 
+    for vol_sum in [VOLUME_SCHEMA, SUMMARY_SCHEMA]:
+        if not getattr(cellComps[vol_sum], 'id', None):
+            L.error(f"Error: the {vol_sum} has no 'id', probably it has not been registered")
+            exit(1)
+
     for action in actions:
         cellComps.update({"datasets_"+action: {schema_id : []}})
 
