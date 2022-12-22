@@ -83,18 +83,18 @@ def create_densityPayloads(
     no_key = f"At least one '{PART_KEY}' key is required"
     len_vc = len(volume_content)
     if len_vc < 1:
-        print(f"No key found in {volume_path}! {no_key}")
+        L.info(f"No key found in {volume_path}! {no_key}")
         exit(1)
     if PART_KEY not in volume_content:
-        print(f"No {PART_KEY} key found anong the {len_vc} keys in {volume_path}! {no_key}")
+        L.info(f"No {PART_KEY} key found anong the {len_vc} keys in {volume_path}! {no_key}")
         exit(1)
     if len_vc > 1:
-            print(f"WARNING! More than one key ({len_vc}) found in {volume_path}, only '{PART_KEY}' will be considered")
+            L.info(f"WARNING! More than one key ({len_vc}) found in {volume_path}, only '{PART_KEY}' will be considered")
 
     config = copy.deepcopy(const.config)
     mts = volume_content[PART_KEY]
     unresolved = []
-    print(f"Parsing {len(mts)} M-types...")
+    L.info(f"Parsing {len(mts)} M-types...")
     for mt in mts:
         mt_name = mt["label"]
         m_ct = resolve_cellType(forge, mt_name)
@@ -106,7 +106,7 @@ def create_densityPayloads(
         brainLocation_layer["layer"] = get_layer(forge, mt_name)
 
         ets = mt[PART_KEY]
-        print(f"\nParsing {len(ets)} E-types for M-type '{mt_name}'...")
+        L.info(f"\nParsing {len(ets)} E-types for M-type '{mt_name}'...")
         for et in ets:
             et_name = et["label"]
             e_ct = resolve_cellType(forge, et_name)
@@ -116,7 +116,7 @@ def create_densityPayloads(
 
             et_part = et[PART_KEY][0]
             if not et_part.get(PATH_KEY):
-                print(f"No 'path' available for m-type {mt_name}, e-type {et_name}. Skipping such density!")
+                L.info(f"No 'path' available for m-type {mt_name}, e-type {et_name}. Skipping such density!")
                 continue
 
             filepath = et_part[PATH_KEY]
@@ -125,7 +125,7 @@ def create_densityPayloads(
                 header = nrrd.read_header(filepath)
             except nrrd.errors.NRRDError as e:
                 L.error(f"NrrdError: {e}")
-                print(f"Error in parsing the header from {filepath} (m-type {mt_name}, e-type {et_name}). Skipping such density!")
+                L.error(f"\nin parsing the header from {filepath} (m-type {mt_name}, e-type {et_name}). Skipping such density!")
                 continue
 
             file_ext = os.path.splitext(os.path.basename(filepath))[1][1:]
@@ -155,7 +155,7 @@ def create_densityPayloads(
     if unresolved:
         create_unresolved_payload(forge, unresolved, "unresolved_densities")
     else:
-        print("No unresolved resources!")
+        L.info("No unresolved resources!")
 
     # Add Activity
 # need to define provenance_metadata first
@@ -172,7 +172,6 @@ def create_densityPayloads(
 
     resources_payloads["tag"] = resource_tag
 
-    #print(resources_payloads)
     return resources_payloads
 
 
@@ -233,9 +232,9 @@ def create_cellCompositionVolume(
             if et_part.get("@id"):
                 has_id = f"Density {dens_name} has an '@id' key, hence will not be modified"
                 if et_part.get(PATH_KEY):
-                    print(f"Warning! {has_id} and the path provided will be ignored")
+                    L.info(f"Warning! {has_id} and the 'path' key provided will be ignored")
                 else:
-                    print(has_id)
+                    L.info(has_id)
                 continue
 
             if dens_name in cellComps[DENSITY_SCHEMA]:
@@ -247,9 +246,9 @@ def create_cellCompositionVolume(
                     et_part["@type"] = res.type
                     et_part["_rev"] = res._store_metadata["_rev"]
                 else:
-                    print(f"Resource {dens_name} has no 'id', probably it has not been registered.")
+                    L.info(f"Resource {dens_name} has no 'id', probably it has not been registered.")
             else:
-                print(f"No Resource {dens_name} found in cellComps[{DENSITY_SCHEMA}].")
+                L.info(f"No Resource {dens_name} found in cellComps[{DENSITY_SCHEMA}].")
 
     cell_compostion_volume_release.name = get_name(name, schema, user_contribution)
 

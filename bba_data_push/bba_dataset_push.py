@@ -63,7 +63,7 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
                     "\n-------------- Update & Validation Status ---------------"
                     f"\nUpdating '{dataset_type}' resource payloads in Nexus..."
                 )
-                print("\nUpdating %d resources with schema %s:" % (len(datasets), dataset_schema))
+                L.info("\nUpdating %d resources with schema %s:" % (len(datasets), dataset_schema))
                 #forge.update(datasets, dataset_schema)
                 L.info(
                     f"<<Resource synchronization status>>:"
@@ -71,7 +71,7 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
                 )
                 if tag:
                     try:
-                        print("Tagging %d with tag %s" % (len(datasets), tag))
+                        L.info("Tagging %d with tag %s" % (len(datasets), tag))
                         #forge.tag(datasets, tag)
                     except Exception as e:
                         L.error(f"Error when tagging the resource. {e}")
@@ -93,7 +93,7 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
                     f"\nRegistering the constructed  '{dataset_type}' resource payload "
                     "along the input dataset in Nexus..."
                 )
-                print("\nRegistering %d resources with schema %s, first is:\n" % (len(datasets), dataset_schema), datasets[0])
+                L.info("\nRegistering %d resources with schema %s, first is:\n" % (len(datasets), dataset_schema), datasets[0])
                 forge.register(datasets, dataset_schema)
                 L.info(
                     f"<<Resource synchronization status>>: "
@@ -101,7 +101,7 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
                 )
                 if tag:
                     try:
-                        print("Tagging %d resources with tag %s" % (len(datasets), tag))
+                        L.info("Tagging %d resources with tag %s" % (len(datasets), tag))
                         #forge.tag(datasets, tag)
                     except Exception as e:
                         L.error(f"Error when tagging the resource. {e}")
@@ -134,7 +134,7 @@ def _push_activity_to_Nexus(activity_resource, forge):
         try:
             activity_resource.endedAtTime = endedAtTime
             L.info("\nRegistering the constructed Activity Resource in Nexus...")
-            print("activity_resource:", activity_resource)
+            L.info("activity_resource:", activity_resource)
             #forge.register(activity_resource, const.schema_activity)
         except Exception as e:
             L.error(f"Error when registering the resource. {e}")
@@ -593,7 +593,7 @@ def push_cellcomposition_plain(forge, verbose, atlasrelease_id, volume_path, sum
     if getattr(cellComps[COMP_SCHEMA], 'id', None):
         cellComp_id = cellComps[COMP_SCHEMA].id
     else:
-        print(f"The following {COMP_SCHEMA} has no id, probably it has not been registered:\n{cellComps[COMP_SCHEMA]}")
+        L.error(f"The following {COMP_SCHEMA} has no id, probably it has not been registered:\n{cellComps[COMP_SCHEMA]}")
     return cellComp_id
 
 def start():
