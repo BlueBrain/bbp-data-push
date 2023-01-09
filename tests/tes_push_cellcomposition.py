@@ -1,5 +1,5 @@
 import logging
-from bba_data_push.bba_dataset_push import _initialize_pusher_cli, _push_cellcomposition
+from bba_data_push.bba_dataset_push import _initialize_pusher_cli, push_cellcomposition_
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
@@ -21,5 +21,5 @@ def test_push_cellcomposition():
     verbose = 2
 
     forge, verbose_L = _initialize_pusher_cli(verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
-    cc_id = _push_cellcomposition(forge, verbose_L, atlasrelease_id, volume_path, summary_path, "my_name", "my_description")
+    cc_id = push_cellcomposition_(forge, verbose_L, atlasrelease_id, volume_path, summary_path, "my_name", "my_description")
     L.info("The Nexus ID of the registered CellComposition is\n%s" % cc_id)

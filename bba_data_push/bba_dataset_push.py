@@ -531,9 +531,9 @@ def push_cellcomposition(
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
     Tag all these resources with the input tag or, if not provided, with a timestamp\n
     """
-    return _push_cellcomposition(ctx.obj["forge"], ctx.obj["verbose"], atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None)
+    return push_cellcomposition_(ctx.obj["forge"], ctx.obj["verbose"], atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None)
 
-def _push_cellcomposition(forge, verbose, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None) -> str:
+def push_cellcomposition_(forge, verbose, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None) -> str:
     cellComps = {"tag": resource_tag}
     resources_payloads = create_densityPayloads(forge,
         atlasrelease_id,
