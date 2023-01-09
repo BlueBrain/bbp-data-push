@@ -14,12 +14,12 @@ nexus_token = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI5T0R3Z1JSTFVsT
 atlasrelease_id = "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/c96c71a8-4c0d-4bc1-8a1a-141d9ed6693d"
 
 folder = "/gpfs/bbp.cscs.ch/home/lcristel/BBP/atlas_pipelines/"
-volume_path = folder+"cellCompVolume_path"
+volume_path = folder+"cellCompVolume_small_path"
 summary_path = folder+"cellCompSummary_density"
 
 def test_push_cellcomposition():
     verbose = 2
 
     forge, verbose_L = _initialize_pusher_cli(verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
-    cc_id = push_cellcomposition_(forge, verbose_L, atlasrelease_id, volume_path, summary_path, "my_name", "my_description")
+    cc_id = push_cellcomposition_(forge, L, atlasrelease_id, volume_path, summary_path, "my_name", "my_description", "output_dir")
     L.info("The Nexus ID of the registered CellComposition is\n%s" % cc_id)

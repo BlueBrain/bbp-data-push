@@ -8,6 +8,7 @@ To know more about Nexus, see https://bluebrainnexus.io.
 Link to BBP Atlas pipeline confluence documentation:
 https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 """
+import os
 import logging
 import click
 from datetime import datetime
@@ -20,7 +21,7 @@ from bba_data_push.push_json_regionsummary import create_regionsummary_resources
 from bba_data_push.push_cellComposition import create_densityPayloads, create_cellCompositionVolume, create_cellCompositionSummary, create_cellComposition
 from bba_data_push.push_cellComposition import COMP_SCHEMA
 from bba_data_push import constants as const
-from bba_data_push.logging import log_args, close_handler
+from bba_data_push.logging import log_args, close_handler, create_log_handler
 from bba_data_push import __version__
 
 logging.basicConfig(level=logging.INFO)
@@ -517,6 +518,10 @@ def push_cellrecords(
     required=False,
     multiple=False,
     help="The description to assign to the CellComposition(Volume,Summary).")
+@click.option("--output-dir",
+    type = click.Path(exists=True, dir_okay=True),
+    default = ("."),
+    help = "The output dir for log and by-products",)
 @click.pass_context
 @log_args(L)
 def push_cellcomposition(
@@ -525,22 +530,28 @@ def push_cellcomposition(
     volume_path,
     summary_path,
     name, description,
+    output_dir,
     resource_tag=None
 ) -> str:
     """Create a CellComposition resource payload and push it along with the "
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
     Tag all these resources with the input tag or, if not provided, with a timestamp\n
     """
-    return push_cellcomposition_(ctx.obj["forge"], ctx.obj["verbose"], atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None)
 
-def push_cellcomposition_(forge, verbose, atlasrelease_id, volume_path, summary_path, name, description, resource_tag=None) -> str:
+    L = create_log_handler(__name__, os.path.join(output_dir, "push_cellComposition.log"))
+    L.setLevel(ctx.obj["verbose"])
+
+    return push_cellcomposition_(ctx.obj["forge"], L, atlasrelease_id, volume_path, summary_path, name, description, output_dir, resource_tag=None)
+
+def push_cellcomposition_(forge, L, atlasrelease_id, volume_path, summary_path, name, description, output_dir, resource_tag=None) -> str:
     cellComps = {"tag": resource_tag}
     resources_payloads = create_densityPayloads(forge,
         atlasrelease_id,
         volume_path,
         resource_tag,
         cellComps,
-        verbose)
+        output_dir,
+        L)
 
     _integrate_datasets_to_Nexus(forge,
         resources_payloads["datasets_toUpdate"],
@@ -555,7 +566,8 @@ def push_cellcomposition_(forge, verbose, atlasrelease_id, volume_path, summary_
         description,
         resource_tag,
         cellComps,
-        verbose)
+        output_dir,
+        L)
 
     if summary_path:
         create_cellCompositionSummary(forge,
@@ -565,7 +577,7 @@ def push_cellcomposition_(forge, verbose, atlasrelease_id, volume_path, summary_
             name,
             description,
             cellComps,
-            verbose)
+            L)
 
     _integrate_datasets_to_Nexus(forge,
         cellComps["datasets_toUpdate"],
@@ -579,7 +591,7 @@ def push_cellcomposition_(forge, verbose, atlasrelease_id, volume_path, summary_
         description,
         resource_tag,
         cellComps,
-        verbose)
+        L)
 
     _integrate_datasets_to_Nexus(forge,
         cellComps["datasets_toUpdate"],

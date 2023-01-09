@@ -25,7 +25,6 @@ from bba_data_push.commons import (
 from bba_data_push.push_nrrd_volumetricdatalayer import add_nrrd_props
 
 import bba_data_push.constants as const
-from bba_data_push.logging import create_log_handler
 
 VOLUME_SCHEMA = "CellCompositionVolume"
 SUMMARY_SCHEMA = "CellCompositionSummary"
@@ -35,8 +34,6 @@ DENSITY_SCHEMA = f"{const.schema_volumetricdatalayer}"
 COMMON_TYPES = ["Dataset", "Entity"]
 
 subject = Resource.from_json(const.subject)
-
-L = create_log_handler(__name__, "./push_cellComposition.log")
 
 region_id = "http://api.brain-map.org/api/v2/data/Structure/997"
 region_name = "root"
@@ -62,10 +59,9 @@ def create_densityPayloads(
     volume_path,
     resource_tag,
     cellComps,
-    verbose,
+    output_dir,
+    L,
 ):
-    L.setLevel(verbose)
-
     cellComps[DENSITY_SCHEMA] = {}
     resources_payloads = {}
     for action in actions:
@@ -153,7 +149,7 @@ def create_densityPayloads(
             resources_payloads["datasets_"+action][DENSITY_SCHEMA].append( met )
 
     if unresolved:
-        create_unresolved_payload(forge, unresolved, "unresolved_densities")
+        create_unresolved_payload(forge, unresolved, os.path.join(output_dir, "unresolved_densities"))
     else:
         L.info("No unresolved resources!")
 
@@ -184,10 +180,9 @@ def create_cellCompositionVolume(
     description,
     resource_tag,
     cellComps,
-    verbose,
+    output_dir,
+    L,
 ):
-    L.setLevel(verbose)
-
     schema = VOLUME_SCHEMA
     schema_id = forge._model.schema_id(type = schema)
     for action in actions:
@@ -253,7 +248,7 @@ def create_cellCompositionVolume(
     cell_compostion_volume_release.name = get_name(name, schema, user_contribution)
 
     distrib_filename = cell_compostion_volume_release.name.replace(" ", "_") + "_distrib.json"
-    with open(distrib_filename, "w") as volume_distribution_path:
+    with open(os.path.join(output_dir, distrib_filename), "w") as volume_distribution_path:
         volume_distribution_path.write(json.dumps(volume_distribution, indent=4))
     cell_compostion_volume_release.distribution = forge.attach(distrib_filename, content_type="application/json")
 
@@ -274,10 +269,8 @@ def create_cellCompositionSummary(
     name,
     description,
     cellComps,
-    verbose,
+    L,
 ):
-    L.setLevel(verbose)
-
     schema = SUMMARY_SCHEMA
     schema_id = forge._model.schema_id(type = schema)
     for action in actions:
@@ -313,10 +306,8 @@ def create_cellComposition(
     description,
     resource_tag,
     cellComps,
-    verbose,
+    L,
 ):
-    L.setLevel(verbose)
-
     schema = COMP_SCHEMA
     schema_id = forge._model.schema_id(type = schema)
 
