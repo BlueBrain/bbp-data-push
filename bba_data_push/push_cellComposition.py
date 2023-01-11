@@ -248,9 +248,10 @@ def create_cellCompositionVolume(
     cell_compostion_volume_release.name = get_name(name, schema, user_contribution)
 
     distrib_filename = cell_compostion_volume_release.name.replace(" ", "_") + "_distrib.json"
-    with open(os.path.join(output_dir, distrib_filename), "w") as volume_distribution_path:
+    distrib_filepath = os.path.join(output_dir, distrib_filename)
+    with open(distrib_filepath, "w") as volume_distribution_path:
         volume_distribution_path.write(json.dumps(volume_distribution, indent=4))
-    cell_compostion_volume_release.distribution = forge.attach(distrib_filename, content_type="application/json")
+    cell_compostion_volume_release.distribution = forge.attach(distrib_filepath, content_type="application/json")
 
     cell_compostion_volume_release.name = get_name(name, schema, user_contribution)
     if description:
