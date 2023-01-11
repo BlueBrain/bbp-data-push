@@ -487,7 +487,7 @@ def push_cellrecords(
     )
 
 
-@initialize_pusher_cli.command()
+@initialize_pusher_cli.command(name="push-cellcomposition")
 @click.option(
     "--atlasrelease-id",
     type=click.STRING,
@@ -524,7 +524,7 @@ def push_cellrecords(
     help = "The output dir for log and by-products",)
 @click.pass_context
 @log_args(L)
-def push_cellcomposition(
+def cli_push_cellcomposition(
     ctx,
     atlasrelease_id,
     volume_path,
@@ -541,9 +541,9 @@ def push_cellcomposition(
     L = create_log_handler(__name__, os.path.join(output_dir, "push_cellComposition.log"))
     L.setLevel(ctx.obj["verbose"])
 
-    return push_cellcomposition_(ctx.obj["forge"], L, atlasrelease_id, volume_path, summary_path, name, description, output_dir, resource_tag=None)
+    return push_cellcomposition(ctx.obj["forge"], L, atlasrelease_id, volume_path, summary_path, name, description, output_dir, resource_tag=None)
 
-def push_cellcomposition_(forge, L, atlasrelease_id, volume_path, summary_path, name, description, output_dir, resource_tag=None) -> str:
+def push_cellcomposition(forge, L, atlasrelease_id, volume_path, summary_path, name, description, output_dir, resource_tag=None) -> str:
     cellComps = {"tag": resource_tag}
     resources_payloads = create_densityPayloads(forge,
         atlasrelease_id,
