@@ -1,0 +1,212 @@
+{
+  "version": 1,
+  "unitCode": {
+    "density": "mm^-3"
+  },
+  "hasPart": {
+    "http://api.brain-map.org/api/v2/data/Structure/23": {
+      "label": "Anterior amygdalar area",
+      "about": "BrainRegion",
+      "hasPart": {
+        "https://bbp.epfl.ch/ontologies/core/bmo/GenericExcitatoryNeuronMType?rev=6": {
+          "label": "GEN_mtype",
+          "about": "MType",
+          "hasPart": {
+            "https://bbp.epfl.ch/ontologies/core/bmo/GenericExcitatoryNeuronEType?rev=6": {
+              "label": "GEN_etype",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 13069.4584345739
+                }
+              }
+            }
+          }
+        },
+        "https://bbp.epfl.ch/ontologies/core/bmo/GenericInhibitoryNeuronMType?rev=6": {
+          "label": "GIN_mtype",
+          "about": "MType",
+          "hasPart": {
+            "https://bbp.epfl.ch/ontologies/core/bmo/GenericInhibitoryNeuronEType?rev=6": {
+              "label": "GIN_etype",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 23304.2928540332
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "http://api.brain-map.org/api/v2/data/Structure/935": {
+      "label": "Anterior cingulate area, dorsal part, layer 1",
+      "about": "BrainRegion",
+      "hasPart": {
+        "http://uri.interlex.org/base/ilx_0383192?rev=34": {
+          "label": "L1_DAC",
+          "about": "MType",
+          "hasPart": {
+            "http://uri.interlex.org/base/ilx_0738203?rev=28": {
+              "label": "bNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 746.5655625093
+                }
+              }
+            },
+            "http://uri.interlex.org/base/ilx_0738201?rev=31": {
+              "label": "cNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 660.6531730252
+                }
+              }
+            }
+          }
+        },
+        "http://uri.interlex.org/base/ilx_0383193?rev=34": {
+          "label": "L1_HAC",
+          "about": "MType",
+          "hasPart": {
+            "http://uri.interlex.org/base/ilx_0738203?rev=28": {
+              "label": "bNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 1287.5478306532
+                }
+              }
+            },
+            "http://uri.interlex.org/base/ilx_0738204?rev=28": {
+              "label": "cIR",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 1263.6196392117
+                }
+              }
+            },
+            "http://uri.interlex.org/base/ilx_0738201?rev=31": {
+              "label": "cNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 1049.0295819226
+                }
+              }
+            }
+          }
+        },
+        "http://uri.interlex.org/base/ilx_0383194?rev=38": {
+          "label": "L1_LAC",
+          "about": "MType",
+          "hasPart": {
+            "http://uri.interlex.org/base/ilx_0738201?rev=31": {
+              "label": "cNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 250.4898313698
+                }
+              }
+            }
+          }
+        },
+        "http://uri.interlex.org/base/ilx_0383195?rev=34": {
+          "label": "L1_NGC-DA",
+          "about": "MType",
+          "hasPart": {
+            "http://uri.interlex.org/base/ilx_0738203?rev=28": {
+              "label": "bNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 696.7326331493
+                }
+              }
+            },
+            "http://uri.interlex.org/base/ilx_0738197?rev=28": {
+              "label": "cAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 684.7685374286
+                }
+              }
+            },
+            "http://uri.interlex.org/base/ilx_0738201?rev=31": {
+              "label": "cNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 582.1827805039
+                }
+              }
+            },
+            "http://uri.interlex.org/base/ilx_0738198?rev=28": {
+              "label": "cSTUT",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 410.3580015357
+                }
+              }
+            }
+          }
+        },
+        "http://uri.interlex.org/base/ilx_0383196?rev=34": {
+          "label": "L1_NGC-SA",
+          "about": "MType",
+          "hasPart": {
+            "http://uri.interlex.org/base/ilx_0738201?rev=31": {
+              "label": "cNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 642.6022125855
+                }
+              }
+            }
+          }
+        },
+        "http://uri.interlex.org/base/ilx_0383197?rev=34": {
+          "label": "L1_SAC",
+          "about": "MType",
+          "hasPart": {
+            "http://uri.interlex.org/base/ilx_0738203?rev=28": {
+              "label": "bNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 742.829590191
+                }
+              }
+            },
+            "http://uri.interlex.org/base/ilx_0738197?rev=28": {
+              "label": "cAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 742.829590191
+                }
+              }
+            },
+            "http://uri.interlex.org/base/ilx_0738201?rev=31": {
+              "label": "cNAC",
+              "about": "EType",
+              "composition": {
+                "neuron": {
+                  "density": 611.606370105
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

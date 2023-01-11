@@ -35,9 +35,12 @@ unit_test:
   before_script:
     - pip install -r requirements.txt
     - pip install .[dev]
+    - CA_BUNDLE=$(python3 -c "import certifi; print(certifi.where())")
+    - cat $BBP_CA_CERT >> $CA_BUNDLE
   variables:
    SRC_PROJECT: '$CI_PROJECT_PATH'
    TEST_FOLDER: 'tests'
+   NEXUS_STAGING_TOKEN: '$NEXUS_STAGING_TOKEN'
 
 lint_check:
   stage: lint-check
