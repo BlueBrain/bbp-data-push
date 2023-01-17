@@ -23,6 +23,7 @@ atlasrelease_id = "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/
 test_folder = os.environ["TEST_FOLDER"]
 folder = os.path.join(test_folder, "tests_data")
 volume_path = os.path.join(folder, "cellCompVolume_path")
+densities_path = folder
 summary_path = os.path.join(folder, "density_stats.json")
 
 def test_push_cellcomposition():
@@ -31,5 +32,5 @@ def test_push_cellcomposition():
     forge, verbose_L = _initialize_pusher_cli(verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
     files_name = "GitLab unit test"
     files_desc = f"{files_name} on {datetime.now()}"
-    cc_id = push_cellcomposition(forge, L, atlasrelease_id, volume_path, summary_path, files_name, files_desc, "output_dir")
+    cc_id = push_cellcomposition(forge, L, atlasrelease_id, volume_path, densities_path, summary_path, files_name, files_desc, "output_dir")
     L.info("The Nexus ID of the registered CellComposition is\n%s" % cc_id)

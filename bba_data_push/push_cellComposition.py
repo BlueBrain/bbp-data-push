@@ -57,6 +57,7 @@ def create_densityPayloads(
     forge,
     atlasrelease_id,
     volume_path,
+    densities_path,
     resource_tag,
     cellComps,
     output_dir,
@@ -115,7 +116,7 @@ def create_densityPayloads(
                 L.info(f"No 'path' available for m-type {mt_name}, e-type {et_name}. Skipping such density!")
                 continue
 
-            filepath = et_part[PATH_KEY]
+            filepath = os.path.join(densities_path, et_part[PATH_KEY])
             header = None
             try:
                 header = nrrd.read_header(filepath)

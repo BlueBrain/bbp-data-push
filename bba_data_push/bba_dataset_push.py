@@ -501,6 +501,11 @@ def push_cellrecords(
     multiple=False,
     help="The path to the json CellCompositionVolume file.")
 @click.option(
+    "--densities-path",
+    type = click.Path(exists=True, dir_okay=True),
+    default = ("."),
+    help = "The path to the density files in the CellCompositionVolume.")
+@click.option(
     "--summary-path",
     type=click.Path(exists=True),
     required=False,
@@ -528,6 +533,7 @@ def cli_push_cellcomposition(
     ctx,
     atlasrelease_id,
     volume_path,
+    densities_path,
     summary_path,
     name, description,
     output_dir,
@@ -541,13 +547,14 @@ def cli_push_cellcomposition(
     L = create_log_handler(__name__, os.path.join(output_dir, "push_cellComposition.log"))
     L.setLevel(ctx.obj["verbose"])
 
-    return push_cellcomposition(ctx.obj["forge"], L, atlasrelease_id, volume_path, summary_path, name, description, output_dir, resource_tag=None)
+    return push_cellcomposition(ctx.obj["forge"], L, atlasrelease_id, volume_path, densities_path, summary_path, name, description, output_dir, resource_tag=None)
 
-def push_cellcomposition(forge, L, atlasrelease_id, volume_path, summary_path, name, description, output_dir, resource_tag=None) -> str:
+def push_cellcomposition(forge, L, atlasrelease_id, volume_path, densities_path, summary_path, name, description, output_dir, resource_tag=None) -> str:
     cellComps = {"tag": resource_tag}
     resources_payloads = create_densityPayloads(forge,
         atlasrelease_id,
         volume_path,
+        densities_path,
         resource_tag,
         cellComps,
         output_dir,
