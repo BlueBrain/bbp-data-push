@@ -36,7 +36,9 @@ unit_test:
     - pip install -r requirements.txt
     - pip install .[dev]
     - CA_BUNDLE=$(python3 -c "import certifi; print(certifi.where())")
+    - echo "before: `cat CA_BUNDLE`"
     - cat $BBP_CA_CERT >> $CA_BUNDLE
+    - echo "after: `cat CA_BUNDLE`"
   variables:
    SRC_PROJECT: '$CI_PROJECT_PATH'
    TEST_FOLDER: 'tests'

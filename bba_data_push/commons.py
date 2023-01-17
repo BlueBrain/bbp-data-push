@@ -441,10 +441,12 @@ def return_contribution(forge, cellComp=False):
         token_info = jwt.decode(forge._store.token, options={"verify_signature": False})
     except Exception as e:
         raise Exception(f"Error when decoding the token. {e}")
-    user_name = token_info["name"]
-    user_family_name = token_info["family_name"]
-    user_given_name = token_info["given_name"]
-    user_email = token_info["email"]
+    user_family_name = token_info.get("family_name", token_info.get("groups"))
+    user_given_name = token_info.get("given_name", token_info.get("clientId"))
+    user_name = token_info.get("name")
+    if not user_name:
+        user_name = f"{user_family_name} {user_given_name}"
+    user_email = token_info.get("email")
     user_id = f"{forge._store.endpoint}/realms/bbp/users/{token_info['preferred_username']}"
     log_info = []
 
