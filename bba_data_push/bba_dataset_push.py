@@ -524,7 +524,7 @@ def push_cellrecords(
     multiple=False,
     help="The description to assign to the CellComposition(Volume,Summary).")
 @click.option("--output-dir",
-    type = click.Path(exists=True, dir_okay=True),
+    type = click.Path(),
     default = ("."),
     help = "The output dir for log and by-products",)
 @click.pass_context
