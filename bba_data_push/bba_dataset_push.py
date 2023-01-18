@@ -551,6 +551,10 @@ def cli_push_cellcomposition(
 
 def push_cellcomposition(forge, L, atlasrelease_id, volume_path, densities_path, summary_path, name, description, output_dir, resource_tag=None) -> str:
     cellComps = {"tag": resource_tag}
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     resources_payloads = create_densityPayloads(forge,
         atlasrelease_id,
         volume_path,

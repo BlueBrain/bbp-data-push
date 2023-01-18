@@ -254,7 +254,6 @@ def create_cellCompositionVolume(
         volume_distribution_path.write(json.dumps(volume_distribution, indent=4))
     cell_compostion_volume_release.distribution = forge.attach(distrib_filepath, content_type="application/json")
 
-    cell_compostion_volume_release.name = get_name(name, schema, user_contribution)
     if description:
         cell_compostion_volume_release.description = f"{description} ({schema})"
 
@@ -374,7 +373,7 @@ def get_user_contribution(forge, L, cellComp=True):
 
 def get_name(name, schema, user_contribution):
     if name:
-        return f"{name} ({schema})"
+        return f"{name} {schema}"
     else:
         return f"{schema} from {user_contribution[0].agent['name']}"
 
