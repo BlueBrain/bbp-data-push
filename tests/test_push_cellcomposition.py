@@ -4,8 +4,6 @@ from datetime import datetime
 
 from bba_data_push.bba_dataset_push import _initialize_pusher_cli, push_cellcomposition
 
-import certifi
-
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
@@ -20,17 +18,12 @@ atlasrelease_id = "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/
 
 test_folder = os.environ["TEST_FOLDER"]
 folder = os.path.join(test_folder, "tests_data")
-volume_path = os.path.join(folder, "cellCompVolume_path")
+volume_path = os.path.join(folder, "cellCompVolume_small.json")
 densities_path = folder
-summary_path = os.path.join(folder, "density_stats.json")
+summary_path = os.path.join(folder, "density_stats_small.json")
 
 def test_push_cellcomposition():
     verbose = 2
-
-    #print("\nSSL_CERT_FILE: ", os.environ["SSL_CERT_FILE"])
-    #print("\ncertifi.where(): ", certifi.where())
-    #with open(certifi.where()) as cert:
-    #    print(cert.read())
 
     forge, verbose_L = _initialize_pusher_cli(verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
     files_name = "GitLab unit test"
