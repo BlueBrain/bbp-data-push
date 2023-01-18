@@ -5,8 +5,6 @@ from datetime import datetime
 from bba_data_push.bba_dataset_push import _initialize_pusher_cli, push_cellcomposition
 
 import certifi
-with open(certifi.where()) as cert:
-    print(cert.read())
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
@@ -29,10 +27,10 @@ summary_path = os.path.join(folder, "density_stats.json")
 def test_push_cellcomposition():
     verbose = 2
 
-    print("\nSSL_CERT_FILE: ", os.environ["SSL_CERT_FILE"])
-    print("\ncertifi.where(): ", certifi.where())
-    with open(certifi.where()) as cert:
-        print(cert.read())
+    #print("\nSSL_CERT_FILE: ", os.environ["SSL_CERT_FILE"])
+    #print("\ncertifi.where(): ", certifi.where())
+    #with open(certifi.where()) as cert:
+    #    print(cert.read())
 
     forge, verbose_L = _initialize_pusher_cli(verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
     files_name = "GitLab unit test"
