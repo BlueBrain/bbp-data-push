@@ -29,6 +29,11 @@ summary_path = os.path.join(folder, "density_stats.json")
 def test_push_cellcomposition():
     verbose = 2
 
+    print("\nSSL_CERT_FILE: ", os.environ["SSL_CERT_FILE"])
+    print("\ncertifi.where(): ", certifi.where())
+    with open(certifi.where()) as cert:
+        print(cert.read())
+
     forge, verbose_L = _initialize_pusher_cli(verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
     files_name = "GitLab unit test"
     files_desc = f"{files_name} on {datetime.now()}"

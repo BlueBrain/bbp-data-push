@@ -44,13 +44,15 @@ unit_test:
     #- !reference [.add_staging_SSL, script]
     - CA_BUNDLE=$(python3 -c "import certifi; print(certifi.where())")
     - cat $BBP_CA_CERT >> $CA_BUNDLE
+    - export SSL_CERT_FILE=$CA_BUNDLE
     #- !reference [.unit-tests, script]
     - echo 'The job variables to be used for pytest --cov are SRC_PROJECT (value is $SRC_PROJECT) and TEST_FOLDER (value is $TEST_FOLDER)'
     - pytest --cov $SRC_PROJECT $TEST_FOLDER --color yes --junitxml report.xml
   variables:
-   SRC_PROJECT: '$CI_PROJECT_PATH'
-   TEST_FOLDER: 'tests'
-   NEXUS_STAGING_TOKEN: '$NEXUS_STAGING_TOKEN'
+    SRC_PROJECT: '$CI_PROJECT_PATH'
+    TEST_FOLDER: 'tests'
+    NEXUS_STAGING_TOKEN: '$NEXUS_STAGING_TOKEN'
+    SSL_CERT_FILE: '$SSL_CERT_FILE'
 
 lint_check:
   stage: lint-check
