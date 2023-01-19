@@ -10,8 +10,8 @@ L = logging.getLogger(__name__)
 forge_config_file = "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/notebooks/use-cases/prod-forge-nexus.yml"
 
 nexus_env = "https://staging.nise.bbp.epfl.ch/nexus/v1"
-nexus_org = "bbp"
-nexus_proj = "atlasdatasetrelease"
+nexus_org = "dke"
+nexus_proj = "kgforge"
 nexus_token = os.environ["NEXUS_STAGING_TOKEN"]
 
 atlasrelease_id = "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/c96c71a8-4c0d-4bc1-8a1a-141d9ed6693d"
