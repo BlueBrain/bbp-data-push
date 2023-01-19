@@ -53,7 +53,6 @@ unit_test:
     SRC_PROJECT: '$CI_PROJECT_PATH'
     TEST_FOLDER: 'tests'
     NEXUS_STAGING_TOKEN: '$NEXUS_STAGING_TOKEN'
-    SSL_CERT_FILE: '$SSL_CERT_FILE'
 
 lint_check:
   stage: lint-check
