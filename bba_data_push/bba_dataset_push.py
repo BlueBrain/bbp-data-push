@@ -503,7 +503,7 @@ def push_cellrecords(
 @click.option(
     "--densities-dir",
     type = click.Path(exists=True, dir_okay=True),
-    default = ("."),
+    default = (""),
     help = "The path to the density files in the volume-path.")
 @click.option(
     "--summary-path",
@@ -527,8 +527,9 @@ def push_cellrecords(
     type = click.Path(),
     default = ("."),
     help = "The output dir for log and by-products",)
+@click.option("--resource-tag",
+    help="Optional tag value with which to tag the resources",)
 @click.pass_context
-@log_args(L)
 def cli_push_cellcomposition(
     ctx,
     atlasrelease_id,
