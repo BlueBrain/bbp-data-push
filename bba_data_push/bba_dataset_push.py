@@ -30,6 +30,9 @@ L = logging.getLogger(__name__)
 
 def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag):
 
+    if not tag:
+        tag = f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}"
+
     ############
     # TEMPORARY: change the mba jsonLD file name from the ontology distribution to
     # update so that the resource is compliant with the Atlas web app ontology file
@@ -70,13 +73,13 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
                     f"<<Resource synchronization status>>:"
                     f" {str(datasets[-1]._synchronized)}"
                 )
-                if tag:
-                    try:
-                        L.info("Tagging %d with tag %s" % (len(datasets), tag))
-                        #forge.tag(datasets, tag)
-                    except Exception as e:
-                        L.error(f"Error when tagging the resource. {e}")
-                        exit(1)
+
+                try:
+                    L.info("Tagging %d with tag %s" % (len(datasets), tag))
+                    forge.tag(datasets, tag)
+                except Exception as e:
+                    L.error(f"Error when tagging the resource. {e}")
+                    exit(1)
             except Exception as e:
                 L.error(f"Error when updating the resource. {e}")
                 exit(1)
@@ -100,13 +103,13 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
                     f"<<Resource synchronization status>>: "
                     f"{str(datasets[-1]._synchronized)}"
                 )
-                if tag:
-                    try:
-                        L.info("Tagging %d resources with tag %s" % (len(datasets), tag))
-                        #forge.tag(datasets, tag)
-                    except Exception as e:
-                        L.error(f"Error when tagging the resource. {e}")
-                        exit(1)
+
+                try:
+                    L.info("Tagging %d resources with tag %s" % (len(datasets), tag))
+                    #forge.tag(datasets, tag)
+                except Exception as e:
+                    L.error(f"Error when tagging the resource. {e}")
+                    exit(1)
             except Exception as e:
                 L.error(f"Error when registering the resource. {e}")
                 exit(1)
