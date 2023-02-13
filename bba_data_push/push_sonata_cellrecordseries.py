@@ -25,9 +25,6 @@ from bba_data_push.commons import (
     fetch_linked_resources,
 )
 import bba_data_push.constants as const
-from bba_data_push.logging import create_log_handler
-
-L = create_log_handler(__name__, "./push_cellrecord.log")
 
 
 def create_cell_record_resources(
@@ -39,8 +36,7 @@ def create_cell_record_resources(
     input_hierarchy_jsonld,
     provenance_metadata_path,
     resource_tag,
-    verbose,
-) -> list:
+    logger) -> list:
     """
     Construct the input sonata hdf5 dataset, atlasrelease and hierarchy payloads that
     will be push with the corresponding files into Nexus as a resource.
@@ -62,13 +58,12 @@ def create_cell_record_resources(
                     information about dataset provenance generated from the Atlas
                     Annotation Pipeline run.
         resource_tag : Tag value (string).
-        verbose : Verbosity level.
+        logger : logger.
     Returns:
         resources_payloads : dict of the form containing the Resource objects
                 (volumetricdatalayer, atlasrelease, hierarchy, activity) that has been
                 constructed and need to be updated/pushed in Nexus.
     """
-    L.setLevel(verbose)
 
     config_file = open(config_path)
     config_content = yaml.safe_load(config_file.read().strip())
@@ -77,7 +72,7 @@ def create_cell_record_resources(
         cellrecords = config_content["GeneratedDatasetPath"]["CellRecordsFile"]
         hierarchies = config_content["HierarchyJson"]
     except KeyError as error:
-        L.error(f"KeyError: {error} is not found in the dataset configuration file.")
+        logger.error(f"KeyError: {error} is not found in the dataset configuration file.")
         exit(1)
 
     if provenance_metadata_path:
@@ -85,7 +80,7 @@ def create_cell_record_resources(
             with open(provenance_metadata_path, "r") as f:
                 provenance_metadata = json.loads(f.read())
         except ValueError as error:
-            L.error(f"{error} : {provenance_metadata_path}.")
+            logger.error(f"{error} : {provenance_metadata_path}.")
             exit(1)
     else:
         provenance_metadata = None
@@ -95,7 +90,7 @@ def create_cell_record_resources(
     try:
         cellrecords_dict = const.return_cellrecords_dict(cellrecords)
     except KeyError as error:
-        L.error(f"{error}")
+        logger.error(f"{error}")
         exit(1)
 
     # Constructs the Resource properties payloads accordingly to the input atlas cell
@@ -129,9 +124,9 @@ def create_cell_record_resources(
     else:
         try:
             contribution, log_info = return_contribution(forge)
-            L.info("\n".join(log_info))
+            logger.info("\n".join(log_info))
         except Exception as e:
-            L.error(f"Error: {e}")
+            logger.error(f"Error: {e}")
             exit(1)
 
     # Constants
@@ -179,13 +174,13 @@ def create_cell_record_resources(
                         description = cellrecords_dict[dataset]["description"]
                         atlasrelease_choice = cellrecords_dict[dataset]["atlasrelease"]
                     else:
-                        L.error(
+                        logger.error(
                             f"Error: cell-record sonata dataset '{filepath}' is not a "
                             "sonata .h5 file"
                         )
                         exit(1)
                 else:
-                    L.error(
+                    logger.error(
                         f"Error: The '{filepath}' folder do not correspond to a Sonata "
                         ".h5 file dataset defined in the CellPositionFile section of "
                         "the input datasets configuration file."
@@ -195,7 +190,7 @@ def create_cell_record_resources(
                 pass
         # If still no file found at this step then raise error
         if not fileFound:
-            L.error(
+            logger.error(
                 f"FileNotFoundError: '{filepath}' file do not correspond to one of "
                 "the cellrecords sonata dataset defined in the CellRecordsFile Section "
                 "of the 'generated dataset' configuration file"
@@ -211,8 +206,8 @@ def create_cell_record_resources(
         try:
             cell_collections = h5py.File(filepath, "r")
         except OSError as e:
-            L.error(f"OSError when trying to open the input file {filepath}. {e}")
-            L.info("Aborting pushing process.")  # setLevel(logging.INFO)
+            logger.error(f"OSError when trying to open the input file {filepath}. {e}")
+            logger.info("Aborting pushing process.")  # setLevel(logging.INFO)
             exit(1)
 
         recordMeasure = []
@@ -231,7 +226,7 @@ def create_cell_record_resources(
                         if all(isinstance(x, bytes) for x in cell_types):
                             cell_types = [s.decode("UTF-8") for s in cell_types]
                         elif any(isinstance(x, bytes) for x in cell_types):
-                            L.error(
+                            logger.error(
                                 "ValueError: @library/cell_type contains string and "
                                 "bytes (literal string). The content need to be uniform"
                             )
@@ -242,7 +237,7 @@ def create_cell_record_resources(
                         # labels
                     recordMeasure.append(Measure_payload)
         except KeyError as e:
-            L.error(
+            logger.error(
                 f"KeyError during the information extraction of the dataset in the "
                 f"input file {filepath}. {e}"
             )
@@ -254,7 +249,7 @@ def create_cell_record_resources(
                 "@value": cell_collections.get("/nodes/atlas_cells/0/x").shape[0],
             }
         except KeyError as e:
-            L.error(
+            logger.error(
                 f"KeyError during the information extraction of the dataset in the "
                 f"input file {filepath}. {e}"
             )
@@ -280,13 +275,13 @@ def create_cell_record_resources(
                     )
                     if not atlasrelease_payloads["aibs_atlasrelease"]:
                         if atlasrelease_payloads["fetched"]:
-                            L.info(
+                            logger.info(
                                 f"atlasrelease Resource '{atlasrelease_choice}' found "
                                 "in the Nexus destination project "
                                 f"'{forge._store.bucket}'"
                             )
                         else:
-                            L.error(
+                            logger.error(
                                 f"atlasrelease Resource '{atlasrelease_choice}' has "
                                 "not been found in the Nexus destination project "
                                 f"'{forge._store.bucket}'. A new one need to be "
@@ -295,10 +290,10 @@ def create_cell_record_resources(
                             )
                             exit(1)
                 except Exception as e:
-                    L.error(f"Exception: {e}")
+                    logger.error(f"Exception: {e}")
                     exit(1)
                 except AttributeError as e:
-                    L.error(f"AttributeError: {e}")
+                    logger.error(f"AttributeError: {e}")
                     exit(1)
             else:
                 differentAtlasrelease = False
@@ -343,7 +338,7 @@ def create_cell_record_resources(
                         # If the distribution is empty the good file is needed for a new
                         # creation
                         if not atlasrelease_payloads["hierarchy"].distribution:
-                            L.error(
+                            logger.error(
                                 "Error: the ontology file corresponding to the "
                                 "created atlasRelease resource can not be found among "
                                 "input hierarchy files."
@@ -386,7 +381,7 @@ def create_cell_record_resources(
                             }
                             input_hierarchy_distrib.update(hierarchy_mba_dict)
                     except FileNotFoundError as error:
-                        L.error(
+                        logger.error(
                             f"Error : {error}. Input hierarchy jsonLD file "
                             "does not correspond to the input hierarchy "
                             "json file"
@@ -501,10 +496,10 @@ def create_cell_record_resources(
                     parcellationAtlas_id=None,
                 )
             except KeyError as error:
-                L.error(f"{error}")
+                logger.error(f"{error}")
                 exit(1)
             except IndexError as error:
-                L.error(f"{error}")
+                logger.error(f"{error}")
                 exit(1)
 
         # ==================== add Activity and generation prop ====================
@@ -513,13 +508,13 @@ def create_cell_record_resources(
             try:
                 activity_resource = return_activity_payload(forge, provenance_metadata)
                 if not activity_resource._store_metadata:
-                    L.info(
+                    logger.info(
                         "Existing activity resource not found in the Nexus destination "
                         f"project '{forge._store.bucket}'. A new activity will be "
                         "created and registered"
                     )
             except Exception as e:
-                L.error(f"{e}")
+                logger.error(f"{e}")
                 exit(1)
 
             generation = {
@@ -638,7 +633,7 @@ def create_cell_record_resources(
                         )
                     )
             except json.decoder.JSONDecodeError as error:
-                L.error(f"{error} when opening the input atlasrelease json file.")
+                logger.error(f"{error} when opening the input atlasrelease json file.")
                 exit(1)
 
     return resources_payloads

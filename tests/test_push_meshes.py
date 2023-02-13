@@ -1,4 +1,5 @@
 import pytest
+import logging
 import copy
 from pathlib import Path
 from kgforge.core import KnowledgeGraphForge
@@ -6,6 +7,9 @@ from kgforge.core import KnowledgeGraphForge
 # from bba_dataset_push.bba_data_push import push_meshes
 from bba_data_push.push_brainmesh import create_mesh_resources
 import bba_data_push.constants as const
+
+logging.basicConfig(level=logging.INFO)
+L = logging.getLogger(__name__)
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 
@@ -110,7 +114,7 @@ def test_create_mesh_resources():
         "subject": const.subject,
         "description": (
             "Brain region mesh - Region_1 (ID: 1) - for the Hybrid annotation volume "
-            "from ccfv2 and ccfv3 at 25 µm."
+            "from ccfv2 and ccfv3 at 25 um."
         ),
         "isRegisteredIn": const.isRegisteredIn,
         "name": "Region_1 Mesh Hybrid",
@@ -128,7 +132,7 @@ def test_create_mesh_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     )
 
@@ -140,7 +144,7 @@ def test_create_mesh_resources():
     mesh_resource_fulloptions["name"] = "Region_1 Mesh Hybrid L23split"
     mesh_resource_fulloptions["description"] = (
         "Brain region mesh - Region_1 (ID: 1) - for the Hybrid annotation volume from "
-        "ccfv2 and ccfv3 at 25 µm with the isocortex layer 2 and 3 split."
+        "ccfv2 and ccfv3 at 25 um with the isocortex layer 2 and 3 split."
     )
 
     result = create_mesh_resources(
@@ -153,7 +157,7 @@ def test_create_mesh_resources():
         provenance_metadata_path=None,
         link_regions_path=None,
         resource_tag=None,
-        verbose=1,
+        logger=L,
     )[dataset_returned][dataset_schema]
 
     # Search for the hybrid mesh dataset to compare with (if multiple results returned)
@@ -179,7 +183,7 @@ def test_create_mesh_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -195,7 +199,7 @@ def test_create_mesh_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -211,7 +215,7 @@ def test_create_mesh_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -227,7 +231,7 @@ def test_create_mesh_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -243,7 +247,7 @@ def test_create_mesh_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -259,7 +263,7 @@ def test_create_mesh_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -275,7 +279,7 @@ def test_create_mesh_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 

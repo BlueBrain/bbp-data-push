@@ -27,11 +27,6 @@ from bba_data_push.commons import (
 )
 import bba_data_push.constants as const
 
-from bba_data_push.logging import create_log_handler
-
-L = create_log_handler(__name__, "./push_brainmesh.log")
-
-
 def create_mesh_resources(
     forge,
     inputpath: list,
@@ -42,8 +37,7 @@ def create_mesh_resources(
     provenance_metadata_path,
     link_regions_path,
     resource_tag,
-    verbose,
-) -> list:
+    logger) -> list:
     """
     Construct the input brain mesh dataset, atlasrelease and hierarchy payloads that
     will be push with the corresponding files into Nexus as a resource.
@@ -67,13 +61,12 @@ def create_mesh_resources(
         link_regions_path : Json file meant to contain the @ids of the brain regions
                     masks, meshes and region summaries.
         resource_tag : Tag value (string).
-        verbose : Verbosity level.
+        logger : logger.
     Returns:
         resources_payloads : dict of the form containing the Resource objects
                 (volumetricdatalayer, atlasrelease, hierarchy, activity) that has been
                 constructed and need to be updated/pushed in Nexus.
     """
-    L.setLevel(verbose)
 
     # Constructs the payloads schema according to the 2 different possible mesh
     # dataset to be pushed
@@ -84,7 +77,7 @@ def create_mesh_resources(
         meshes = config_content["GeneratedDatasetPath"]["MeshFile"]
         hierarchies = config_content["HierarchyJson"]
     except KeyError as error:
-        L.error(f"KeyError: {error} is not found in the dataset configuration file.")
+        logger.error(f"KeyError: {error} is not found in the dataset configuration file.")
         exit(1)
 
     if provenance_metadata_path:
@@ -92,7 +85,7 @@ def create_mesh_resources(
             with open(provenance_metadata_path, "r") as f:
                 provenance_metadata = json.loads(f.read())
         except ValueError as error:
-            L.error(f"{error} : {provenance_metadata_path}.")
+            logger.error(f"{error} : {provenance_metadata_path}.")
             exit(1)
     else:
         provenance_metadata = None
@@ -101,7 +94,7 @@ def create_mesh_resources(
     try:
         mesh_dict = const.return_mesh_dict(meshes)
     except KeyError as error:
-        L.error(f"{error}")
+        logger.error(f"{error}")
         exit(1)
 
     # Create contribution
@@ -110,9 +103,9 @@ def create_mesh_resources(
     else:
         try:
             contribution, log_info = return_contribution(forge)
-            L.info("\n".join(log_info))
+            logger.info("\n".join(log_info))
         except Exception as e:
-            L.error(f"Error: {e}")
+            logger.error(f"Error: {e}")
             exit(1)
 
     # Constants
@@ -159,7 +152,7 @@ def create_mesh_resources(
                 pattern = "*.obj"
                 files_mesh = fnmatch.filter(files, pattern)
                 if not files_mesh:
-                    L.error(f"Error: '{filepath}' do not contain any .obj mesh files")
+                    logger.error(f"Error: '{filepath}' do not contain any .obj mesh files")
                     exit(1)
                 try:
                     if os.path.samefile(filepath, dataset):
@@ -173,14 +166,14 @@ def create_mesh_resources(
                 except FileNotFoundError:
                     pass
             else:
-                L.error(
+                logger.error(
                     f"Error: '{filepath}' is not a directory. The input dataset need "
                     "to be a directory containing OBJ brain meshes."
                 )
                 exit(1)
         # If still no file found at this step then raise error
         if not fileFound:
-            L.error(
+            logger.error(
                 f"Error: The '{filepath}' folder do not correspond to one of "
                 "the brain meshes folder dataset defined in the MeshFile "
                 "Section of the 'generated dataset' configuration file"
@@ -193,7 +186,7 @@ def create_mesh_resources(
         try:
             region_id = int(os.path.splitext(os.path.basename(meshpath))[0])
         except ValueError as error:
-            L.error(
+            logger.error(
                 f"ValueError in '{meshpath}' file name. {error}. The mesh file names "
                 "have to be integer representing their region"
             )
@@ -209,13 +202,13 @@ def create_mesh_resources(
             region_name = region_name["name"]
             flat_tree = hierarchy_tree
         except KeyError as e:
-            L.error(f"KeyError: {e}")
+            logger.error(f"KeyError: {e}")
             exit(1)
         except ValueError as e:
-            L.error(f"ValueError: {e}")
+            logger.error(f"ValueError: {e}")
             exit(1)
 
-        L.info(f"Creating the Mesh payload for region {region_id}...")
+        logger.info(f"Creating the Mesh payload for region {region_id}...")
 
         # We create a 1st payload that will be recycled in case of multiple files to
         # push
@@ -255,13 +248,13 @@ def create_mesh_resources(
                     )
                     if not atlasrelease_payloads["aibs_atlasrelease"]:
                         if atlasrelease_payloads["fetched"]:
-                            L.info(
+                            logger.info(
                                 f"atlasrelease Resource '{atlasrelease_choice}' found "
                                 "in the Nexus destination project "
                                 f"'{forge._store.bucket}'"
                             )
                         else:
-                            L.error(
+                            logger.error(
                                 f"atlasrelease Resource '{atlasrelease_choice}' has "
                                 "not been found in the Nexus destination project "
                                 f"'{forge._store.bucket}'. A new one need to be "
@@ -270,10 +263,10 @@ def create_mesh_resources(
                             )
                             exit(1)
                 except Exception as e:
-                    L.error(f"Exception: {e}")
+                    logger.error(f"Exception: {e}")
                     exit(1)
                 except AttributeError as e:
-                    L.error(f"AttributeError: {e}")
+                    logger.error(f"AttributeError: {e}")
                     exit(1)
             else:
                 differentAtlasrelease = False
@@ -318,7 +311,7 @@ def create_mesh_resources(
                         # If the distribution is empty the good file is needed for a new
                         # creation
                         if not atlasrelease_payloads["hierarchy"].distribution:
-                            L.error(
+                            logger.error(
                                 "Error: the ontology file corresponding to the "
                                 "created atlasRelease resource can not be found among "
                                 "input hierarchy files."
@@ -361,7 +354,7 @@ def create_mesh_resources(
                             }
                             input_hierarchy_distrib.update(hierarchy_mba_dict)
                     except FileNotFoundError as error:
-                        L.error(
+                        logger.error(
                             f"Error : {error}. Input hierarchy jsonLD file "
                             "does not correspond to the input hierarchy "
                             "json file"
@@ -476,10 +469,10 @@ def create_mesh_resources(
                     parcellationAtlas_id=None,
                 )
             except KeyError as error:
-                L.error(f"{error}")
+                logger.error(f"{error}")
                 exit(1)
             except IndexError as error:
-                L.error(f"{error}")
+                logger.error(f"{error}")
                 exit(1)
 
         # ==================== add Activity and generation prop ====================
@@ -488,13 +481,13 @@ def create_mesh_resources(
             try:
                 activity_resource = return_activity_payload(forge, provenance_metadata)
                 if not activity_resource._store_metadata:
-                    L.info(
+                    logger.info(
                         "Existing activity resource not found in the Nexus destination "
                         f"project '{forge._store.bucket}'. A new activity will be "
                         "created and registered"
                     )
             except Exception as e:
-                L.error(f"{e}")
+                logger.error(f"{e}")
                 exit(1)
 
             generation = {
@@ -581,7 +574,7 @@ def create_mesh_resources(
                     try:
                         mask_id = link_summary_content[f"{region_id}"]["mask"]["@id"]
                     except KeyError as error:
-                        L.error(
+                        logger.error(
                             f"{error}. The input link region json file need to "
                             "contains the region volumetric Resource Mask @id"
                         )
@@ -599,13 +592,13 @@ def create_mesh_resources(
                     else:
                         link_summary_content[f"{region_id}"]["mesh"] = mesh_link["mesh"]
                 except KeyError as error:
-                    L.error(
+                    logger.error(
                         f"KeyError: {error} is missing in  found in the input link "
                         "region json file"
                     )
                     exit(1)
             except json.decoder.JSONDecodeError as error:
-                L.error(
+                logger.error(
                     f"{error} when opening the input link region json file. it "
                     "need to be created first with the CLI push-volumetric"
                 )
@@ -613,7 +606,7 @@ def create_mesh_resources(
                 # region_summary = {f"{region_id}": {"mesh": {"@id": mesh_id}}}
                 # link_summary_content.update(region_summary)
             except FileNotFoundError as error:
-                L.error(
+                logger.error(
                     f"{error} when opening the input link region json file. it "
                     "need to be created first with the CLI push-volumetric"
                 )
@@ -651,7 +644,7 @@ def create_mesh_resources(
             try:
                 region_id = int(os.path.splitext(os.path.basename(meshpath))[0])
             except ValueError as error:
-                L.error(
+                logger.error(
                     f"ValueError in {'meshpath'} file name. {error}. The mesh file "
                     "names have to be integer representing their region"
                 )
@@ -662,10 +655,10 @@ def create_mesh_resources(
                 )
                 region_name = region_name["name"]
             except KeyError as e:
-                L.error(f"KeyError: {e}")
+                logger.error(f"KeyError: {e}")
                 exit(1)
 
-            L.info(f"Creating the Mesh payload for region {region_id}...")
+            logger.info(f"Creating the Mesh payload for region {region_id}...")
             brainLocation = {
                 "brainRegion": {"@id": f"mba:{region_id}", "label": region_name},
                 "atlasSpatialReferenceSystem": {
@@ -747,7 +740,7 @@ def create_mesh_resources(
                 try:
                     mask_id = link_summary_content[f"{region_id}"]["mask"]["@id"]
                 except KeyError as error:
-                    L.error(
+                    logger.error(
                         f"{error}. The input link region json file need to "
                         "contains the region volumetric Resource Mask @id"
                     )
@@ -769,7 +762,7 @@ def create_mesh_resources(
                     else:
                         link_summary_content[f"{region_id}"]["mesh"] = mesh_link["mesh"]
                 except KeyError as error:
-                    L.error(
+                    logger.error(
                         f"KeyError: The region whose region id is {error} "
                         "can not be found in the input link region json file"
                     )
@@ -833,7 +826,7 @@ def create_mesh_resources(
                         )
                     )
             except json.decoder.JSONDecodeError as error:
-                L.error(f"{error} when opening the input atlasrelease json file.")
+                logger.error(f"{error} when opening the input atlasrelease json file.")
                 exit(1)
 
     return resources_payloads

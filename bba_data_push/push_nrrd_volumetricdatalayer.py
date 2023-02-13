@@ -40,9 +40,6 @@ from bba_data_push.commons import (
     forge_resolve,
 )
 import bba_data_push.constants as const
-from bba_data_push.logging import create_log_handler
-
-L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
 
 
 def create_volumetric_resources(
@@ -56,8 +53,7 @@ def create_volumetric_resources(
     provenance_metadata_path,
     link_regions_path,
     resource_tag,
-    verbose,
-) -> list:
+    logger) -> list:
     """
     Construct the input volumetric dataset, atlasrelease and hierarchy payloads that
     will be push with the corresponding files into Nexus as a resource.
@@ -81,13 +77,12 @@ def create_volumetric_resources(
         link_regions_path : Json file meant to contain the @ids of the brain regions
                     masks, meshes and region summaries.
         resource_tag : Tag value (string).
-        verbose : Verbosity level.
+        logger : logger.
     Returns:
         resources_payloads : dict of the form containing the Resource objects
                 (volumetricdatalayer, atlasrelease, hierarchy, activity) that has been
                 constructed and need to be updated/pushed in Nexus.
     """
-    L.setLevel(verbose)
 
     def freeze(d):
         if isinstance(d, dict):
@@ -103,7 +98,7 @@ def create_volumetric_resources(
         volumes = config_content["GeneratedDatasetPath"]["VolumetricFile"]
         hierarchies = config_content["HierarchyJson"]
     except KeyError as error:
-        L.error(f"KeyError: {error} is not found in the dataset configuration file.")
+        logger.error(f"KeyError: {error} is not found in the dataset configuration file.")
         exit(1)
 
     if provenance_metadata_path:
@@ -111,7 +106,7 @@ def create_volumetric_resources(
             with open(provenance_metadata_path, "r") as f:
                 provenance_metadata = json.loads(f.read())
         except ValueError as error:
-            L.error(f"{error} : {provenance_metadata_path}.")
+            logger.error(f"{error} : {provenance_metadata_path}.")
             exit(1)
 
         deriv_dict_id = create_deriv_dict_id(
@@ -127,7 +122,7 @@ def create_volumetric_resources(
     try:
         volumetric_dict = const.return_volumetric_dict(volumes)
     except KeyError as error:
-        L.error(f"{error}")
+        logger.error(f"{error}")
         exit(1)
 
     # Create contribution
@@ -136,9 +131,9 @@ def create_volumetric_resources(
     else:
         try:
             contribution, log_info = return_contribution(forge)
-            L.info("\n".join(log_info))
+            logger.info("\n".join(log_info))
         except Exception as e:
-            L.error(f"{e}")
+            logger.error(f"{e}")
             exit(1)
 
     deriv_celldensities_template = {
@@ -247,7 +242,7 @@ def create_volumetric_resources(
                                     files_list_path.extend(os.path.join(subdir, f) for f in files_list_sub)
                                     files_list.extend(files_list_sub)
                             if not files_list:
-                                L.error(
+                                logger.error(
                                     f"Error: '{filepath}' do not contain any cell density "
                                     "volumetric files."
                                 )
@@ -334,7 +329,7 @@ def create_volumetric_resources(
                                             print("data_deriv '%s' not found for filepath %s" % (data_deriv, filepath))
                                             pass
                                     if not derivationDataFound:
-                                        L.info(
+                                        logger.info(
                                             f"The file '{data_deriv}' whose "
                                             "resource corresponding to the file "
                                             f"'{dataset}' derivates is absent from the "
@@ -447,7 +442,7 @@ def create_volumetric_resources(
                                                         f"{data_deriv}"
                                                     ]
                                         if not derivationDataFound:
-                                            L.info(
+                                            logger.info(
                                                 f"The file '{data_deriv}' whose "
                                                 "resource corresponding to the file "
                                                 f"'{dataset}' derivates is absent from the "
@@ -461,7 +456,7 @@ def create_volumetric_resources(
                                 dataSampleModality = dataset_dict["datasamplemodality"]
                                 break
                             else:
-                                L.error(
+                                logger.error(
                                     f"Error: parcellation dataset '{filepath}' is not a "
                                     "volumetric .nrrd file"
                                 )
@@ -492,7 +487,7 @@ def create_volumetric_resources(
                             )[1][1:]
                             break
                         else:
-                            L.error(
+                            logger.error(
                                 f"Error: parcellation dataset '{filepath}' is not a "
                                 "volumetric .nrrd file"
                             )
@@ -523,7 +518,7 @@ def create_volumetric_resources(
                             )[1][1:]
                             break
                         else:
-                            L.error(
+                            logger.error(
                                 f"Error: braintemplate dataset '{filepath}' is not a "
                                 "volumetric .nrrd file"
                             )
@@ -555,7 +550,7 @@ def create_volumetric_resources(
                             )[1][1:]
                             break
                         else:
-                            L.error(
+                            logger.error(
                                 f"Error: parcellation dataset '{filepath}' is not a "
                                 "volumetric .nrrd file"
                             )
@@ -578,7 +573,7 @@ def create_volumetric_resources(
                             files_list = fnmatch.filter(files, pattern)
                             files_list = sorted(files_list)
                             if len(files_list) != 6:
-                                L.error(
+                                logger.error(
                                     f"Error: '{filepath}' do not contain 6 placement "
                                     "hints volumetric files."
                                 )
@@ -586,7 +581,7 @@ def create_volumetric_resources(
                             pattern = "*y.nrrd"
                             ylayer = fnmatch.filter(files, pattern)
                             if not ylayer:
-                                L.error(
+                                logger.error(
                                     f"Error: '{filepath}' do not contain the file "
                                     "[PH]y.nrrd volumetric files."
                                 )
@@ -594,7 +589,7 @@ def create_volumetric_resources(
                             pattern = "*problematic_voxel_mask.nrrd"
                             mask_error = fnmatch.filter(files, pattern)
                             if not mask_error:
-                                L.error(
+                                logger.error(
                                     f"Error: '{filepath}' do not contain the "
                                     "problematic_voxel_mask file."
                                 )
@@ -602,7 +597,7 @@ def create_volumetric_resources(
                             pattern = "*report.json"
                             report_error = fnmatch.filter(files, pattern)
                             if not report_error:
-                                L.error(
+                                logger.error(
                                     f"Error: '{filepath}' do not contain the report "
                                     "json file"
                                 )
@@ -641,7 +636,7 @@ def create_volumetric_resources(
                             annotation_description = const.description_ccfv3_split
                             break
                         else:
-                            L.error(
+                            logger.error(
                                 f"Error: placement hints dataset '{filepath}' is not a "
                                 "folder containing placement hints volume and error "
                                 "reports."
@@ -665,7 +660,7 @@ def create_volumetric_resources(
                             pattern = "*.nrrd"
                             files_list = fnmatch.filter(files, pattern)
                             if not files_list:
-                                L.error(
+                                logger.error(
                                     f"Error: '{filepath}' do not contain any mask "
                                     "volumetric files."
                                 )
@@ -683,7 +678,7 @@ def create_volumetric_resources(
                             try:
                                 region_id = int(filename_noext)
                             except ValueError as error:
-                                L.error(
+                                logger.error(
                                     f"ValueError in '{filepath}' file name. {error}. "
                                     "The mask file names have to be integer "
                                     "representing their region"
@@ -702,12 +697,12 @@ def create_volumetric_resources(
                                 region_name = region_name["name"]
                                 flat_tree = hierarchy_tree
                             except KeyError as e:
-                                L.error(f"KeyError: {e}")
+                                logger.error(f"KeyError: {e}")
                                 exit(1)
                             except ValueError as e:
-                                L.error(f"ValueError: {e}")
+                                logger.error(f"ValueError: {e}")
                                 exit(1)
-                            L.info(
+                            logger.info(
                                 f"Creating the Mask payload for region {region_id}..."
                             )
                             description = (
@@ -749,7 +744,7 @@ def create_volumetric_resources(
                             break
 
                         else:
-                            L.error(
+                            logger.error(
                                 f"Error: volumetric mask dataset '{filepath}' is not a "
                                 "folder containing binary mask volume."
                             )
@@ -760,7 +755,7 @@ def create_volumetric_resources(
 
         # If still no file found at this step then raise error
         if not fileFound:
-            L.error(
+            logger.error(
                 f"Error: '{filepath}' does not correspond to one of the datasets "
                 "defined in the VolumetricFile section of the 'generated dataset' "
                 "configuration file"
@@ -772,8 +767,8 @@ def create_volumetric_resources(
         try:
             header = nrrd.read_header(filepath)
         except nrrd.errors.NRRDError as e:
-            L.error(f"NrrdError: {e}")
-            L.info("Aborting pushing process.")  # setLevel(logging.INFO)
+            logger.error(f"NrrdError: {e}")
+            logger.info("Aborting pushing process.")
             exit(1)
 
         config = copy.deepcopy(const.config)
@@ -815,23 +810,23 @@ def create_volumetric_resources(
                     atlasrelease_choice = atlasrelease_payloads["atlasrelease_choice"]
                     if not atlasrelease_payloads["aibs_atlasrelease"]:
                         if atlasrelease_payloads["fetched"]:
-                            L.info(
+                            logger.info(
                                 f"atlasrelease Resource '{atlasrelease_choice}' found "
                                 "in the Nexus destination project "
                                 f"'{forge._store.bucket}'"
                             )
                         else:
-                            L.info(
+                            logger.info(
                                 f"atlasrelease Resource '{atlasrelease_choice}' has "
                                 "not been found in the Nexus destination project "
                                 f"'{forge._store.bucket}'. A new one will be created "
                                 "and pushed"
                             )
                 except Exception as e:
-                    L.error(f"Exception: {e}")
+                    logger.error(f"Exception: {e}")
                     exit(1)
                 except AttributeError as e:
-                    L.error(f"AttributeError: {e}")
+                    logger.error(f"AttributeError: {e}")
                     exit(1)
             else:
                 differentAtlasrelease = False
@@ -876,7 +871,7 @@ def create_volumetric_resources(
                         # If the distribution is empty the good file is needed for a new
                         # creation
                         if not atlasrelease_payloads["hierarchy"].distribution:
-                            L.error(
+                            logger.error(
                                 "Error: the ontology file corresponding to the "
                                 "created atlasRelease resource can not be found among "
                                 "input hierarchy files."
@@ -921,7 +916,7 @@ def create_volumetric_resources(
                             }
                             input_hierarchy_distrib.update(hierarchy_mba_dict)
                     except FileNotFoundError as error:
-                        L.error(
+                        logger.error(
                             f"Error : {error}. Input hierarchy jsonLD file "
                             "does not correspond to the input hierarchy "
                             "json file"
@@ -1009,7 +1004,7 @@ def create_volumetric_resources(
                                 continue
                         except FileNotFoundError:
                             if getattr(atlasrelease_payloads["atlas_release"], "parcellationVolume", None):
-                                L.error(
+                                logger.error(
                                     "Error: the parcellation file corresponding to "
                                     "the created atlasRelease resource can not be "
                                     "found among input dataset files"
@@ -1132,10 +1127,10 @@ def create_volumetric_resources(
                     parcellationAtlas_id=parcellationAtlas_id,
                 )
             except KeyError as error:
-                L.error(f"{error}")
+                logger.error(f"{error}")
                 exit(1)
             except IndexError as error:
-                L.error(f"{error}")
+                logger.error(f"{error}")
                 exit(1)
         else:
 
@@ -1188,13 +1183,13 @@ def create_volumetric_resources(
                 activity_resource = return_activity_payload(forge, provenance_metadata)
                 #print("\nactivity_resource returned: ", activity_resource)
                 if not activity_resource._store_metadata:
-                    L.info(
+                    logger.info(
                         "Existing activity resource not found in the Nexus destination "
                         f"project '{forge._store.bucket}'. A new activity will be "
                         "created and registered"
                     )
             except Exception as e:
-                L.error(f"{e}")
+                logger.error(f"{e}")
                 exit(1)
 
             generation = {
@@ -1519,7 +1514,7 @@ def create_volumetric_resources(
                     try:
                         region_id = int(filename_noext)
                     except ValueError as error:
-                        L.error(
+                        logger.error(
                             f"ValueError in '{filepath_f}' file name. {error}. "
                             "The mask file names have to be integer "
                             "representing their region"
@@ -1531,9 +1526,9 @@ def create_volumetric_resources(
                         )
                         region_name = region_name["name"]
                     except KeyError as e:
-                        L.error(f"KeyError: {e}")
+                        logger.error(f"KeyError: {e}")
                         exit(1)
-                    L.info(f"Creating the Mask payload for region {region_id}...")
+                    logger.info(f"Creating the Mask payload for region {region_id}...")
                     description = (
                         f"Binary mask volume - {region_name.title()} (ID: "
                         f"{region_id}) - for the "
@@ -1608,8 +1603,8 @@ def create_volumetric_resources(
                         try:
                             header = nrrd.read_header(filepath_f)
                         except nrrd.errors.NRRDError as e:
-                            L.error(f"NrrdError: {e}")
-                            L.info("Aborting pushing process.")
+                            logger.error(f"NrrdError: {e}")
+                            logger.info("Aborting pushing process.")
                             exit(1)
                         config["file_extension"] = os.path.splitext(
                             os.path.basename(files_list[f])
@@ -1839,7 +1834,7 @@ def create_volumetric_resources(
                         json.dumps(atlasrelease_link, ensure_ascii=False, indent=2)
                     )
             except json.decoder.JSONDecodeError as error:
-                L.error(f"{error} when opening the input atlasrelease json file.")
+                logger.error(f"{error} when opening the input atlasrelease json file.")
                 exit(1)
 
     return resources_payloads
@@ -1952,7 +1947,7 @@ def create_deriv_dict_id(forge, inputpath, provenance_metadata, volumes, hierarc
                     # Then search if the dataset is part of the volumetric datasets
                     if key_dataset in volumes.keys():
                         if volumes[val_dataset] not in inputpath:
-                            L.error(
+                            logger.error(
                                 f"Error: The derivation dataset '{val_dataset}' "
                                 "correspond to a volumetric dataset from the input "
                                 "configuration json but the file has not been "
@@ -1972,7 +1967,7 @@ def create_deriv_dict_id(forge, inputpath, provenance_metadata, volumes, hierarc
                         for dataset in hierarchies.keys():
                             if dataset == key_dataset:
                                 if hierarchies[val_dataset] not in inputpath:
-                                    L.error(
+                                    logger.error(
                                         f"Error: The derivation dataset "
                                         f"'{val_dataset}' correspond to a hierarchy "
                                         "dataset from the input configuration json but "
@@ -1989,20 +1984,20 @@ def create_deriv_dict_id(forge, inputpath, provenance_metadata, volumes, hierarc
                                     "ontologies",
                                 )
             except KeyError as error:
-                L.error(
+                logger.error(
                     f"KeyError: {error} derivation dataset is not found in the dataset "
                     "configuration file."
                 )
                 exit(1)
             if not derivation_found:
-                L.error(
+                logger.error(
                     "Error: The derivation dataset does not match a "
                     "'input_dataset_used' dataset nor a volumetric dataset nor a "
                     "hierarchy dataset from the input dataset configuration file."
                 )
                 exit(1)
     except KeyError as error:
-        L.error(f"The input provenance file does not contain a {error} section.")
+        logger.error(f"The input provenance file does not contain a {error} section.")
         exit(1)
 
     return deriv_dict_id
@@ -2149,10 +2144,10 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
                         voxel_type, current_dim["size"]
                     )
                 except ValueError as e:
-                    L.error(f"ValueError: {e}")
+                    logger.error(f"ValueError: {e}")
                     exit(1)
                 except KeyError as e:
-                    L.error(f"KeyError: {e}")
+                    logger.error(f"KeyError: {e}")
                     exit(1)
 
         resource.dimension.append(current_dim)
@@ -2167,7 +2162,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
         try:
             name = get_voxel_type(voxel_type, 1)
         except ValueError as e:
-            L.error(f"ValueError: {e}")
+            logger.error(f"ValueError: {e}")
             exit(1)
         component_dim = {"@type": "ComponentDimension", "size": 1, "name": name}
         resource.dimension.insert(0, component_dim)

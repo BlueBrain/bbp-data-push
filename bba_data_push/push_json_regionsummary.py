@@ -24,9 +24,6 @@ from bba_data_push.commons import (
     return_file_hash,
 )
 import bba_data_push.constants as const
-from bba_data_push.logging import create_log_handler
-
-L = create_log_handler(__name__, "./push_json_regionsummary.log")
 
 
 def create_regionsummary_resources(
@@ -39,8 +36,7 @@ def create_regionsummary_resources(
     provenance_metadata_path,
     link_regions_path,
     resource_tag,
-    verbose,
-) -> list:
+    logger) -> list:
     """
     Construct the input RegionSummary dataset, atlasrelease and hierarchy payloads that
     will be push with the corresponding files into Nexus as a resource.
@@ -64,13 +60,12 @@ def create_regionsummary_resources(
         link_regions_path : Json file meant to contain the @ids of the brain regions
                     masks, meshes and region summaries.
         resource_tag : Tag value (string).
-        verbose : Verbosity level.
+        logger : logger.
     Returns:
         resources_payloads : dict of the form containing the Resource objects
                 (volumetricdatalayer, atlasrelease, hierarchy, activity) that has been
                 constructed and need to be updated/pushed in Nexus.
     """
-    L.setLevel(verbose)
 
     config_file = open(config_path)
     config_content = yaml.safe_load(config_file.read().strip())
@@ -79,7 +74,7 @@ def create_regionsummary_resources(
         metadata = config_content["GeneratedDatasetPath"]["MetadataFile"]
         hierarchies = config_content["HierarchyJson"]
     except KeyError as error:
-        L.error(f"KeyError: {error} is not found in the dataset configuration file.")
+        logger.error(f"KeyError: {error} is not found in the dataset configuration file.")
         exit(1)
 
     if provenance_metadata_path:
@@ -87,7 +82,7 @@ def create_regionsummary_resources(
             with open(provenance_metadata_path, "r") as f:
                 provenance_metadata = json.loads(f.read())
         except ValueError as error:
-            L.error(f"{error} : {provenance_metadata_path}.")
+            logger.error(f"{error} : {provenance_metadata_path}.")
             exit(1)
     else:
         provenance_metadata = None
@@ -97,7 +92,7 @@ def create_regionsummary_resources(
     try:
         metadata_dict = const.return_metadata_dict(metadata)
     except KeyError as error:
-        L.error(f"{error}")
+        logger.error(f"{error}")
         exit(1)
 
     # Create contribution
@@ -106,9 +101,9 @@ def create_regionsummary_resources(
     else:
         try:
             contribution, log_info = return_contribution(forge)
-            L.info("\n".join(log_info))
+            logger.info("\n".join(log_info))
         except Exception as e:
-            L.error(f"Error: {e}")
+            logger.error(f"Error: {e}")
             exit(1)
 
     # Constants
@@ -154,14 +149,14 @@ def create_regionsummary_resources(
                     atlasrelease_choice = metadata_dict[dataset]["atlasrelease"]
                     description_atlas = metadata_dict[dataset]["description"]
             except json.decoder.JSONDecodeError as error:
-                L.error(f"JSONDecodeError for '{filepath}' file:  {error}")
+                logger.error(f"JSONDecodeError for '{filepath}' file:  {error}")
                 exit(1)
             except FileNotFoundError:
                 pass
 
         # If still no file found at this step then raise error
         if not fileFound:
-            L.error(
+            logger.error(
                 f"FileNotFoundError: '{filepath}' file do not correspond to one of "
                 "the Metadata json dataset defined in the MetadataFile Section of the "
                 "'generated dataset' configuration file"
@@ -172,7 +167,7 @@ def create_regionsummary_resources(
             link_regions_input = open(link_regions_path, "r")
             link_summary_content = json.loads(link_regions_input.read())
         except json.decoder.JSONDecodeError as error:
-            L.error(f"JSONDecodeError for '{link_regions_input}' file: {error}")
+            logger.error(f"JSONDecodeError for '{link_regions_input}' file: {error}")
             exit(1)
 
         for region_id in metadata_content:
@@ -190,10 +185,10 @@ def create_regionsummary_resources(
                 region_name = region_name["name"]
                 flat_tree = hierarchy_tree
             except KeyError as e:
-                L.error(f"KeyError: {e}")
+                logger.error(f"KeyError: {e}")
                 exit(1)
             except ValueError as e:
-                L.error(f"ValueError: {e}")
+                logger.error(f"ValueError: {e}")
                 exit(1)
 
             try:
@@ -206,10 +201,10 @@ def create_regionsummary_resources(
                 if not flat_tree:
                     flat_tree = hierarchy_tree
             except KeyError as e:
-                L.error(f"KeyError: {e}")
+                logger.error(f"KeyError: {e}")
                 exit(1)
             except ValueError as e:
-                L.error(f"ValueError: {e}")
+                logger.error(f"ValueError: {e}")
                 exit(1)
 
             # ====== Fetch the atlasRelease Resource linked to the input datasets ======
@@ -235,13 +230,13 @@ def create_regionsummary_resources(
                         )
                         if not atlasrelease_payloads["aibs_atlasrelease"]:
                             if atlasrelease_payloads["fetched"]:
-                                L.info(
+                                logger.info(
                                     f"atlasrelease Resource '{atlasrelease_choice}' "
                                     "found in the Nexus destination project "
                                     f"'{forge._store.bucket}'"
                                 )
                             else:
-                                L.error(
+                                logger.error(
                                     f"atlasrelease Resource '{atlasrelease_choice}' "
                                     "has not been found in the Nexus destination "
                                     f"project '{forge._store.bucket}'. A new one need "
@@ -250,10 +245,10 @@ def create_regionsummary_resources(
                                 )
                                 exit(1)
                     except Exception as e:
-                        L.error(f"Exception: {e}")
+                        logger.error(f"Exception: {e}")
                         exit(1)
                     except AttributeError as e:
-                        L.error(f"AttributeError: {e}")
+                        logger.error(f"AttributeError: {e}")
                         exit(1)
                 else:
                     differentAtlasrelease = False
@@ -297,7 +292,7 @@ def create_regionsummary_resources(
                             # If the distribution is empty the good file is needed for "
                             # a new creation
                             if not atlasrelease_payloads["hierarchy"].distribution:
-                                L.error(
+                                logger.error(
                                     "Error: the ontology file corresponding to the "
                                     "created atlasRelease resource can not be found "
                                     "among input hierarchy files."
@@ -342,7 +337,7 @@ def create_regionsummary_resources(
                                 }
                                 input_hierarchy_distrib.update(hierarchy_mba_dict)
                         except FileNotFoundError as error:
-                            L.error(
+                            logger.error(
                                 f"Error : {error}. Input hierarchy jsonLD file "
                                 "does not correspond to the input hierarchy "
                                 "json file"
@@ -463,10 +458,10 @@ def create_regionsummary_resources(
                                 parcellationAtlas_id=None,
                             )
                         except KeyError as error:
-                            L.error(f"{error}")
+                            logger.error(f"{error}")
                             exit(1)
                         except IndexError as error:
-                            L.error(f"{error}")
+                            logger.error(f"{error}")
                             exit(1)
 
             # =================== add Activity and generation prop ===================
@@ -477,13 +472,13 @@ def create_regionsummary_resources(
                         forge, provenance_metadata
                     )
                     if not activity_resource._store_metadata:
-                        L.info(
+                        logger.info(
                             "Existing activity resource not found in the Nexus "
                             f"destination project '{forge._store.bucket}'. A new "
                             "activity will be created and registered"
                         )
                 except Exception as e:
-                    L.error(f"{e}")
+                    logger.error(f"{e}")
                     exit(1)
 
                 generation = {
@@ -525,7 +520,7 @@ def create_regionsummary_resources(
                     )
                 )
             except KeyError as error:
-                L.error(f"KeyError: {error} not found in the region metadata file")
+                logger.error(f"KeyError: {error} not found in the region metadata file")
                 exit(1)
             try:
                 mesh = {
@@ -542,7 +537,7 @@ def create_regionsummary_resources(
                     ],
                 }
             except KeyError as error:
-                L.error(f"KeyError: {error} not found in the link_region_path file")
+                logger.error(f"KeyError: {error} not found in the link_region_path file")
                 exit(1)
 
             brainLocation = {
@@ -569,7 +564,7 @@ def create_regionsummary_resources(
                 f"{region_name} as represented in the atlas {description_atlas}"
             )
 
-            L.info(f"Creating the RegionSummary payload for region {region_id}...")
+            logger.info(f"Creating the RegionSummary payload for region {region_id}...")
 
             # If the resource has been fetched, we copy its id and _store_metadata
             if fetched_resources:
@@ -661,7 +656,7 @@ def create_regionsummary_resources(
                         )
                     )
             except json.decoder.JSONDecodeError as error:
-                L.error(f"{error} when opening the input atlasrelease json file.")
+                logger.error(f"{error} when opening the input atlasrelease json file.")
                 exit(1)
 
     return resources_payloads

@@ -1,4 +1,5 @@
 import pytest
+import logging
 import numpy as np
 from pathlib import Path
 from kgforge.core import KnowledgeGraphForge
@@ -10,6 +11,9 @@ from bba_data_push.push_nrrd_volumetricdatalayer import (
     add_nrrd_props,
 )
 import bba_data_push.constants as const
+
+logging.basicConfig(level=logging.INFO)
+L = logging.getLogger(__name__)
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 
@@ -186,7 +190,7 @@ def test_create_volumetric_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema]
     if len(datasets):
         result = vars(datasets[-1])
@@ -212,7 +216,7 @@ def test_create_volumetric_resources():
         provenance_metadata_path=None,
         link_regions_path=None,
         resource_tag=None,
-        verbose=1,
+        logger=L,
     )[dataset_returned][dataset_schema]
 
     # Search for the excitatory neuron dataset to compare with (if multiple results
@@ -242,7 +246,7 @@ def test_create_volumetric_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -259,7 +263,7 @@ def test_create_volumetric_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -276,7 +280,7 @@ def test_create_volumetric_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -293,7 +297,7 @@ def test_create_volumetric_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -310,7 +314,7 @@ def test_create_volumetric_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -327,7 +331,7 @@ def test_create_volumetric_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -344,7 +348,7 @@ def test_create_volumetric_resources():
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 

@@ -298,7 +298,9 @@ def push_volumetric(
     linked atlasRelease and ontology resources. Tag all these resources with the input
     tag or, if not provided, with a timestamp\n
     """
+    L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
     L.setLevel(ctx["verbose"])
+
     L.info("Filling the metadata of the volumetric payloads...")
     resources_payloads = create_volumetric_resources(
         ctx["forge"],
@@ -311,8 +313,7 @@ def push_volumetric(
         provenance_metadata_path,
         link_regions_path,
         resource_tag,
-        ctx["verbose"],
-    )
+        L)
 
     #print("\nresources_payloads[\"activity\"]: ", resources_payloads["activity"])
     if resources_payloads["activity"]:
@@ -354,7 +355,9 @@ def push_meshes(
     atlasRelease and ontology resources. Tag all these resources with the input tag or,
     if not provided, with a timestamp\n
     """
+    L = create_log_handler(__name__, "./push_brainmesh.log")
     L.setLevel(ctx["verbose"])
+
     L.info("Filling the metadata of the mesh payloads...")
     resources_payloads = create_mesh_resources(
         ctx["forge"],
@@ -366,8 +369,7 @@ def push_meshes(
         provenance_metadata_path,
         link_regions_path,
         resource_tag,
-        ctx["verbose"],
-    )
+        L)
 
     if resources_payloads["activity"]:
         _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])
@@ -408,7 +410,9 @@ def push_regionsummary(
     linked atlasRelease and ontology resources. Tag all these resources with the input
     tag or, if not provided, with a timestamp\n
     """
+    L = create_log_handler(__name__, "./push_json_regionsummary.log")
     L.setLevel(ctx["verbose"])
+
     L.info("Filling the metadata of the RegionSummary payload...")
     resources_payloads = create_regionsummary_resources(
         ctx["forge"],
@@ -420,8 +424,7 @@ def push_regionsummary(
         provenance_metadata_path,
         link_regions_path,
         resource_tag,
-        ctx["verbose"],
-    )
+        L)
 
     if resources_payloads["activity"]:
         _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])
@@ -454,7 +457,9 @@ def push_cellrecords(
     their linked atlasRelease and ontology resources. Tag all these resources with the
     input tag or, if not provided, with a timestamp\n
     """
+    L = create_log_handler(__name__, "./push_cellrecord.log")
     L.setLevel(ctx["verbose"])
+
     L.info("Filling the metadata of the CellRecord payloads...")
     resources_payloads = create_cell_record_resources(
         ctx["forge"],
@@ -465,8 +470,7 @@ def push_cellrecords(
         hierarchy_jsonld_path,
         provenance_metadata_path,
         resource_tag,
-        ctx["verbose"],
-    )
+        L)
 
     if resources_payloads["activity"]:
         _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])

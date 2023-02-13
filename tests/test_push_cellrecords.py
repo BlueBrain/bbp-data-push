@@ -1,4 +1,5 @@
 import pytest
+import logging
 import copy
 from pathlib import Path
 from kgforge.core import KnowledgeGraphForge
@@ -6,6 +7,9 @@ from kgforge.core import KnowledgeGraphForge
 # from bba_dataset_push.bba_data_push import push_cellrecords
 from bba_data_push.push_sonata_cellrecordseries import create_cell_record_resources
 import bba_data_push.constants as const
+
+logging.basicConfig(level=logging.INFO)
+L = logging.getLogger(__name__)
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 
@@ -180,7 +184,7 @@ def test_create_cell_record_resources():
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     )
 
@@ -199,7 +203,7 @@ def test_create_cell_record_resources():
         input_hierarchy_jsonld=None,
         provenance_metadata_path=None,
         resource_tag=None,
-        verbose=0,
+        logger=L,
     )[dataset_returned][dataset_schema]
 
     # Search for the cell_record_dataset to compare with (if multiple results returned)
@@ -224,7 +228,7 @@ def test_create_cell_record_resources():
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -239,7 +243,7 @@ def test_create_cell_record_resources():
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -254,7 +258,7 @@ def test_create_cell_record_resources():
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -269,7 +273,7 @@ def test_create_cell_record_resources():
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -284,7 +288,7 @@ def test_create_cell_record_resources():
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -299,7 +303,7 @@ def test_create_cell_record_resources():
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 

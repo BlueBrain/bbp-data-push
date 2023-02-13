@@ -10,7 +10,7 @@ from kgforge.core import Resource
 
 # Allen annotation volume voxels resolution in microns
 VOXELS_RESOLUTION = "25"
-SPATIAL_UNIT = "µm"
+SPATIAL_UNIT = "um" # µm
 dataset_type = "Dataset"
 subject = {
     "@type": "Subject",
@@ -178,7 +178,7 @@ def return_spatial_reference(forge):
         boundingBox = {
             "@type": "BoundingBox",
             "lowerPoint": {"@type": "Vector3D", "valueX": 0, "valueY": 0, "valueZ": 0},
-            "unitCode": "µm",
+            "unitCode": SPATIAL_UNIT,
             "upperPoint": {
                 "@type": "Vector3D",
                 "valueX": 13200,
