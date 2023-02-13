@@ -63,19 +63,15 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
             if not dataset_type:
                 dataset_type = "Entity"
             try:
-                L.info(
-                    "\n-------------- Update & Validation Status ---------------"
-                    f"\nUpdating '{dataset_type}' resource payloads in Nexus..."
-                )
-                L.info("\nUpdating %d resources with schema %s:" % (len(datasets), dataset_schema))
-                #forge.update(datasets, dataset_schema)
-                L.info(
-                    f"<<Resource synchronization status>>:"
-                    f" {str(datasets[-1]._synchronized)}"
-                )
+                L.info("\n-------------- Update & Validation Status ---------------"
+                    f"\nUpdating '{dataset_type}' resource payloads in Nexus:"
+                    f"\n{len(datasets)} resources with schema {dataset_schema}")
+                L.debug("\nThe first resource is:\n%s:" % datasets[0])
+                forge.update(datasets, dataset_schema)
+                L.info("<<Resource synchronization status>>: %s", str(datasets[-1]._synchronized))
 
                 try:
-                    L.info("Tagging %d with tag %s" % (len(datasets), tag))
+                    L.info("Tagging %d resources with tag %s" % (len(datasets), tag))
                     forge.tag(datasets, tag)
                 except Exception as e:
                     L.error(f"Error when tagging the resource. {e}")
@@ -90,23 +86,16 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
             if not dataset_type:
                 dataset_type = "Entity"
             try:
-                L.info(
-                    "\n----------------------- Resource content ----------------------"
-                    f"\n{datasets[-1]}"
-                    "\n-------------- Registration & Validation Status ---------------"
-                    f"\nRegistering the constructed  '{dataset_type}' resource payload "
-                    "along the input dataset in Nexus..."
-                )
-                L.info("\nRegistering %d resources with schema %s, first is:\n%s" % (len(datasets), dataset_schema, datasets[0]))
+                L.info("\n-------------- Registration & Validation Status ---------------"
+                    f"\nRegistering the constructed '{dataset_type}' resource payload along the input dataset in Nexus:"
+                    f"\n{len(datasets)} resources with schema {dataset_schema}")
+                L.debug("\nThe first resource is:\n%s" % datasets[0])
                 forge.register(datasets, dataset_schema)
-                L.info(
-                    f"<<Resource synchronization status>>: "
-                    f"{str(datasets[-1]._synchronized)}"
-                )
+                L.info("<<Resource synchronization status>>: %s", str(datasets[-1]._synchronized))
 
                 try:
                     L.info("Tagging %d resources with tag %s" % (len(datasets), tag))
-                    #forge.tag(datasets, tag)
+                    forge.tag(datasets, tag)
                 except Exception as e:
                     L.error(f"Error when tagging the resource. {e}")
                     exit(1)
