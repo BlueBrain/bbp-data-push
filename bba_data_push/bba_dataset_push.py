@@ -24,7 +24,6 @@ from bba_data_push import constants as const
 from bba_data_push.logging import log_args, close_handler, create_log_handler
 from bba_data_push import __version__
 
-logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
 
@@ -176,7 +175,8 @@ def _initialize_pusher_cli(
     The Forge will enable to build and push into Nexus the metadata payload along with
     the input dataset.
     """
-    L.setLevel((logging.WARNING, logging.INFO, logging.DEBUG)[min(verbose, 2)])
+    level = (logging.WARNING, logging.INFO, logging.DEBUG)[min(verbose, 2)]
+    logging.basicConfig(level=level)
 
     default_environments = {
         "dev": "https://dev.nexus.ocp.bbp.epfl.ch/v1",
@@ -616,9 +616,9 @@ def push_cellcomposition(forge, L, atlasrelease_id, volume_path, densities_dir, 
         L.error(f"The following {COMP_SCHEMA} has no id, probably it has not been registered:\n{cellComps[COMP_SCHEMA]}")
     return cellComp_id
 
+
 def start():
     initialize_pusher_cli(obj={})
-
 
 if __name__ == "__main__":
     start()
