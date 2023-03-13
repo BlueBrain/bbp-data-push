@@ -88,6 +88,8 @@ def create_densityPayloads(
     if len_vc > 1:
             L.info(f"WARNING! More than one key ({len_vc}) found in {volume_path}, only '{PART_KEY}' will be considered")
 
+    resources_payloads["user_contribution"] = get_user_contribution(forge, L, True)
+
     config = copy.deepcopy(const.config)
     mts = volume_content[PART_KEY]
     unresolved = []
@@ -138,7 +140,7 @@ def create_densityPayloads(
                 brainLocation = brainLocation_layer,
                 dataSampleModality = const.cell_densiry_dsm,
                 subject = const.subject,
-                contribution = get_user_contribution(forge, L, True),
+                contribution = resources_payloads["user_contribution"],
                 annotation = [m_annotation, e_annotation],
                 atlasRelease = get_atlasrelease_dict(atlasrelease_id),
                 cellType = [m_ct, e_ct]
@@ -206,8 +208,7 @@ def create_cellCompositionVolume(
 
     cell_compostion_volume_release.subject = subject
 
-    user_contribution = get_user_contribution(forge, L, True)
-    cell_compostion_volume_release.contribution = user_contribution
+    cell_compostion_volume_release.contribution = resources_payloads["user_contribution"]
 
     # Parse input volume
     try:
@@ -246,7 +247,7 @@ def create_cellCompositionVolume(
             else:
                 L.info(f"No Resource {dens_name} found in cellComps[{DENSITY_SCHEMA}].")
 
-    cell_compostion_volume_release.name = get_name(name, schema, user_contribution)
+    cell_compostion_volume_release.name = get_name(name, schema, resources_payloads["user_contribution"])
 
     distrib_filename = cell_compostion_volume_release.name.replace(" ", "_") + "_distrib.json"
     distrib_filepath = os.path.join(output_dir, distrib_filename)
@@ -285,12 +286,11 @@ def create_cellCompositionSummary(
 
     cell_compostion_summary_release.subject = subject
 
-    user_contribution = get_user_contribution(forge, L, True)
-    cell_compostion_summary_release.contribution = user_contribution
+    cell_compostion_summary_release.contribution = resources_payloads["user_contribution"]
 
     cell_compostion_summary_release.distribution = forge.attach(summary_path, content_type="application/json")
 
-    cell_compostion_summary_release.name = get_name(name, schema, user_contribution)
+    cell_compostion_summary_release.name = get_name(name, schema, resources_payloads["user_contribution"])
     if description:
         cell_compostion_summary_release.description = f"{description} ({schema})"
 
@@ -333,8 +333,7 @@ def create_cellComposition(
             "label": "Whole mouse brain" }
     }
 
-    user_contribution = get_user_contribution(forge, L, True)
-    cell_compostion_release.contribution = user_contribution
+    cell_compostion_release.contribution = resources_payloads["user_contribution"]
 
     cell_compostion_release.cellCompositionVolume = {
         "@id": cellComps[VOLUME_SCHEMA].id,
@@ -345,7 +344,7 @@ def create_cellComposition(
         "@id": cellComps[SUMMARY_SCHEMA].id,
         "@type": SUMMARY_SCHEMA }]
 
-    cell_compostion_release.name = get_name(name, schema, user_contribution)
+    cell_compostion_release.name = get_name(name, schema, resources_payloads["user_contribution"])
     if description:
         cell_compostion_release.description = f"{description} ({schema})"
 
