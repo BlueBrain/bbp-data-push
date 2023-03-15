@@ -19,8 +19,7 @@ from bba_data_push.commons import (
     create_unresolved_payload,
     return_base_annotation,
     resolve_cellType,
-    get_layer,
-    forge_resolve)
+    get_layer)
 
 from bba_data_push.push_nrrd_volumetricdatalayer import add_nrrd_props
 
@@ -86,7 +85,7 @@ def create_densityPayloads(
         L.info(f"No {PART_KEY} key found anong the {len_vc} keys in {volume_path}! {no_key}")
         exit(1)
     if len_vc > 1:
-            L.info(f"WARNING! More than one key ({len_vc}) found in {volume_path}, only '{PART_KEY}' will be considered")
+        L.info(f"WARNING! More than one key ({len_vc}) found in {volume_path}, only '{PART_KEY}' will be considered")
 
     resources_payloads["user_contribution"] = get_user_contribution(forge, L, True)
 
@@ -152,7 +151,10 @@ def create_densityPayloads(
             resources_payloads["datasets_"+action][DENSITY_SCHEMA].append( met )
 
     if unresolved:
-        create_unresolved_payload(forge, unresolved, os.path.join(output_dir, "unresolved_densities"))
+        unresolved_dir = os.path.join(output_dir, "unresolved_densities")
+        create_unresolved_payload(forge, unresolved, unresolved_dir)
+        L.error(f"Error: not all densities have been resolved, see {unresolved_dir}")
+        exit(1)
     else:
         L.info("No unresolved resources!")
 
