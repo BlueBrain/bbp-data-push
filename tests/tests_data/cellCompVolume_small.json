@@ -8,14 +8,14 @@
             ],
             "hasPart": [
                 {
-                    "@id": "http://uri.interlex.org/base/ilx_0738202",
-                    "label": "dSTUT",
+                    "@id": "http://uri.interlex.org/base/ilx_0738199",
+                    "label": "bAC",
                     "about": [
                         "https://neuroshapes.org/EType"
                     ],
                     "hasPart": [
                         {
-                            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/88e12afd-6915-458f-a00f-e4c501aabddf",
+                            "@id": "https://bbp.epfl.ch/neurosciencegraph/data/2df93ad9-8caf-473b-89b0-7391188db1ef",
                             "@type": [
                                 "NeuronDensity",
                                 "VolumetricDataLayer",

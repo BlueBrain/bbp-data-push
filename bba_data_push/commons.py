@@ -1046,7 +1046,7 @@ def get_layer(forge, label):
 
 
 def forge_resolve(forge, label, name=None):
-    res = forge.resolve(label, scope="ontology", target="terms", strategy="EXACT_CASEINSENSITIVE_MATCH")
+    res = forge.resolve(label, scope="ontology", target="terms", strategy="EXACT_MATCH")
     if not res:
         from_ = "" if not name else f" from '{name}'"
         print("\nlabel '%s'%s not resolved" % (label, from_))
