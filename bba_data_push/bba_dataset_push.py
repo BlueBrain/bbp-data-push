@@ -8,25 +8,37 @@ To know more about Nexus, see https://bluebrainnexus.io.
 Link to BBP Atlas pipeline confluence documentation:
 https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 """
+import os
 import logging
 import click
 from datetime import datetime
 from kgforge.core import KnowledgeGraphForge
+#from kgforge.core.commons.context import Context
 
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
 from bba_data_push.push_brainmesh import create_mesh_resources
 from bba_data_push.push_sonata_cellrecordseries import create_cell_record_resources
 from bba_data_push.push_json_regionsummary import create_regionsummary_resources
 from bba_data_push.push_cellComposition import create_densityPayloads, create_cellCompositionVolume, create_cellCompositionSummary, create_cellComposition
+from bba_data_push.push_cellComposition import COMP_SCHEMA
 from bba_data_push import constants as const
-from bba_data_push.logging import log_args, close_handler
+from bba_data_push.logging import log_args, close_handler, create_log_handler
 from bba_data_push import __version__
 
-logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
+def check_tag(forge, dataset, tag):
+    for res_to_tag in dataset:
+        res = forge.retrieve(res_to_tag.id, version=tag)
+        if res:
+            print(f"Tag '{tag}' already exists for res id '{res.id}' (revision {res._store_metadata._rev}), please choose a different tag.")
+            print("No resource with this schema has been tagged.")
+            exit(1)
 
 def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag):
+
+    if not tag:
+        tag = f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}"
 
     ############
     # TEMPORARY: change the mba jsonLD file name from the ontology distribution to
@@ -52,59 +64,46 @@ def _integrate_datasets_to_Nexus(forge, datasets_toupdate, datasets_topush, tag)
     except IndexError:
         pass
     ###########
-    for dataset_schema, datasets in datasets_toupdate.items():
-        if datasets:
+    for dataset_schema, dataset in datasets_toupdate.items():
+        if dataset:
             dataset_type = f"{dataset_schema}".rsplit("/", 1)[-1]
-            if not dataset_type:
-                dataset_type = "Entity"
+            # No filter on metadata for the time being, the check on the Resource distribution happens in the datasets_toupdate creation
             try:
-                L.info(
-                    "\n-------------- Update & Validation Status ---------------"
-                    f"\nUpdating '{dataset_type}' resource payloads in Nexus..."
-                )
-                print("\nUpdating %d resources with schema %s:" % (len(datasets), dataset_schema))
-                #forge.update(datasets, dataset_schema)
-                L.info(
-                    f"<<Resource synchronization status>>:"
-                    f" {str(datasets[-1]._synchronized)}"
-                )
-                if tag:
-                    try:
-                        print("Tagging %d with tag %s" % (len(datasets), tag))
-                        #forge.tag(datasets, tag)
-                    except Exception as e:
-                        L.error(f"Error when tagging the resource. {e}")
-                        exit(1)
+                print("-------------- Update & Validation Status ---------------"
+                    f"\nUpdating '{dataset_type}' resource payloads in Nexus:"
+                    f"\n{len(dataset)} resources with schema {dataset_schema}")
+                print("\nThe first resource is:\n%s" % dataset[0])
+                forge.update(dataset, dataset_schema)
+                L.info("<<Resource synchronization status>>: %s", str(dataset[-1]._synchronized))
+
+                try:
+                    print("Tagging %d resources with tag %s" % (len(dataset), tag))
+                    check_tag(forge, dataset, tag)
+                    forge.tag(dataset, tag)
+                except Exception as e:
+                    L.error(f"Error when tagging the resource. {e}")
+                    exit(1)
             except Exception as e:
                 L.error(f"Error when updating the resource. {e}")
                 exit(1)
 
-    for dataset_schema, datasets in datasets_topush.items():
-        if datasets:
+    for dataset_schema, dataset in datasets_topush.items():
+        if dataset:
             dataset_type = f"{dataset_schema}".rsplit("/", 1)[-1]
-            if not dataset_type:
-                dataset_type = "Entity"
             try:
-                L.info(
-                    "\n----------------------- Resource content ----------------------"
-                    f"\n{datasets[-1]}"
-                    "\n-------------- Registration & Validation Status ---------------"
-                    f"\nRegistering the constructed  '{dataset_type}' resource payload "
-                    "along the input dataset in Nexus..."
-                )
-                print("\nRegistering %d resources with schema %s, first is:\n" % (len(datasets), dataset_schema), datasets[0])
-                forge.register(datasets, dataset_schema)
-                L.info(
-                    f"<<Resource synchronization status>>: "
-                    f"{str(datasets[-1]._synchronized)}"
-                )
-                if tag:
-                    try:
-                        print("Tagging %d resources with tag %s" % (len(datasets), tag))
-                        #forge.tag(datasets, tag)
-                    except Exception as e:
-                        L.error(f"Error when tagging the resource. {e}")
-                        exit(1)
+                print("\n-------------- Registration & Validation Status ---------------"
+                    f"\nRegistering the constructed '{dataset_type}' resource payload along the input dataset in Nexus:"
+                    f"\n{len(dataset)} resources with schema {dataset_schema}")
+                print("\nThe first resource is:\n%s" % dataset[0])
+                forge.register(dataset, dataset_schema)
+                L.info("<<Resource synchronization status>>: %s", str(dataset[-1]._synchronized))
+
+                try:
+                    print("Tagging %d resources with tag %s" % (len(dataset), tag))
+                    forge.tag(dataset, tag)
+                except Exception as e:
+                    L.error(f"Error when tagging the resource. {e}")
+                    exit(1)
             except Exception as e:
                 L.error(f"Error when registering the resource. {e}")
                 exit(1)
@@ -133,52 +132,57 @@ def _push_activity_to_Nexus(activity_resource, forge):
         try:
             activity_resource.endedAtTime = endedAtTime
             L.info("\nRegistering the constructed Activity Resource in Nexus...")
-            print("activity_resource:", activity_resource)
+            L.info("activity_resource:", activity_resource)
             #forge.register(activity_resource, const.schema_activity)
         except Exception as e:
             L.error(f"Error when registering the resource. {e}")
             exit(1)
 
 
+def validate_token(ctx, param, value):
+    if len(value) < 1:
+        raise click.BadParameter("The string provided is empty'")
+    else:
+        return value
+
 @click.group()
 @click.version_option(__version__)
 @click.option("-v", "--verbose", count=True)
-@click.option(
-    "--forge-config-file",
-    type=click.Path(),
-    default=(
-        "https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/"
-        "notebooks/use-cases/prod-forge-nexus.yml"
-    ),
-    help="Path to the configuration file used to instantiate the Forge",
-)
-@click.option(
-    "--nexus-env",
-    default="prod",
-    help="Nexus environment to use, can be 'dev',"
-    "'staging', 'prod' or the URL of a custom environment",
-)
+@click.option("--forge-config-file",
+    type = click.Path(),
+    default = ("../forge_configuration/forge_config.yml"),
+    help = "Path to the configuration file used to instantiate the Forge",)
+@click.option("--nexus-env",
+    default = "staging",
+    help = "Nexus environment to use: can be 'staging', 'prod' or the URL of a custom environment",)
 @click.option("--nexus-org", default="bbp", help="The Nexus organisation to push into")
 @click.option("--nexus-proj", default="atlas", help="The Nexus project to push into")
-@click.option(
-    "--nexus-token",
-    required=True,
-    help="Value of the Nexus token",
-)
+@click.option("--nexus-token",
+    type = click.STRING,
+    callback = validate_token,
+    required = True,
+    help = "Value of the Nexus token",)
 @click.pass_context
 @log_args(L)
 def initialize_pusher_cli(
     ctx, verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
+):
+    forge, verbose_L = _initialize_pusher_cli(verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token)
+    ctx.obj["forge"] = forge
+    ctx.obj["verbose"] = verbose_L
+
+def _initialize_pusher_cli(
+    verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
 ):
     """Run the dataset pusher CLI starting by the Initialisation of the Forge python
     framework to communicate with Nexus.\n
     The Forge will enable to build and push into Nexus the metadata payload along with
     the input dataset.
     """
-    L.setLevel((logging.WARNING, logging.INFO, logging.DEBUG)[min(verbose, 2)])
+    level = (logging.WARNING, logging.INFO, logging.DEBUG)[min(verbose, 2)]
+    logging.basicConfig(level=level)
 
     default_environments = {
-        "dev": "https://dev.nexus.ocp.bbp.epfl.ch/v1",
         "staging": "https://staging.nise.bbp.epfl.ch/nexus/v1",
         "prod": "https://bbp.epfl.ch/nexus/v1",
     }
@@ -190,27 +194,31 @@ def initialize_pusher_cli(
     elif nexus_env in default_environments.values():
         pass
     else:
-        L.error(
-            f"Error: {nexus_env} do not correspond to one of the 3 possible "
-            "environment: dev, staging, prod"
-        )
+        L.error(f"Error: '{nexus_env}' do not correspond to one of the possible environments: {', '.join(default_environments.keys())}")
         exit(1)
 
     bucket = f"{nexus_org}/{nexus_proj}"
     try:
         L.info("Initializing the forge...")
         forge = KnowledgeGraphForge(
-            forge_config_file, endpoint=nexus_env, bucket=bucket, token=nexus_token
-        )
+            forge_config_file, endpoint=nexus_env, bucket=bucket, token=nexus_token)
     except Exception as e:
         L.error(f"Error when initializing the forge. {e}")
         exit(1)
 
-    ctx.obj["forge"] = forge
-    ctx.obj["verbose"] = L.level
-
     close_handler(L)
 
+    return forge, L.level
+
+tag_option = click.option("--resource-tag",
+    default = f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}",
+    help="Optional tag value with which to tag the resources (default to 'datetime.today()')")
+
+new_atlas_option = click.option("--new-atlas",
+    type=bool,
+    required=True,
+    default=False,
+    help="Flag to trigger the creation of a new atlas release Resource (default to false).")
 
 def base_resource(f):
     f = click.option(
@@ -257,10 +265,7 @@ def base_resource(f):
         help="Json file containing metadata for the derivation properties as well as "
         "the Activity and SoftwareAgent resources.",
     )(f)
-    f = click.option(
-        "--resource-tag",
-        help="Optional tag value with which to tag the resources",
-    )(f)
+    f = tag_option(f)
 
     return f
 
@@ -274,12 +279,7 @@ def base_resource(f):
     "push-regionsummary. If the file already exists it will be annotated else it will "
     "be created.",
 )
-@click.option(
-    "--new-atlas",
-    type=bool,
-    required=True,
-    help="Flag to trigger the creation of a new atlas release Resource.",
-)
+@new_atlas_option
 @click.pass_context
 @log_args(L)
 def push_volumetric(
@@ -300,7 +300,9 @@ def push_volumetric(
     linked atlasRelease and ontology resources. Tag all these resources with the input
     tag or, if not provided, with a timestamp\n
     """
+    L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
     L.setLevel(ctx.obj["verbose"])
+
     L.info("Filling the metadata of the volumetric payloads...")
     resources_payloads = create_volumetric_resources(
         ctx.obj["forge"],
@@ -313,19 +315,22 @@ def push_volumetric(
         provenance_metadata_path,
         link_regions_path,
         resource_tag,
-        ctx.obj["verbose"],
-    )
+        L)
 
     #print("\nresources_payloads[\"activity\"]: ", resources_payloads["activity"])
-    if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+    if resources_payloads:
+        print("resources_payloads:\n", resources_payloads)
+        if resources_payloads["activity"]:
+            _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
 
-    _integrate_datasets_to_Nexus(
-        ctx.obj["forge"],
-        resources_payloads["datasets_toUpdate"],
-        resources_payloads["datasets_toPush"],
-        resources_payloads["tag"],
-    )
+        _integrate_datasets_to_Nexus(
+            ctx.obj["forge"],
+            resources_payloads["datasets_toUpdate"],
+            resources_payloads["datasets_toPush"],
+            resources_payloads["tag"],
+        )
+    else:
+        print("\nNothing to register/update in Nexus")
 
 
 @initialize_pusher_cli.command()
@@ -337,12 +342,14 @@ def push_volumetric(
     "push-regionsummary. If the file already exists it will be annoted else it will be "
     "created.",
 )
+@new_atlas_option
 @click.pass_context
 @log_args(L)
 def push_meshes(
     ctx,
     dataset_path,
     config_path,
+    new_atlas,
     atlasrelease_config_path,
     hierarchy_path,
     hierarchy_jsonld_path,
@@ -356,37 +363,42 @@ def push_meshes(
     atlasRelease and ontology resources. Tag all these resources with the input tag or,
     if not provided, with a timestamp\n
     """
+    L = create_log_handler(__name__, "./push_brainmesh.log")
     L.setLevel(ctx.obj["verbose"])
     L.info("Filling the metadata of the mesh payloads...")
     resources_payloads = create_mesh_resources(
         ctx.obj["forge"],
         dataset_path,
         config_path,
+        new_atlas,
         atlasrelease_config_path,
         hierarchy_path,
         hierarchy_jsonld_path,
         provenance_metadata_path,
         link_regions_path,
         resource_tag,
-        ctx.obj["verbose"],
-    )
+        L)
 
-    if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+    if resources_payloads:
+        if resources_payloads["activity"]:
+            _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
 
-    _integrate_datasets_to_Nexus(
-        ctx.obj["forge"],
-        resources_payloads["datasets_toUpdate"],
-        resources_payloads["datasets_toPush"],
-        resources_payloads["tag"],
-    )
+        _integrate_datasets_to_Nexus(
+            ctx.obj["forge"],
+            resources_payloads["datasets_toUpdate"],
+            resources_payloads["datasets_toPush"],
+            resources_payloads["tag"],
+        )
+    else:
+        print("\nNothing to register/update in Nexus")
 
 
 @initialize_pusher_cli.command()
 @base_resource
 @click.option(
     "--link-regions-path",
-    help="Optional json file containing link between regions and resources  (@ ids of "
+    required=True,
+    help="Optional json file containing link between regions and resources (@ ids of "
     "mask and mesh for each brain region) to be extracted by the CLI "
     "push-regionsummary. If the file already exists it will be annoted else it will be "
     "created.",
@@ -410,7 +422,9 @@ def push_regionsummary(
     linked atlasRelease and ontology resources. Tag all these resources with the input
     tag or, if not provided, with a timestamp\n
     """
+    L = create_log_handler(__name__, "./push_json_regionsummary.log")
     L.setLevel(ctx.obj["verbose"])
+
     L.info("Filling the metadata of the RegionSummary payload...")
     resources_payloads = create_regionsummary_resources(
         ctx.obj["forge"],
@@ -422,8 +436,7 @@ def push_regionsummary(
         provenance_metadata_path,
         link_regions_path,
         resource_tag,
-        ctx.obj["verbose"],
-    )
+        L)
 
     if resources_payloads["activity"]:
         _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
@@ -456,10 +469,12 @@ def push_cellrecords(
     their linked atlasRelease and ontology resources. Tag all these resources with the
     input tag or, if not provided, with a timestamp\n
     """
-    L.setLevel(ctx.obj["verbose"])
+    L = create_log_handler(__name__, "./push_cellrecord.log")
+    L.setLevel(ctx["verbose"])
+
     L.info("Filling the metadata of the CellRecord payloads...")
     resources_payloads = create_cell_record_resources(
-        ctx.obj["forge"],
+        ctx["forge"],
         dataset_path,
         config_path,
         atlasrelease_config_path,
@@ -467,21 +482,20 @@ def push_cellrecords(
         hierarchy_jsonld_path,
         provenance_metadata_path,
         resource_tag,
-        ctx.obj["verbose"],
-    )
+        L)
 
     if resources_payloads["activity"]:
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], ctx["forge"])
 
     _integrate_datasets_to_Nexus(
-        ctx.obj["forge"],
+        ctx["forge"],
         resources_payloads["datasets_toUpdate"],
         resources_payloads["datasets_toPush"],
         resources_payloads["tag"],
     )
 
 
-@initialize_pusher_cli.command()
+@initialize_pusher_cli.command(name="push-cellcomposition")
 @click.option(
     "--atlasrelease-id",
     type=click.STRING,
@@ -494,6 +508,11 @@ def push_cellrecords(
     required=True,
     multiple=False,
     help="The path to the json CellCompositionVolume file.")
+@click.option(
+    "--densities-dir",
+    type = click.Path(exists=True, dir_okay=True),
+    default = (""),
+    help = "The path to the density files in the volume-path.")
 @click.option(
     "--summary-path",
     type=click.Path(exists=True),
@@ -512,31 +531,53 @@ def push_cellrecords(
     required=False,
     multiple=False,
     help="The description to assign to the CellComposition(Volume,Summary).")
+@click.option("--output-dir",
+    type = click.Path(),
+    default = ("."),
+    help = "The output dir for log and by-products",)
+@tag_option
 @click.pass_context
-@log_args(L)
-def push_cellcomposition(
+def cli_push_cellcomposition(
     ctx,
     atlasrelease_id,
     volume_path,
+    densities_dir,
     summary_path,
     name, description,
-    resource_tag=None
-):
+    output_dir,
+    resource_tag
+) -> str:
+    """Create a CellComposition resource payload and push it along with the "
+    corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
+    Tag all these resources with the input tag or, if not provided, with a timestamp\n
+    """
 
+    L = create_log_handler(__name__, os.path.join(output_dir, "push_cellComposition.log"))
+    L.setLevel(ctx.obj["verbose"])
+
+    return push_cellcomposition(ctx.obj["forge"], L, atlasrelease_id, volume_path, densities_dir, summary_path, name, description, output_dir, resource_tag)
+
+def push_cellcomposition(forge, L, atlasrelease_id, volume_path, densities_dir, summary_path, name, description, output_dir, resource_tag) -> str:
     cellComps = {"tag": resource_tag}
-    resources_payloads = create_densityPayloads(ctx.obj["forge"],
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    resources_payloads = create_densityPayloads(forge,
         atlasrelease_id,
         volume_path,
+        densities_dir,
         resource_tag,
         cellComps,
-        ctx.obj["verbose"])
+        output_dir,
+        L)
 
-    _integrate_datasets_to_Nexus(ctx.obj["forge"],
+    _integrate_datasets_to_Nexus(forge,
         resources_payloads["datasets_toUpdate"],
         resources_payloads["datasets_toPush"],
         resources_payloads["tag"])
 
-    create_cellCompositionVolume(ctx.obj["forge"],
+    create_cellCompositionVolume(forge,
         atlasrelease_id,
         volume_path,
         resources_payloads,
@@ -544,43 +585,51 @@ def push_cellcomposition(
         description,
         resource_tag,
         cellComps,
-        ctx.obj["verbose"])
+        output_dir,
+        L)
 
     if summary_path:
-        create_cellCompositionSummary(ctx.obj["forge"],
+        create_cellCompositionSummary(forge,
             atlasrelease_id,
             resources_payloads,
             summary_path,
             name,
             description,
             cellComps,
-            ctx.obj["verbose"])
+            L)
 
-    _integrate_datasets_to_Nexus(ctx.obj["forge"],
+    _integrate_datasets_to_Nexus(forge,
         cellComps["datasets_toUpdate"],
         cellComps["datasets_toPush"],
         cellComps["tag"])
 
-    create_cellComposition(ctx.obj["forge"],
+    create_cellComposition(forge,
         atlasrelease_id,
         resources_payloads,
         name,
         description,
         resource_tag,
         cellComps,
-        ctx.obj["verbose"])
+        L)
 
-    _integrate_datasets_to_Nexus(ctx.obj["forge"],
+    _integrate_datasets_to_Nexus(forge,
         cellComps["datasets_toUpdate"],
         cellComps["datasets_toPush"],
         cellComps["tag"])
 
     if resources_payloads.get("activity"):
-        _push_activity_to_Nexus(resources_payloads["activity"], ctx.obj["forge"])
+        _push_activity_to_Nexus(resources_payloads["activity"], forge)
+
+    cellComp_id = ""
+    if getattr(cellComps[COMP_SCHEMA], 'id', None):
+        cellComp_id = cellComps[COMP_SCHEMA].id
+    else:
+        L.error(f"The following {COMP_SCHEMA} has no id, probably it has not been registered:\n{cellComps[COMP_SCHEMA]}")
+    return cellComp_id
+
 
 def start():
     initialize_pusher_cli(obj={})
-
 
 if __name__ == "__main__":
     start()

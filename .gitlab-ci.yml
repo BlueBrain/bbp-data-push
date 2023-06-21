@@ -1,5 +1,5 @@
 default:
-  image: "python:3.7"
+  image: "python:3.9"
 
 include:
   - project: dke/apps/templates/job-templates
@@ -11,14 +11,13 @@ include:
       - /ci/jobs/build-package.yml
       - /ci/jobs/build-wheels.yml
       - /ci/jobs/publish-package.yml
-      - /ci/jobs/tag.yml
+      #- /ci/jobs/tag.yml
 
 stages:
   - unit-test
   - lint-check
   - build
   - publish
-  - release
 
 build-package:
   rules:
@@ -26,22 +25,29 @@ build-package:
 publish-package:
   rules:
     - if: $CI_COMMIT_TAG
-tag:
+.tag:
   rules:
     - if: $CI_COMMIT_TAG
-  variables:
-    OAUTH2_TOKEN: $OAUTH2_TOKEN
 
-before_script:
-  - pip install -r requirements.txt
-  - pip install .[dev]
+.add_staging_SSL:
+  script:
+    - CA_BUNDLE=$(python3 -c "import certifi; print(certifi.where())")
+    - cat $BBP_CA_CERT >> $CA_BUNDLE
+    - export SSL_CERT_FILE=$CA_BUNDLE
 
 unit_test:
   stage: unit-test
   extends: .unit-tests
+  before_script:
+    - pip install -r requirements.txt
+    - pip install .[dev]
+  script:
+    - !reference [.add_staging_SSL, script]
+    - !reference [.unit-tests, script]
   variables:
-   SRC_PROJECT: '$CI_PROJECT_PATH'
-   TEST_FOLDER: 'tests'
+    SRC_PROJECT: '$CI_PROJECT_PATH'
+    TEST_FOLDER: 'tests'
+    NEXUS_STAGING_TOKEN: '$NEXUS_STAGING_TOKEN'
 
 lint_check:
   stage: lint-check

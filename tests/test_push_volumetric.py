@@ -1,4 +1,7 @@
+import os
 import pytest
+import logging
+import json
 import numpy as np
 from pathlib import Path
 from kgforge.core import KnowledgeGraphForge
@@ -10,15 +13,19 @@ from bba_data_push.push_nrrd_volumetricdatalayer import (
     add_nrrd_props,
 )
 import bba_data_push.constants as const
+from bba_data_push.commons import return_contribution
+
+logging.basicConfig(level=logging.INFO)
+L = logging.getLogger(__name__)
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 
 
-def volumetric_dict(cell_density=False, nrrd_props=False):
+def volumetric_dict(atlasRelease, contribution, cell_density=False, nrrd_props=False):
 
     volumetric_dict = {
         "type": ["Dataset", "VolumetricDataLayer", "BrainParcellationDataLayer"],
-        "atlasRelease": {},
+        "atlasRelease": atlasRelease,
         "brainLocation": {
             "atlasSpatialReferenceSystem": {
                 "@id": "https://bbp.epfl.ch/neurosciencegraph/data/"
@@ -30,7 +37,7 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
             },
             "brainRegion": {"label": "root", "@id": "mba:997"},
         },
-        "contribution": [],
+        "contribution": contribution,
         "subject": {
             "@type": "Subject",
             "species": {
@@ -38,7 +45,7 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "label": "Mus musculus",
             },
         },
-        "description": "Hybrid annotation volume from ccfv2 and ccfv3 at 25 um"
+        "description": "Hybrid annotation volume from ccfv2 and ccfv3 at 25 um. "
         "The version replaces the leaf regions in ccfv3 with the leaf region of ccfv2, "
         "which have additional levels of hierarchy.",
         "isRegisteredIn": {
@@ -49,12 +56,11 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
                 "AtlasSpatialReferenceSystem",
             ],
         },
-        "name": "Annotation V2V3 Hybrid",
+        "name": "annotation_v2v3_hybrid",
         "componentEncoding": "float64",
     }
 
     if nrrd_props:
-
         volumetric_dict.update(
             {
                 "bufferEncoding": "gzip",
@@ -90,7 +96,6 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
         )
 
     if cell_density:
-
         volumetric_dict["type"].remove("BrainParcellationDataLayer")
         volumetric_dict["type"].extend(["CellDensityDataLayer", "GliaCellDensity"])
         volumetric_dict["name"] = "Excitatory Neuron Density"
@@ -103,12 +108,14 @@ def volumetric_dict(cell_density=False, nrrd_props=False):
 def test_create_volumetric_resources():
 
     # Arguments
-    forge_config_file = str(
-        Path(TEST_PATH, "tests/test_forge_config/test_forge_config_demo.yaml")
-    )
-    nexus_token_file = str(Path(TEST_PATH, "tests/test_forge_config/empty_token.txt"))
+    forge_config_file = "./forge_configuration/forge_config.yml"
 
-    forge = KnowledgeGraphForge(forge_config_file, token=nexus_token_file)
+    nexus_env = "https://staging.nise.bbp.epfl.ch/nexus/v1"
+    nexus_org = "bbp"
+    nexus_proj = "atlas"
+    nexus_token = os.environ["NEXUS_STAGING_TOKEN"]
+
+    forge = KnowledgeGraphForge(forge_config_file, endpoint=nexus_env, bucket="/".join([nexus_org,nexus_proj]) , token=nexus_token)
 
     dataset_path = [
         str(Path(TEST_PATH, "tests/tests_data/annotation_v2v3_hybrid.nrrd")),
@@ -116,11 +123,15 @@ def test_create_volumetric_resources():
         str(Path(TEST_PATH, "tests/tests_data/cell_densities_hybrid")),
         str(Path(TEST_PATH, "tests/tests_data/neuron_densities_hybrid")),
     ]
-    hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/hierarchy.json"))
+    hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/hierarchy_l23split.json"))
     config_path = str(Path(TEST_PATH, "tests/tests_data/test_push_dataset_config.yaml"))
     atlasrelease_config_path = str(
-        Path(TEST_PATH, "/tests/tests_data/atlasrelease_config_path.json")
+        Path(TEST_PATH, "tests/tests_data/atlasrelease_config_path.json")
     )
+    with open(atlasrelease_config_path, "r") as atlasrelease_config_file:
+        atlasrelease_config_file.seek(0)
+        atlasrelease_config = json.load(atlasrelease_config_file)
+
     dataset_returned = "datasets_toPush"
     dataset_schema = const.schema_volumetricdatalayer
 
@@ -173,20 +184,28 @@ def test_create_volumetric_resources():
         )
     )
 
-    volumetric_dict_simple = volumetric_dict(cell_density=False, nrrd_props=True)
+    new_atlas = False
+    atlasRelease = {}
+    if not new_atlas:
+        atlasrelease_choice = list(atlasrelease_config.keys())[0]
+        atlasRelease["@id"] = atlasrelease_config[atlasrelease_choice]["id"]
+        atlasRelease["@type"] = const.atlasrelease_types
+
+    contribution, _ = return_contribution(forge)
+    volumetric_dict_simple = volumetric_dict(atlasRelease, contribution, cell_density=False, nrrd_props=True)
 
     datasets = create_volumetric_resources(
             forge=forge,
             inputpath=[dataset_path[0]],
             config_path=config_path,
-            new_atlas=False,
+            new_atlas=new_atlas,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema]
     if len(datasets):
         result = vars(datasets[-1])
@@ -194,7 +213,7 @@ def test_create_volumetric_resources():
             assert result[key] == volumetric_dict_simple[key]
 
     # test with every arguments
-    cell_density_dict_fulloptions = volumetric_dict(cell_density=True, nrrd_props=True)
+    cell_density_dict_fulloptions = volumetric_dict(atlasRelease, contribution, cell_density=True, nrrd_props=True)
 
     cell_density_dict_fulloptions["description"] = (
         "Excitatory neuron density volume for the Hybrid annotation volume from ccfv2 "
@@ -205,14 +224,14 @@ def test_create_volumetric_resources():
         forge,
         dataset_path,
         config_path,
-        new_atlas=False,
+        new_atlas=new_atlas,
         atlasrelease_config_path=atlasrelease_config_path,
         input_hierarchy=hierarchy_path,
         input_hierarchy_jsonld=None,
         provenance_metadata_path=None,
         link_regions_path=None,
         resource_tag=None,
-        verbose=1,
+        logger=L,
     )[dataset_returned][dataset_schema]
 
     # Search for the excitatory neuron dataset to compare with (if multiple results
@@ -235,14 +254,14 @@ def test_create_volumetric_resources():
             forge,
             [dataset_path[0]],
             wrong_config_key,
-            new_atlas=False,
+            new_atlas=new_atlas,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -252,14 +271,14 @@ def test_create_volumetric_resources():
             forge,
             [empty_folder],
             config_data_emptydata,
-            new_atlas=False,
+            new_atlas=new_atlas,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -269,14 +288,14 @@ def test_create_volumetric_resources():
             forge,
             [wrong_dataset_name],
             config_path,
-            new_atlas=False,
+            new_atlas=new_atlas,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -286,14 +305,14 @@ def test_create_volumetric_resources():
             forge,
             [dataset_path[0]],
             config_data_notfound,
-            new_atlas=False,
+            new_atlas=new_atlas,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -303,14 +322,14 @@ def test_create_volumetric_resources():
             forge,
             [folder_annotation],
             config_wrongdatatype,
-            new_atlas=False,
+            new_atlas=new_atlas,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -320,14 +339,14 @@ def test_create_volumetric_resources():
             forge,
             [neuron_density_file],
             config_wrongdatatype,
-            new_atlas=False,
+            new_atlas=new_atlas,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -337,14 +356,14 @@ def test_create_volumetric_resources():
             forge,
             [corrupted_data_header],
             config_corruptedData,
-            new_atlas=False,
+            new_atlas=new_atlas,
             atlasrelease_config_path=atlasrelease_config_path,
             input_hierarchy=hierarchy_path,
             input_hierarchy_jsonld=None,
             provenance_metadata_path=None,
             link_regions_path=None,
             resource_tag=None,
-            verbose=0,
+            logger=L,
         )[dataset_returned][dataset_schema][-1]
     assert e.value.code == 1
 
@@ -352,7 +371,7 @@ def test_create_volumetric_resources():
 def test_add_nrrd_props():
 
     # Arguments
-    volumetric_dict_simple = volumetric_dict(cell_density=False, nrrd_props=False)
+    volumetric_dict_simple = volumetric_dict({}, [], cell_density=False, nrrd_props=False)
     volumetric_resource = Resource(
         type=volumetric_dict_simple["type"],
         atlasRelease=volumetric_dict_simple["atlasRelease"],
@@ -391,7 +410,7 @@ def test_add_nrrd_props():
         add_nrrd_props(volumetric_resource, nrrd_header, config, correct_voxel_type)
     )
 
-    volumetric_dict_fulloptions = volumetric_dict(cell_density=False, nrrd_props=True)
+    volumetric_dict_fulloptions = volumetric_dict({}, [], cell_density=False, nrrd_props=True)
     for key in volumetric_dict_fulloptions:
         assert result[key] == volumetric_dict_fulloptions[key]
 

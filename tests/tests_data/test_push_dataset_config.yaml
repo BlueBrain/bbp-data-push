@@ -8,7 +8,10 @@ GeneratedDatasetPath:
     annotation_hybrid: tests/tests_data/annotation_v2v3_hybrid.nrrd
     annotation_ccfv2_l23split: tests/tests_data/annotation_ccfv2_l23split.nrrd
     annotation_ccfv3_l23split: tests/tests_data/annotation_ccfv3_l23split.nrrd
+    annotation_ccfv3_l23split_barrelsplit: tests/tests_data/annotation_ccfv3_l23split.nrrd
     annotation_hybrid_l23split: tests/tests_data/annotation_hybrid_l23split.nrrd
+    hemispheres_ccfv2_l23split: tests/tests_data/hemispheres_annotation_ccfv2_l23split.nrrd
+    hemispheres_ccfv3_l23split: tests/tests_data/hemispheres_annotation_ccfv3_l23split.nrrd
     direction_vectors_isocortex_ccfv3: tests/tests_data/direction_vectors_isocortex_ccfv3
     overall_cell_density_ccfv2_correctednissl: tests/tests_data/overall_cell_density_ccfv2_correctednissl.nrrd
     cell_densities_hybrid: tests/tests_data/cell_densities_hybrid
@@ -25,6 +28,7 @@ GeneratedDatasetPath:
     mtypes_densities_probability_map_ccfv2_l23split_correctednissl: tests/tests_data/tests/tests_data/mtypes_densities_probability_map_ccfv2_correctednissl
     mtypes_densities_probability_map_transplant_correctednissl: tests/tests_data/mtypes_densities_probability_map_transplant_correctednissl
     mtypes_densities_probability_map_l23split_transplant_correctednissl: tests/tests_data/mtypes_densities_probability_map_l23split_transplant_correctednissl
+    mtypes_densities_probability_map_transplant: tests/tests_data/mtypes_densities_probability_map_l23split_transplant_correctednissl
     cell_orientations_ccfv3: tests/tests_data/cell_orientations_ccfv3.nrrd
     cell_orientations_hybrid: tests/tests_data/cell_orientations_hybrid.nrrd
     cell_orientations_realigned: tests/tests_data/cell_orientations_realigned.nrrd
@@ -35,6 +39,7 @@ GeneratedDatasetPath:
   MeshFile:
     brain_region_meshes_hybrid: tests/tests_data/brain_region_meshes_hybrid
     brain_region_meshes_hybrid_l23split: tests/tests_data/brain_region_meshes_hybrid_l23split
+    brain_region_meshes_ccfv2_l23split: tests/tests_data/brain_region_meshes_ccfv3_l23split
     brain_region_meshes_ccfv3_l23split: tests/tests_data/brain_region_meshes_ccfv3_l23split
   CellRecordsFile:
     cell_records_sonata: tests/tests_data/cell_records_sonata.h5

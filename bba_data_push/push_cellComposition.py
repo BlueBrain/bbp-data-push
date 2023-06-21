@@ -19,13 +19,11 @@ from bba_data_push.commons import (
     create_unresolved_payload,
     return_base_annotation,
     resolve_cellType,
-    get_layer,
-    forge_resolve)
+    get_layer)
 
 from bba_data_push.push_nrrd_volumetricdatalayer import add_nrrd_props
 
 import bba_data_push.constants as const
-from bba_data_push.logging import create_log_handler
 
 VOLUME_SCHEMA = "CellCompositionVolume"
 SUMMARY_SCHEMA = "CellCompositionSummary"
@@ -36,8 +34,6 @@ COMMON_TYPES = ["Dataset", "Entity"]
 
 subject = Resource.from_json(const.subject)
 
-L = create_log_handler(__name__, "./update_resources.log")
-
 region_id = "http://api.brain-map.org/api/v2/data/Structure/997"
 region_name = "root"
 
@@ -45,7 +41,7 @@ brainRegion = Resource(id = region_id,
                        label = region_name)
 
 brainLocation_def = {
-    "brainRegion": {"@id": f"mba:{region_id}", "label": f"{region_name}"},
+    "brainRegion": {"@id": f"{region_id}", "label": f"{region_name}"},
     "atlasSpatialReferenceSystem": {
          "@type": ["BrainAtlasSpatialReferenceSystem", "AtlasSpatialReferenceSystem"],
          "@id": const.atlas_spatial_reference_system_id}
@@ -60,12 +56,12 @@ def create_densityPayloads(
     forge,
     atlasrelease_id,
     volume_path,
+    densities_dir,
     resource_tag,
     cellComps,
-    verbose,
+    output_dir,
+    L,
 ):
-    L.setLevel(verbose)
-
     cellComps[DENSITY_SCHEMA] = {}
     resources_payloads = {}
     for action in actions:
@@ -83,18 +79,20 @@ def create_densityPayloads(
     no_key = f"At least one '{PART_KEY}' key is required"
     len_vc = len(volume_content)
     if len_vc < 1:
-        print(f"No key found in {volume_path}! {no_key}")
+        L.info(f"No key found in {volume_path}! {no_key}")
         exit(1)
     if PART_KEY not in volume_content:
-        print(f"No {PART_KEY} key found anong the {len_vc} keys in {volume_path}! {no_key}")
+        L.info(f"No {PART_KEY} key found anong the {len_vc} keys in {volume_path}! {no_key}")
         exit(1)
     if len_vc > 1:
-            print(f"WARNING! More than one key ({len_vc}) found in {volume_path}, only '{PART_KEY}' will be considered")
+        L.info(f"WARNING! More than one key ({len_vc}) found in {volume_path}, only '{PART_KEY}' will be considered")
+
+    resources_payloads["user_contribution"] = get_user_contribution(forge, L, True)
 
     config = copy.deepcopy(const.config)
     mts = volume_content[PART_KEY]
     unresolved = []
-    print(f"Parsing {len(mts)} M-types...")
+    L.info(f"Parsing {len(mts)} M-types...")
     for mt in mts:
         mt_name = mt["label"]
         m_ct = resolve_cellType(forge, mt_name)
@@ -106,31 +104,31 @@ def create_densityPayloads(
         brainLocation_layer["layer"] = get_layer(forge, mt_name)
 
         ets = mt[PART_KEY]
-        print(f"\nParsing {len(ets)} E-types for M-type '{mt_name}'...")
+        L.info(f"\nParsing {len(ets)} E-types for M-type '{mt_name}'...")
         for et in ets:
             et_name = et["label"]
-            et_part = et[PART_KEY][0]
-            if not et_part.get(PATH_KEY):
-                print(f"No 'path' available for m-type {mt_name}, e-type {et_name}. Skipping such density!")
+            e_ct = resolve_cellType(forge, et_name)
+            if not e_ct["@id"]:
+                unresolved.append( et )
                 continue
 
-            filepath = et_part[PATH_KEY]
-            #filepath = "/gpfs/bbp.cscs.ch/data/project/proj39/nexus/bbp/atlas/1/6/a/6/e/b/b/1/L1_SLAC-CNAC_densities_v3.nrrd"
+            et_part = et[PART_KEY][0]
+            if not et_part.get(PATH_KEY):
+                L.info(f"No 'path' available for m-type {mt_name}, e-type {et_name}. Skipping such density!")
+                continue
+
+            filepath = os.path.join(densities_dir, et_part[PATH_KEY])
             header = None
             try:
                 header = nrrd.read_header(filepath)
             except nrrd.errors.NRRDError as e:
                 L.error(f"NrrdError: {e}")
-                print(f"Error in parsing the header from {filepath} (m-type {mt_name}, e-type {et_name}). Skipping such density!")
+                L.error(f"\nin parsing the header from {filepath} (m-type {mt_name}, e-type {et_name}). Skipping such density!")
                 continue
 
             file_ext = os.path.splitext(os.path.basename(filepath))[1][1:]
             config["file_extension"] = file_ext
 
-            e_ct = resolve_cellType(forge, et_name)
-            if not e_ct["@id"]:
-                unresolved.append( et )
-                continue
             e_annotation = get_cellAnnotation("E", e_ct)
             met = Resource(
                 type = const.me_type,
@@ -141,7 +139,7 @@ def create_densityPayloads(
                 brainLocation = brainLocation_layer,
                 dataSampleModality = const.cell_densiry_dsm,
                 subject = const.subject,
-                contribution = get_user_contribution(forge, L, True),
+                contribution = resources_payloads["user_contribution"],
                 annotation = [m_annotation, e_annotation],
                 atlasRelease = get_atlasrelease_dict(atlasrelease_id),
                 cellType = [m_ct, e_ct]
@@ -153,9 +151,12 @@ def create_densityPayloads(
             resources_payloads["datasets_"+action][DENSITY_SCHEMA].append( met )
 
     if unresolved:
-        create_unresolved_payload(forge, unresolved, "unresolved_densities")
+        unresolved_dir = os.path.join(output_dir, "unresolved_densities")
+        create_unresolved_payload(forge, unresolved, unresolved_dir)
+        L.error(f"Error: not all densities have been resolved, see {unresolved_dir}")
+        exit(1)
     else:
-        print("No unresolved resources!")
+        L.info("No unresolved resources!")
 
     # Add Activity
 # need to define provenance_metadata first
@@ -172,7 +173,6 @@ def create_densityPayloads(
 
     resources_payloads["tag"] = resource_tag
 
-    #print(resources_payloads)
     return resources_payloads
 
 
@@ -185,10 +185,9 @@ def create_cellCompositionVolume(
     description,
     resource_tag,
     cellComps,
-    verbose,
+    output_dir,
+    L,
 ):
-    L.setLevel(verbose)
-
     schema = VOLUME_SCHEMA
     schema_id = forge._model.schema_id(type = schema)
     for action in actions:
@@ -200,7 +199,6 @@ def create_cellCompositionVolume(
     cell_compostion_volume_release.atlasRelease = get_atlasrelease_dict(atlasrelease_id)
 
     cell_compostion_volume_release.about = ["https://bbp.epfl.ch/ontologies/core/bmo/METypeDensity"]
-    #cell_compostion_volume_release.atlasRelease = Resource(id=atlas_release.id, type=atlas_release.type, _rev=atlas_release._store_metadata._rev)
     #cell_compostion_volume_release.atlasSpatialReferenceSystem = Resource(id=atlas_release.spatialReferenceSystem.id,
     #    type=atlas_release.spatialReferenceSystem.type,
     #    _rev=atlas_release._store_metadata._rev)
@@ -212,8 +210,7 @@ def create_cellCompositionVolume(
 
     cell_compostion_volume_release.subject = subject
 
-    user_contribution = get_user_contribution(forge, L, True)
-    cell_compostion_volume_release.contribution = user_contribution
+    cell_compostion_volume_release.contribution = resources_payloads["user_contribution"]
 
     # Parse input volume
     try:
@@ -230,6 +227,15 @@ def create_cellCompositionVolume(
         for et in mt[PART_KEY]:
             et_name = et["label"]
             dens_name = get_densName(mt_name, et_name)
+            et_part = et[PART_KEY][0]
+            if et_part.get("@id"):
+                has_id = f"Density {dens_name} has an '@id' key, hence will not be modified"
+                if et_part.get(PATH_KEY):
+                    L.info(f"Warning! {has_id} and the 'path' key provided will be ignored")
+                else:
+                    L.info(has_id)
+                continue
+
             if dens_name in cellComps[DENSITY_SCHEMA]:
                 res = cellComps[DENSITY_SCHEMA][dens_name]
                 if getattr(res, 'id', None):
@@ -239,18 +245,18 @@ def create_cellCompositionVolume(
                     et_part["@type"] = res.type
                     et_part["_rev"] = res._store_metadata["_rev"]
                 else:
-                    print(f"Resource {dens_name} has no 'id', maybe it has not been registered.")
+                    L.info(f"Resource {dens_name} has no 'id', probably it has not been registered.")
             else:
-                print(f"No Resource {dens_name} found in cellComps[{DENSITY_SCHEMA}].")
+                L.info(f"No Resource {dens_name} found in cellComps[{DENSITY_SCHEMA}].")
 
-    cell_compostion_volume_release.name = get_name(name, schema, user_contribution)
+    cell_compostion_volume_release.name = get_name(name, schema, resources_payloads["user_contribution"])
 
     distrib_filename = cell_compostion_volume_release.name.replace(" ", "_") + "_distrib.json"
-    with open(distrib_filename, "w") as volume_distribution_path:
+    distrib_filepath = os.path.join(output_dir, distrib_filename)
+    with open(distrib_filepath, "w") as volume_distribution_path:
         volume_distribution_path.write(json.dumps(volume_distribution, indent=4))
-    cell_compostion_volume_release.distribution = forge.attach(distrib_filename, content_type="application/json")
+    cell_compostion_volume_release.distribution = forge.attach(distrib_filepath, content_type="application/json")
 
-    cell_compostion_volume_release.name = get_name(name, schema, user_contribution)
     if description:
         cell_compostion_volume_release.description = f"{description} ({schema})"
 
@@ -267,10 +273,8 @@ def create_cellCompositionSummary(
     name,
     description,
     cellComps,
-    verbose,
+    L,
 ):
-    L.setLevel(verbose)
-
     schema = SUMMARY_SCHEMA
     schema_id = forge._model.schema_id(type = schema)
     for action in actions:
@@ -284,12 +288,11 @@ def create_cellCompositionSummary(
 
     cell_compostion_summary_release.subject = subject
 
-    user_contribution = get_user_contribution(forge, L, True)
-    cell_compostion_summary_release.contribution = user_contribution
+    cell_compostion_summary_release.contribution = resources_payloads["user_contribution"]
 
     cell_compostion_summary_release.distribution = forge.attach(summary_path, content_type="application/json")
 
-    cell_compostion_summary_release.name = get_name(name, schema, user_contribution)
+    cell_compostion_summary_release.name = get_name(name, schema, resources_payloads["user_contribution"])
     if description:
         cell_compostion_summary_release.description = f"{description} ({schema})"
 
@@ -306,12 +309,15 @@ def create_cellComposition(
     description,
     resource_tag,
     cellComps,
-    verbose,
+    L,
 ):
-    L.setLevel(verbose)
-
     schema = COMP_SCHEMA
     schema_id = forge._model.schema_id(type = schema)
+
+    for vol_sum in [VOLUME_SCHEMA, SUMMARY_SCHEMA]:
+        if not getattr(cellComps[vol_sum], 'id', None):
+            L.error(f"Error: the {vol_sum} has no 'id', probably it has not been registered")
+            exit(1)
 
     for action in actions:
         cellComps.update({"datasets_"+action: {schema_id : []}})
@@ -329,8 +335,7 @@ def create_cellComposition(
             "label": "Whole mouse brain" }
     }
 
-    user_contribution = get_user_contribution(forge, L, True)
-    cell_compostion_release.contribution = user_contribution
+    cell_compostion_release.contribution = resources_payloads["user_contribution"]
 
     cell_compostion_release.cellCompositionVolume = {
         "@id": cellComps[VOLUME_SCHEMA].id,
@@ -341,7 +346,7 @@ def create_cellComposition(
         "@id": cellComps[SUMMARY_SCHEMA].id,
         "@type": SUMMARY_SCHEMA }]
 
-    cell_compostion_release.name = get_name(name, schema, user_contribution)
+    cell_compostion_release.name = get_name(name, schema, resources_payloads["user_contribution"])
     if description:
         cell_compostion_release.description = f"{description} ({schema})"
 
@@ -369,7 +374,7 @@ def get_user_contribution(forge, L, cellComp=True):
 
 def get_name(name, schema, user_contribution):
     if name:
-        return f"{name} ({schema})"
+        return f"{name} {schema}"
     else:
         return f"{schema} from {user_contribution[0].agent['name']}"
 

@@ -10,7 +10,8 @@ from kgforge.core import Resource
 
 # Allen annotation volume voxels resolution in microns
 VOXELS_RESOLUTION = "25"
-SPATIAL_UNIT = "µm"
+SPATIAL_UNIT = "um" # µm
+entity_type = "Entity"
 dataset_type = "Dataset"
 subject = {
     "@type": "Subject",
@@ -30,24 +31,35 @@ isRegisteredIn = {
     "@id": atlas_spatial_reference_system_id,
     "@type": atlas_spatial_reference_system_type,
 }
+# Allen annotations
+allen_v2 = "ccfv2"
+allen_v3 = "ccfv3"
+allen_v2_split = allen_v2 + "_l23split"
+allen_v3_split = allen_v3 + "_l23split"
 # Descriptions
 description_ccfv2 = (
-    f"original Allen ccfv2 annotation volume at {VOXELS_RESOLUTION} {SPATIAL_UNIT}"
+    f"original Allen {allen_v2} annotation volume at {VOXELS_RESOLUTION} {SPATIAL_UNIT}"
 )
 description_ccfv3 = (
-    f"original Allen ccfv3 annotation volume at {VOXELS_RESOLUTION} {SPATIAL_UNIT}"
+    f"original Allen {allen_v3} annotation volume at {VOXELS_RESOLUTION} {SPATIAL_UNIT}"
 )
 description_hybrid = (
-    f"Hybrid annotation volume from ccfv2 and ccfv3 at {VOXELS_RESOLUTION} "
+    f"Hybrid annotation volume from {allen_v2} and {allen_v3} at {VOXELS_RESOLUTION} "
     f"{SPATIAL_UNIT}"
 )
 description_split = "with the isocortex layer 2 and 3 split"
+description_barrel = " and barrel split"
+
 description_ccfv2_split = f"{description_ccfv2} {description_split}"
 description_ccfv3_split = f"{description_ccfv3} {description_split}"
+description_ccfv3_split_barrel = f"{description_ccfv3} {description_split}{description_barrel}"
 description_hybrid_split = f"{description_hybrid} {description_split}"
 
-# Nexus schema
+hem_split = f"Hemisphere labelling of the Allen annotation volume at {VOXELS_RESOLUTION} {SPATIAL_UNIT} {description_split}"
+hem_v2_split = hem_split.replace("Allen annotation", f"Allen {allen_v2} annotation")
+hem_v3_split = hem_split.replace("Allen annotation", f"Allen {allen_v3} annotation")
 
+# Nexus schema
 schema_ontology = "https://neuroshapes.org/dash/ontology"
 schema_atlasrelease = "https://neuroshapes.org/dash/atlasrelease"
 schema_activity = "https://neuroshapes.org/dash/activity"
@@ -58,7 +70,6 @@ schema_regionsummary = ""  # https://neuroshapes.org/dash/entity
 schema_spatialref = "https://neuroshapes.org/dash/atlasspatialreferencesystem"
 
 # Isocortex layer Nexus UBERON @id_spatial_ref
-
 isocortex_layers = {
     "1": "http://purl.obolibrary.org/obo/UBERON_0005390",
     "2": "http://purl.obolibrary.org/obo/UBERON_0005391",
@@ -68,35 +79,31 @@ isocortex_layers = {
     "6": "http://purl.obolibrary.org/obo/UBERON_0005395",
 }
 
+atlasrelease_types = ["AtlasRelease", "BrainAtlasRelease", entity_type]
+
 # atlasRelease already in Nexus bbp/atlas project
 atlasrelease_ccfv2 = {
     "@id": (
-        "https://bbp.epfl.ch/neurosciencegraph/data/"
-        "dd114f81-ba1f-47b1-8900-e497597f06ac"
-    ),
-    "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
+        "https://bbp.epfl.ch/neurosciencegraph/data/dd114f81-ba1f-47b1-8900-e497597f06ac"),
+    "@type": atlasrelease_types,
 }
 atlasrelease_ccfv3 = {
     "@id": (
-        "https://bbp.epfl.ch/neurosciencegraph/data/"
-        "831a626a-c0ae-4691-8ce8-cfb7491345d9"
-    ),
-    "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
+        "https://bbp.epfl.ch/neurosciencegraph/data/831a626a-c0ae-4691-8ce8-cfb7491345d9"),
+    "@type": atlasrelease_types,
 }
 atlasrelease_ccfv2v3 = [atlasrelease_ccfv2, atlasrelease_ccfv3]
 atlasrelease_ccfv3_split = {
     "@id": (
-        "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/"
-        "c96c71a8-4c0d-4bc1-8a1a-141d9ed6693d"
+        "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/c96c71a8-4c0d-4bc1-8a1a-141d9ed6693d"
     ),
-    "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
+    "@type": atlasrelease_types,
 }
 atlasrelease_hybrid_l23split = {
     "@id": (
-        "https://bbp.epfl.ch/neurosciencegraph/data/"
-        "e2e500ec-fe7e-4888-88b9-b72425315dda"
+        "https://bbp.epfl.ch/neurosciencegraph/data/e2e500ec-fe7e-4888-88b9-b72425315dda"
     ),
-    "@type": ["AtlasRelease", "BrainAtlasRelease", "Entity"],
+    "@type": atlasrelease_types,
 }
 
 # ================== Ontology constants ==================
@@ -116,10 +123,13 @@ hierarchy_dict = {
 # ================== atlasRelease constants ==================
 
 # Parcellations used by atlasReleases
-annotation_hybrid = "annotation_hybrid"
-annotation_hybrid_l23split = "annotation_hybrid_l23split"
-annotation_ccfv2_l23split = "annotation_ccfv2_l23split"
-annotation_ccfv3_l23split = "annotation_ccfv3_l23split"
+annot_hybrid = "annotation_hybrid"
+annot_hybrid_l23split = "annotation_hybrid_l23split"
+annot_v2_l23split = "annotation_"+allen_v2+"_l23split"
+annot_v3_l23split = "annotation_"+allen_v3+"_l23split"
+annot_v3_l23split_barrel = "annotation_"+allen_v3+"_l23split_barrelsplit"
+hem_v2_l23split = "hemispheres_"+allen_v2+"_l23split"
+hem_v3_l23split = "hemispheres_"+allen_v3+"_l23split"
 
 # average brain model ccfv3
 brainTemplateDataLayer = {
@@ -129,22 +139,22 @@ brainTemplateDataLayer = {
 }
 
 atlasrelease_dict = {
-    "atlasrelease_hybridsplit": {
+    "hybrid_l23split": {
         "name": "Allen Mouse CCF v2-v3 hybrid l2-l3 split",
         "description": "This atlas release uses the brain parcellation resulting of "
         "the hybridation between CCFv2 and CCFv3 and integrating the splitting of "
         "layer 2 and layer 3. The average brain template and the ontology is "
         "common across CCFv2 and CCFv3.",
         "ontology": hierarchy_dict["hierarchy_l23split"],
-        "parcellation": annotation_hybrid_l23split,
+        "parcellation": annot_hybrid_l23split,
     },
-    "atlasrelease_ccfv3split": {
+    allen_v3+"_l23split": {
         "name": "Blue Brain Mouse Atlas",  # "Allen Mouse CCF v3 l2-l3 split",
         "description": "This atlas release uses the brain parcellation of CCFv3 (2017) "
         "with the isocortex layer 2 and 3 split. The average brain template and the "
         "ontology is common across CCFv2 and CCFv3.",
         "ontology": hierarchy_dict["hierarchy_l23split"],
-        "parcellation": annotation_ccfv3_l23split,
+        "parcellation": annot_v3_l23split,
     },
 }
 
@@ -152,6 +162,9 @@ atlasrelease_dict = {
 
 volumetric_type = "VolumetricDataLayer"
 ontology_type = "ParcellationOntology"
+parcellation_type = "BrainParcellationDataLayer"
+parcellationOntology_types = [entity_type, "Ontology", ontology_type]
+parcellationVolume_types = [dataset_type, volumetric_type, parcellation_type]
 default_sampling_period = 30
 default_sampling_time_unit = "ms"
 config = {
@@ -178,7 +191,7 @@ def return_spatial_reference(forge):
         boundingBox = {
             "@type": "BoundingBox",
             "lowerPoint": {"@type": "Vector3D", "valueX": 0, "valueY": 0, "valueZ": 0},
-            "unitCode": "µm",
+            "unitCode": SPATIAL_UNIT,
             "upperPoint": {
                 "@type": "Vector3D",
                 "valueX": 13200,
@@ -287,63 +300,83 @@ def return_volumetric_dict(volumetric_datasets):
     }
 
     # Dictionary containing the possible volumetric dataset to push
-    linprog = "inhibitory_neuron_densities_linprog_ccfv2_correctednissl"
+    linprog = "inhibitory_neuron_densities_linprog_"+allen_v2+"_correctednissl"
     linprog_trans = "inhibitory_neuron_densities_linprog_l23split_transplant_correctednissl"
-    preserveprop = "inhibitory_neuron_densities_preserveprop_ccfv2_correctednissl"
-    cell_density = "overall_cell_density_ccfv2_correctednissl"
+    preserveprop = "inhibitory_neuron_densities_preserveprop_"+allen_v2+"_correctednissl"
+    cell_density = "overall_cell_density_"+allen_v2+"_correctednissl"
     volumes = volumetric_datasets
     try:
         volumetric_dict = {
             "parcellations": {
-                f"{volumes[annotation_ccfv2_l23split]}": {
-                    "name": annotation_ccfv2_l23split,
-                    "type": [
-                        dataset_type,
-                        volumetric_type,
-                        "BrainParcellationDataLayer",
-                    ],
+                f"{volumes[annot_v2_l23split]}": {
+                    "name": annot_v2_l23split,
+                    "type": parcellationVolume_types,
                     "description": description_ccfv2_split,
-                    "atlasrelease": "atlasrelease_ccfv3split",
+                    "atlasrelease": "atlasrelease_"+allen_v3+"split",
                     "voxel_type": "label",
                     "datasamplemodality": "parcellationId",
                 },
-                f"{volumes['annotation_hybrid']}": {
-                    "name": "annotation_hybrid",
-                    "type": [
-                        dataset_type,
-                        volumetric_type,
-                        "BrainParcellationDataLayer",
-                    ],
+                f"{volumes[annot_hybrid]}": {
+                    "name": annot_hybrid,
+                    "type": parcellationVolume_types,
                     "description": f"{description_hybrid}. The version "
                     "replaces the leaf regions in ccfv3 with the leaf region of "
-                    "ccfv2, which have additional levels of hierarchy.",
+                    +allen_v2+", which have additional levels of hierarchy.",
                     "atlasrelease": atlasrelease_ccfv2v3,
                     "voxel_type": "label",
                     "datasamplemodality": "parcellationId",
                 },
-                f"{volumes[annotation_hybrid_l23split]}": {
-                    "name": annotation_hybrid_l23split,
-                    "type": [
-                        dataset_type,
-                        volumetric_type,
-                        "BrainParcellationDataLayer",
-                    ],
+                f"{volumes[annot_hybrid_l23split]}": {
+                    "name": annot_hybrid_l23split,
+                    "type": parcellationVolume_types,
                     "description": description_hybrid_split,
                     "atlasrelease": atlasrelease_hybrid_l23split,
                     "voxel_type": "label",
                     "datasamplemodality": "parcellationId",
                 },
-                f"{volumes[annotation_ccfv3_l23split]}": {
-                    "name": annotation_ccfv3_l23split,
+                f"{volumes[annot_v3_l23split]}": {
+                    "name": annot_v3_l23split,
+                    "type": parcellationVolume_types,
+                    "description": description_ccfv3_split,
+                    "atlasrelease": "atlasrelease_"+allen_v3+"split",
+                    "voxel_type": "label",
+                    "datasamplemodality": "parcellationId",
+                },
+                f"{volumes[annot_v3_l23split_barrel]}": {
+                    "name": annot_v3_l23split_barrel,
+                    "type": parcellationVolume_types,
+                    "description": description_ccfv3_split_barrel,
+                    "atlasrelease": "atlasrelease_"+allen_v3+"split_barrelsplit",
+                    "voxel_type": "label",
+                    "datasamplemodality": "parcellationId",
+                },
+            },
+            "hemispheres": {
+                f"{volumes[hem_v2_l23split]}": {
+                    "name": "hem_v2_l23split",
                     "type": [
                         dataset_type,
                         volumetric_type,
-                        "BrainParcellationDataLayer",
+                        "HemisphereAnnotationDataLayer",
                     ],
-                    "description": description_ccfv3_split,
-                    "atlasrelease": "atlasrelease_ccfv3split",
+                    "description": hem_v2_split,
+                    "atlasrelease": "atlasrelease_"+allen_v2+"split",
                     "voxel_type": "label",
                     "datasamplemodality": "parcellationId",
+                    "derivation": f"{volumes[annot_v2_l23split]}",
+                },
+                f"{volumes[hem_v3_l23split]}": {
+                    "name": "hem_v3_l23split",
+                    "type": [
+                        dataset_type,
+                        volumetric_type,
+                        "HemisphereAnnotationDataLayer",
+                    ],
+                    "description": hem_v3_split,
+                    "atlasrelease": "atlasrelease_"+allen_v3+"split",
+                    "voxel_type": "label",
+                    "datasamplemodality": "parcellationId",
+                    "derivation": f"{volumes[annot_v3_l23split]}",
                 },
             },
             "cell_orientations": {
@@ -351,7 +384,7 @@ def return_volumetric_dict(volumetric_datasets):
                     "name": "direction_vectors_isocortex_ccfv3",
                     "type": [dataset_type, volumetric_type, "CellOrientationField"],
                     "description": description_dirvectors_ccfv3,
-                    "atlasrelease": "atlasrelease_ccfv3split",
+                    "atlasrelease": "atlasrelease_"+allen_v3+"split",
                     "voxel_type": "vector",
                     "datasamplemodality": "eulerAngle",
                 },
@@ -359,7 +392,7 @@ def return_volumetric_dict(volumetric_datasets):
                     "name": "cell_orientations_ccfv3",
                     "type": [dataset_type, volumetric_type, "CellOrientationField"],
                     "description": description_orientation_ccfv3,
-                    "atlasrelease": "atlasrelease_ccfv3split",
+                    "atlasrelease": "atlasrelease_"+allen_v3+"split",
                     "voxel_type": "vector",
                     "datasamplemodality": "quaternion",
                 },
@@ -390,7 +423,7 @@ def return_volumetric_dict(volumetric_datasets):
                     "suffixe": "CCF v2-v3 Hybrid L23 Split",
                 },
                 f"{volumes['placement_hints_ccfv3_l23split']}": {
-                    "name": "placement_hints_ccfv3_l23split",
+                    "name": "placement_hints_"+allen_v3+"_l23split",
                     "type": [dataset_type, volumetric_type, "PlacementHintsDataLayer"],
                     "type_2": [
                         dataset_type,
@@ -398,7 +431,7 @@ def return_volumetric_dict(volumetric_datasets):
                         "PlacementHintsDataReport",
                     ],
                     "description": description_PH_ccfv3_split,
-                    "atlasrelease": "atlasrelease_ccfv3split",
+                    "atlasrelease": "atlasrelease_"+allen_v3+"split",
                     "datasamplemodality": "distance",
                     "datasamplemodality_2": "mask",
                     "voxel_type": "vector",
@@ -408,10 +441,10 @@ def return_volumetric_dict(volumetric_datasets):
             },
             "volume_mask": {
                 f"{volumes['brain_region_mask_ccfv3_l23split']}": {
-                    "name": "brain_region_mask_ccfv3_l23split",
+                    "name": "brain_region_mask_"+allen_v3+"_l23split",
                     "type": [dataset_type, volumetric_type, "BrainParcellationMask"],
                     "description": description_ccfv3_split,
-                    "atlasrelease": "atlasrelease_ccfv3split",
+                    "atlasrelease": "atlasrelease_"+allen_v3+"split",
                     "voxel_type": "label",
                     "datasamplemodality": "parcellationId",
                     "hierarchy_tag": "hierarchy_l23split",
@@ -476,7 +509,7 @@ def return_volumetric_dict(volumetric_datasets):
                     "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['cell_densities_ccfv2_correctednissl']}": {
-                    "name": "cell_densities_ccfv2_correctednissl",
+                    "name": "cell_densities_"+allen_v2+"_correctednissl",
                     "type": [
                         dataset_type,
                         volumetric_type,
@@ -491,7 +524,7 @@ def return_volumetric_dict(volumetric_datasets):
                     "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['neuron_densities_ccfv2_correctednissl']}": {
-                    "name": "neuron_densities_ccfv2_correctednissl",
+                    "name": "neuron_densities_"+allen_v2+"_correctednissl",
                     "type": [
                         dataset_type,
                         volumetric_type,
@@ -582,7 +615,7 @@ def return_volumetric_dict(volumetric_datasets):
                     "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['mtypes_densities_profile_ccfv2_correctednissl']}": {
-                    "name": "mtypes_densities_profile_ccfv2_correctednissl",
+                    "name": "mtypes_densities_profile_"+allen_v2+"_correctednissl",
                     "type": me_type,
                     "description": f"{description_ccfv2}. It has been generated from "
                     "density profiles and using the corrected nissl volume",
@@ -592,7 +625,7 @@ def return_volumetric_dict(volumetric_datasets):
                     "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['mtypes_densities_probability_map_ccfv2_correctednissl']}": {
-                    "name": "mtypes_densities_probability_map_ccfv2_correctednissl",
+                    "name": "mtypes_densities_probability_map_"+allen_v2+"_correctednissl",
                     "type": me_type,
                     "description": f"{description_ccfv2}. It has been generated from a "
                     "probability mapping and using the corrected nissl volume",
@@ -602,7 +635,7 @@ def return_volumetric_dict(volumetric_datasets):
                     "datasamplemodality": cell_densiry_dsm,
                 },
                 f"{volumes['mtypes_densities_probability_map_ccfv2_l23split_correctednissl']}": {
-                    "name": "mtypes_densities_probability_map_ccfv2_l23split_correctednissl",
+                    "name": "mtypes_densities_probability_map_"+allen_v2+"_l23split_correctednissl",
                     "type": me_type,
                     "description": f"{description_ccfv2_split}. It has been generated from a "
                     "probability mapping and using the corrected nissl volume",
@@ -631,7 +664,17 @@ def return_volumetric_dict(volumetric_datasets):
                     "voxel_type": voxel_vol,
                     "datasamplemodality": cell_densiry_dsm,
                 },
-            },
+                f"{volumes['mtypes_densities_probability_map_transplant']}": {
+                    "name": "mtypes_densities_probability_map_transplant",
+                    "type": me_type,
+                    "description": f"{description_ccfv3_split}. It has been generated from a "
+                    "probability mapping, using the corrected nissl volume and transplanted",
+                    "derivation": None,
+                    "atlasrelease": atlasrelease_ccfv3_split,
+                    "voxel_type": voxel_vol,
+                    "datasamplemodality": cell_densiry_dsm,
+                },
+            }
         }
     except KeyError as error:
         raise KeyError(
@@ -682,11 +725,24 @@ def return_mesh_dict(mesh_datasets):
                     "Dataset",
                 ],
             },
+            f"{mesh['brain_region_meshes_ccfv2_l23split']}": {
+                "name": "brain_region_meshes_ccfv2_l23split",
+                "type": brainmesh_type,
+                "description": description_ccfv2_split,
+                "atlasrelease": allen_v2_split,
+                "hierarchy_tag": hierarchy_dict["hierarchy_l23split"]["name"],
+                "annotation_name": "CCFv2 L23split",
+                "derivation_type": [
+                    "VolumetricDataLayer",
+                    "BrainParcellationMask",
+                    "Dataset",
+                ],
+            },
             f"{mesh['brain_region_meshes_ccfv3_l23split']}": {
                 "name": "brain_region_meshes_ccfv3_l23split",
                 "type": brainmesh_type,
                 "description": description_ccfv3_split,
-                "atlasrelease": "atlasrelease_ccfv3split",
+                "atlasrelease": allen_v3_split,
                 "hierarchy_tag": hierarchy_dict["hierarchy_l23split"]["name"],
                 "annotation_name": "CCFv3 L23split",
                 "derivation_type": [
@@ -717,16 +773,19 @@ def return_metadata_dict(metadata_datasets):
                         informations.
     """
     metadata = metadata_datasets
-    metadata_type = ["BrainRegionSummary", "Entity", regionsummary_type]
+    allen_v = allen_v2 if (allen_v2 in list(metadata.keys())[0]) else allen_v3
+    Allen_v = allen_v.capitalize()
+    description_split = description_ccfv2_split if (allen_v == allen_v2) else description_ccfv3_split
+    metadata_type = ["BrainRegionSummary", entity_type, regionsummary_type]
     try:
         metadata_dict = {
-            f"{metadata['metadata_parcellations_ccfv3_l23split']}": {
-                "name": "metadata_parcellations_ccfv3_l23split",
+            f"{metadata['metadata_parcellations_'+allen_v+'_l23split']}": {
+                "name": f"metadata_parcellations_{allen_v}_l23split",
                 "type": metadata_type,
-                "description": description_ccfv3_split,
-                "atlasrelease": "atlasrelease_ccfv3split",
+                "description": description_split,
+                "atlasrelease": f"atlasrelease_{allen_v}split",
                 "hierarchy_tag": "hierarchy_l23split",
-                "annotation_name": "Ccfv3 L23split",
+                "annotation_name": f"{Allen_v} L23split",
             }
         }
     except KeyError as error:
