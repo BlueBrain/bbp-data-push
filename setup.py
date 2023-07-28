@@ -28,6 +28,6 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     entry_points={
-        "console_scripts": ["bba-data-push=bba_data_push.bba_dataset_push:start"]
+        "console_scripts": ["bba-data-push=bba_data_push.bba_dataset_push_new:start"]
     },
 )

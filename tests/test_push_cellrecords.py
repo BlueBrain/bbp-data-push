@@ -5,7 +5,7 @@ from pathlib import Path
 from kgforge.core import KnowledgeGraphForge
 
 # from bba_dataset_push.bba_data_push import push_cellrecords
-from bba_data_push.push_sonata_cellrecordseries import create_cell_record_resources
+from bba_data_push.deprecated_push_sonata_cellrecordseries import create_cell_record_resources
 import bba_data_push.constants as const
 
 logging.basicConfig(level=logging.INFO)

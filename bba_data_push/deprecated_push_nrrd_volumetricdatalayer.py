@@ -24,7 +24,7 @@ from kgforge.specializations.stores.demo_store import DemoStore
 
 # from kgforge.core.commons.exceptions import RetrievalError
 
-from bba_data_push.commons import (
+from bba_data_push.deprecated_commons import (
     get_voxel_type,
     get_brain_region_prop,
     get_hierarchy_file,

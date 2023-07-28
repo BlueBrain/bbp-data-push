@@ -13,7 +13,7 @@ from kgforge.core import Resource
 from kgforge.specializations.resources import Dataset
 
 
-from bba_data_push.commons import (
+from bba_data_push.deprecated_commons import (
     return_activity_payload,
     return_contribution,
     create_unresolved_payload,
@@ -21,7 +21,7 @@ from bba_data_push.commons import (
     resolve_cellType,
     get_layer)
 
-from bba_data_push.push_nrrd_volumetricdatalayer import add_nrrd_props
+from bba_data_push.deprecated_push_nrrd_volumetricdatalayer import add_nrrd_props
 
 import bba_data_push.constants as const
 
@@ -37,8 +37,8 @@ subject = Resource.from_json(const.subject)
 region_id = "http://api.brain-map.org/api/v2/data/Structure/997"
 region_name = "root"
 
-brainRegion = Resource(id = region_id,
-                       label = region_name)
+brainRegion = Resource(id=region_id,
+                       label=region_name)
 
 brainLocation_def = {
     "brainRegion": {"@id": f"{region_id}", "label": f"{region_name}"},
@@ -51,6 +51,7 @@ actions = ["toUpdate", "toPush"]
 
 PART_KEY = "hasPart"
 PATH_KEY = "path"
+
 
 def create_densityPayloads(
     forge,
@@ -97,7 +98,7 @@ def create_densityPayloads(
         mt_name = mt["label"]
         m_ct = resolve_cellType(forge, mt_name)
         if not m_ct["@id"]:
-            unresolved.append( mt )
+            unresolved.append(mt)
             continue
         m_annotation = get_cellAnnotation("M", m_ct)
         brainLocation_layer = copy.deepcopy(brainLocation_def)
@@ -109,7 +110,7 @@ def create_densityPayloads(
             et_name = et["label"]
             e_ct = resolve_cellType(forge, et_name)
             if not e_ct["@id"]:
-                unresolved.append( et )
+                unresolved.append(et)
                 continue
 
             et_part = et[PART_KEY][0]
@@ -131,24 +132,24 @@ def create_densityPayloads(
 
             e_annotation = get_cellAnnotation("E", e_ct)
             met = Resource(
-                type = const.me_type,
-                name = get_densName(mt_name, et_name),
-                distribution = forge.attach(filepath, f"application/{file_ext}"),
-                description = me_description,
-                isRegisteredIn = const.isRegisteredIn,
-                brainLocation = brainLocation_layer,
-                dataSampleModality = const.cell_densiry_dsm,
-                subject = const.subject,
-                contribution = resources_payloads["user_contribution"],
-                annotation = [m_annotation, e_annotation],
-                atlasRelease = get_atlasrelease_dict(atlasrelease_id),
-                cellType = [m_ct, e_ct]
+                type=const.me_type,
+                name=get_densName(mt_name, et_name),
+                distribution=forge.attach(filepath, f"application/{file_ext}"),
+                description=me_description,
+                isRegisteredIn=const.isRegisteredIn,
+                brainLocation=brainLocation_layer,
+                dataSampleModality=const.cell_densiry_dsm,
+                subject=const.subject,
+                contribution=resources_payloads["user_contribution"],
+                annotation=[m_annotation, e_annotation],
+                atlasRelease=get_atlasrelease_dict(atlasrelease_id),
+                cellType=[m_ct, e_ct]
             )
             met = add_nrrd_props(met, header, config, const.voxel_vol)
 
             cellComps[DENSITY_SCHEMA][met.name] = met
-            action = "toPush" # replace with some logic to pick 'toPush' or 'toUpdate'
-            resources_payloads["datasets_"+action][DENSITY_SCHEMA].append( met )
+            action = "toPush"  # replace with some logic to pick 'toPush' or 'toUpdate'
+            resources_payloads["datasets_"+action][DENSITY_SCHEMA].append(met)
 
     if unresolved:
         unresolved_dir = os.path.join(output_dir, "unresolved_densities")
@@ -189,20 +190,19 @@ def create_cellCompositionVolume(
     L,
 ):
     schema = VOLUME_SCHEMA
-    schema_id = forge._model.schema_id(type = schema)
+    schema_id = forge._model.schema_id(type=schema)
     for action in actions:
         cellComps.update({"datasets_"+action: {schema_id: []}})
 
     # "AtlasDatasetRelease" is kept for backward compatiblity
-    cell_compostion_volume_release = Dataset(forge, type = COMMON_TYPES + ["AtlasDatasetRelease", schema])
+    cell_compostion_volume_release = Dataset(forge, type=COMMON_TYPES + ["AtlasDatasetRelease", schema])
 
     cell_compostion_volume_release.atlasRelease = get_atlasrelease_dict(atlasrelease_id)
 
     cell_compostion_volume_release.about = ["https://bbp.epfl.ch/ontologies/core/bmo/METypeDensity"]
-    #cell_compostion_volume_release.atlasSpatialReferenceSystem = Resource(id=atlas_release.spatialReferenceSystem.id,
+    # cell_compostion_volume_release.atlasSpatialReferenceSystem = Resource(id=atlas_release.spatialReferenceSystem.id,
     #    type=atlas_release.spatialReferenceSystem.type,
     #    _rev=atlas_release._store_metadata._rev)
-
 
     # Constants
 
@@ -240,7 +240,7 @@ def create_cellCompositionVolume(
                 res = cellComps[DENSITY_SCHEMA][dens_name]
                 if getattr(res, 'id', None):
                     et_part = et[PART_KEY][0]
-                    et_part.pop(PATH_KEY) # PATH_KEY must be there by construction of cellComps[DENSITY_SCHEMA]
+                    et_part.pop(PATH_KEY)  # PATH_KEY must be there by construction of cellComps[DENSITY_SCHEMA]
                     et_part["@id"] = res.id
                     et_part["@type"] = res.type
                     et_part["_rev"] = res._store_metadata["_rev"]
@@ -261,8 +261,8 @@ def create_cellCompositionVolume(
         cell_compostion_volume_release.description = f"{description} ({schema})"
 
     cellComps[schema] = cell_compostion_volume_release
-    action = "toPush" # replace with some logic to pick 'toPush' or 'toUpdate'
-    cellComps["datasets_"+action][schema_id].append( cell_compostion_volume_release )
+    action = "toPush"  # replace with some logic to pick 'toPush' or 'toUpdate'
+    cellComps["datasets_"+action][schema_id].append(cell_compostion_volume_release)
 
 
 def create_cellCompositionSummary(
@@ -276,11 +276,11 @@ def create_cellCompositionSummary(
     L,
 ):
     schema = SUMMARY_SCHEMA
-    schema_id = forge._model.schema_id(type = schema)
+    schema_id = forge._model.schema_id(type=schema)
     for action in actions:
         cellComps["datasets_"+action].update({schema_id: []})
 
-    cell_compostion_summary_release = Dataset(forge, type = COMMON_TYPES + [schema])
+    cell_compostion_summary_release = Dataset(forge, type=COMMON_TYPES + [schema])
 
     cell_compostion_summary_release.atlasRelease = get_atlasrelease_dict(atlasrelease_id)
 
@@ -297,8 +297,8 @@ def create_cellCompositionSummary(
         cell_compostion_summary_release.description = f"{description} ({schema})"
 
     cellComps[schema] = cell_compostion_summary_release
-    action = "toPush" # replace with some logic to pick 'toPush' or 'toUpdate'
-    cellComps["datasets_"+action][schema_id].append( cell_compostion_summary_release )
+    action = "toPush"  # replace with some logic to pick 'toPush' or 'toUpdate'
+    cellComps["datasets_"+action][schema_id].append(cell_compostion_summary_release)
 
 
 def create_cellComposition(
@@ -312,7 +312,7 @@ def create_cellComposition(
     L,
 ):
     schema = COMP_SCHEMA
-    schema_id = forge._model.schema_id(type = schema)
+    schema_id = forge._model.schema_id(type=schema)
 
     for vol_sum in [VOLUME_SCHEMA, SUMMARY_SCHEMA]:
         if not getattr(cellComps[vol_sum], 'id', None):
@@ -320,39 +320,39 @@ def create_cellComposition(
             exit(1)
 
     for action in actions:
-        cellComps.update({"datasets_"+action: {schema_id : []}})
+        cellComps.update({"datasets_"+action: {schema_id: []}})
 
-    cell_compostion_release = Dataset(forge, type = COMMON_TYPES + [schema])
+    cell_compostion_release = Dataset(forge, type=COMMON_TYPES + [schema])
     cell_compostion_release.about = ["nsg:Neuron", "nsg:Glia"]
     cell_compostion_release.atlasRelease = get_atlasrelease_dict(atlasrelease_id)
     cell_compostion_release.atlasSpatialReferenceSystem = {
         "@id": const.atlas_spatial_reference_system_id,
-        "@type": "AtlasSpatialReferenceSystem" }
+        "@type": "AtlasSpatialReferenceSystem"}
     cell_compostion_release.brainLocation = {
         "@type": "BrainLocation",
         "brainRegion": {
             "@id": region_id,
-            "label": "Whole mouse brain" }
+            "label": "Whole mouse brain"}
     }
 
     cell_compostion_release.contribution = resources_payloads["user_contribution"]
 
     cell_compostion_release.cellCompositionVolume = {
         "@id": cellComps[VOLUME_SCHEMA].id,
-        "@type": VOLUME_SCHEMA }
+        "@type": VOLUME_SCHEMA}
 
     # This is a list because may have more than one CellCompositionSummary
     cell_compostion_release.cellCompositionSummary = [{
         "@id": cellComps[SUMMARY_SCHEMA].id,
-        "@type": SUMMARY_SCHEMA }]
+        "@type": SUMMARY_SCHEMA}]
 
     cell_compostion_release.name = get_name(name, schema, resources_payloads["user_contribution"])
     if description:
         cell_compostion_release.description = f"{description} ({schema})"
 
     cellComps[schema] = cell_compostion_release
-    action = "toPush" # replace with some logic to pick 'toPush' or 'toUpdate'
-    cellComps["datasets_"+action][schema_id].append( cell_compostion_release )
+    action = "toPush"  # replace with some logic to pick 'toPush' or 'toUpdate'
+    cellComps["datasets_"+action][schema_id].append(cell_compostion_release)
 
     cellComps["tag"] = resource_tag
 
@@ -363,6 +363,7 @@ def get_atlasrelease_dict(atlasrelease_id):
         "@type": ["AtlasRelease", "BrainAtlasRelease"]}
     return atlasrelease_dict
 
+
 def get_user_contribution(forge, L, cellComp=True):
     try:
         user_contribution, log_info = return_contribution(forge, cellComp)
@@ -372,14 +373,17 @@ def get_user_contribution(forge, L, cellComp=True):
         exit(1)
     return user_contribution
 
+
 def get_name(name, schema, user_contribution):
     if name:
         return f"{name} {schema}"
     else:
         return f"{schema} from {user_contribution[0].agent['name']}"
 
+
 def get_densName(m, e):
     return "-".join([m, e])
+
 
 def get_cellAnnotation(initial, cType):
     annotation = return_base_annotation(initial)

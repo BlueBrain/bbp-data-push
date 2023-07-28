@@ -2,7 +2,7 @@ import os
 import logging
 from datetime import datetime
 
-from bba_data_push.bba_dataset_push import _initialize_pusher_cli, push_cellcomposition
+from bba_data_push.deprecated_bba_dataset_push import _initialize_pusher_cli, push_cellcomposition
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)

@@ -16,7 +16,7 @@ import h5py
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
 
-from bba_data_push.commons import (
+from bba_data_push.deprecated_commons import (
     return_contribution,
     get_hierarchy_file,
     return_activity_payload,

@@ -5,7 +5,7 @@ from pathlib import Path
 from kgforge.core import KnowledgeGraphForge
 
 # from bba_dataset_push.bba_data_push import push_meshes
-from bba_data_push.push_brainmesh import create_mesh_resources
+from bba_data_push.deprecated_push_brainmesh import create_mesh_resources
 import bba_data_push.constants as const
 
 logging.basicConfig(level=logging.INFO)

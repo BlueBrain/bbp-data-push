@@ -17,7 +17,7 @@ import fnmatch
 from uuid import uuid4
 from kgforge.core import Resource
 from kgforge.specializations.stores.demo_store import DemoStore
-from bba_data_push.commons import (
+from bba_data_push.deprecated_commons import (
     get_brain_region_prop,
     get_hierarchy_file,
     return_contribution,
