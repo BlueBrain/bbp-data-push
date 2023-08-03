@@ -5,21 +5,42 @@ import jwt
 import hashlib
 from kgforge.core import Resource
 
+# Constants
+atlas_release_desc = "original Allen ccfv3 annotation at 25 um with the isocortex" \
+                     " layer 2 and 3 split."
+
+meType = "METypeDensity"
+all_types = {
+    meType: ["NeuronDensity", "VolumetricDataLayer", "CellDensityDataLayer", meType]}
+type_dsm_map = {
+    meType: "quantity", }
+desc = {
+    meType: "It has been generated from a probability mapping, using the "
+            "corrected nissl volume and transplanted."}
+
+file_config = {
+    "sampling_space_unit": "um",
+    "sampling_period": 30,
+    "sampling_time_unit": "ms"}
+
 
 def get_voxel_type(voxel_type, component_size: int):
     """
-    Check if the voxel_type value is compatible with the component size or return
-    default value if voxel_type is None.
+    Check if the input voxel_type value is compatible with the component size.
+    Return a default value if voxel_type is None.
 
-    Parameters:
-        voxel_type : voxel type (string).
-        component_size : integer indicating the number of component per voxel.
+    Parameters
+    ----------
+    voxel_type: str
+        voxel type
+    component_size: int
+        number of component per voxel
 
-    Returns:
-        voxel_type : str value of voxel_type is returned. Equal to the input value if
-        its value does not trigger error
-        or else the default hardcoded value is returned.
+    Returns
+    -------
+    str for voxel type
     """
+
     # this could be "multispectralIntensity", "vector"
     default_sample_type_multiple_components = "vector"
 
@@ -54,17 +75,20 @@ def get_voxel_type(voxel_type, component_size: int):
 
 
 def return_file_hash(file_path):
-    """
-    Python program to find SHA256 hash string of a file.
-    Read and update hash string value in blocks of 4K because sometimes won't be able
-    to fit the whole file in memory = you have to read chunks of memory of 4096
-    bytes sequentially and feed them to the sha256 method.
+    """Find the SHA256 hash string of a file. Read and update hash string value in blocks of 4K because sometimes
+    won't be able to fit the whole file in memory = you have to read chunks of memory of 4096 bytes sequentially
+    and feed them to the sha256 method.
 
-    Parameters:
-        file_path : File path.
+    Parameters
+    ----------
+    file_path: str
+        file path
 
-    Returns: Hash value of the input file.
+    Returns
+    -------
+    Hash value of the input file.
     """
+
     sha256_hash = hashlib.sha256()  # SHA-256 hash object
 
     with open(file_path, "rb") as f:
@@ -74,8 +98,31 @@ def return_file_hash(file_path):
     return sha256_hash.hexdigest()
 
 
-def return_contributor(forge, project_str, contributor_id, contributor_name,
-                       contributor_type, extra_attr, log_info):
+def return_contributor(forge, project_str, contributor_id, contributor_name, contributor_type, extra_attr, log_info):
+    """
+    Create and return an Agent Resource based on the information provided as arguments.
+
+    Parameters
+    ----------
+    forge: KnowledgeGraphForge
+        instance of forge
+    project_str: str
+        "org/project" of the forge instance
+    contributor_id: str
+        Nexus id of the contributor Resource
+    contributor_name: str
+        name of the contributor Resource to fetch from Nexus
+    extra_attr: dict
+        attributes to set in the new contributor Resource
+    log_info: list
+        log messages
+
+    Returns
+    -------
+    contributor: Resource
+        the contributor Resource fetched or created
+    """
+
     contributor = None
 
     agent_type = contributor_type[0]
@@ -119,11 +166,10 @@ def return_contributor(forge, project_str, contributor_id, contributor_name,
             f"\nThe agent '{contributor_name}' does not correspond to a Resource "
             f"registered in the Nexus {project_str}."
             "Thus, a Resource will be created and registered as contributor.")
-        contributor = Resource.from_json(
-            extra_attr.update({
-                "type": contributor_type,
-                "name": contributor_name})
-        )
+        extra_attr.update({
+            "type": contributor_type,
+            "name": contributor_name})
+        contributor = Resource.from_json(extra_attr)
         try:
             forge.register(contributor, forge._model.schema_id(agent_type))
         except Exception as e:
@@ -136,18 +182,25 @@ def return_contributor(forge, project_str, contributor_id, contributor_name,
 
 def return_contribution(forge, bucket, token, organization=False):
     """
-    Create and return a Contribution Resource from the user informations extracted
-    from its token.
-    To do this, the user Resource is retrieved from Nexus if it exists, otherwise
-    create am Agent Resource with the user informations.
+    Return a contribution property based on the information extracted from the token.
+    When organization=True, the returned contribution contains also the Organization contributor.
 
-    Parameters:
-        forge : instantiated and configured forge object.
+    Parameters
+    ----------
+    forge: KnowledgeGraphForge
+        instance of forge
+    bucket: str
+        "org/project" of the forge instance
+    token: str
+        token of the forge instance
+    organization: bool
+        flag to add the "Organization" contributor
 
-    Returns:
-        contribution : Resource object of Contribution type. Constructed from the
-        user informations.
+    Returns
+    -------
+        tuple of (contribution, log_info)
     """
+
     contribution = []
     try:
         token_info = jwt.decode(token, options={"verify_signature": False})

@@ -3,58 +3,57 @@ Create a 'VolumetricDataLayer', to push into Nexus.
 """
 
 import os
+from pathlib import Path
+from copy import deepcopy
 import numpy as np
 import nrrd
 from kgforge.core import Resource
 
-from bba_data_push.commons_new import (
-    get_voxel_type,
-    return_base_annotation,
-    resolve_cellType,
-    get_layer,
-)
+import bba_data_push.commons_new as comm
 from bba_data_push.logging import create_log_handler
-
-# Constants
-meType = "METypeDensity"
-all_types = {
-    meType: ["NeuronDensity", "VolumetricDataLayer", "CellDensityDataLayer", meType]}
-type_dsm_map = {
-    meType: "quantity", }
-desc = {
-    meType: "It has been generated from a probability mapping, using the "
-            "corrected nissl volume and transplanted."}
-
-file_config = {
-    "sampling_space_unit": "um",
-    "sampling_period": 30,
-    "sampling_time_unit": "ms"}
 
 L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
 
 
 def create_volumetric_resources(
-        inputpath,
+        input_paths,
         dataset_type,
         atlas_release,
         forge,
         species,
         brain_region,
         reference_system,
-        contribution
+        contribution,
+        L
 ) -> list:
     """
-    Construct the input volumetric dataset that
-    will be push with the corresponding files into Nexus as a resource.
+    Construct the input volumetric dataset that will be push with the corresponding files into Nexus as a resource.
 
-    Parameters:
-        inputpath : input datasets paths. These datasets are either volumetric files
-                    or folder containing volumetric files.
-        atlasrelease_id : id of the atlasRelease.
-        dataset_type : type of the dataset to register.
-    Returns:
-        resources_payloads : dict containing the Resource objects that has been
-                constructed and need to be updated/pushed in Nexus.
+    Parameters
+    ----------
+    input_paths: list
+        input datasets paths. These datasets are either volumetric files or folder containing volumetric files
+    dataset_type: str
+        type of the Resources to build
+    atlas_release: dict
+        atlas release info
+    forge: KnowledgeGraphForge
+        instance of forge
+    species: dict
+        species info
+    brain_region: dict
+        brain region info
+    reference_system: dict
+        reference system info
+    contribution: list
+        contributor Resources
+    L: Logger
+        log_handler
+
+    Returns
+    -------
+    resources: list
+        Resources to be pushed in Nexus.
     """
 
     subject = {"@type": "Subject", "species": species}
@@ -62,9 +61,6 @@ def create_volumetric_resources(
     brain_location = {
         "brainRegion": brain_region,
         "atlasSpatialReferenceSystem": reference_system}
-
-    atlas_release_desc = "original Allen ccfv3 annotation at 25 um with the isocortex" \
-                         " layer 2 and 3 split."
 
     base_derivation = {
         "@type": "Derivation",
@@ -74,38 +70,53 @@ def create_volumetric_resources(
     }
 
     resources = []
-    for filepath in inputpath:
+
+    extension = ".nrrd"
+    file_paths = []
+    for input_path in input_paths:
+        if input_path.endswith(extension):
+            file_paths.append(input_path)
+        elif os.path.isdir(input_path):
+            file_paths.extend([str(path) for path in Path(input_path).rglob("*"+extension)])
+
+    L.info(f"{len(file_paths)} {extension} files found under '{input_paths}', creating the respective payloads...")
+    for filepath in file_paths:
         filename_split = os.path.splitext(os.path.basename(filepath))
         filename = filename_split[0]
+
+        L.info(f"\nCreating payload for '{filename}'")
+        file_config = deepcopy(comm.file_config)
         file_config["file_extension"] = filename_split[1][1:]
 
-        description = f"{filename} densities volume for the {atlas_release_desc}. "
-        description += desc[meType]
+        description = f"{filename} densities volume for the {comm.atlas_release_desc}. "
+        description += comm.desc[comm.meType]
 
         nrrd_resource = Resource(
-            type=all_types[dataset_type],
+            type=comm.all_types[dataset_type],
             name=filename,
             distribution=forge.attach(filepath, "application/nrrd"),
             description=description,
             isRegisteredIn=reference_system,
             brainLocation=brain_location,
             atlasRelease=atlas_release,
-            dataSampleModality=type_dsm_map[dataset_type],
+            dataSampleModality=comm.type_dsm_map[dataset_type],
             subject=subject,
             contribution=contribution,
             derivation=[base_derivation]
         )
 
+        L.info("Adding nrrd_props")
         try:
             header = nrrd.read_header(filepath)
             add_nrrd_props(nrrd_resource, header, file_config, "intensity")
         except nrrd.errors.NRRDError as e:
             L.error(f"NrrdError: {e}")
 
-        if dataset_type in [meType]:
+        L.info("Adding annotation")
+        if dataset_type in [comm.meType]:
             nrrd_resource.annotation = get_cellAnnotation(forge, filename)
             nrrd_resource.cellType = get_cellType(forge, filename)
-            layer = get_layer(forge, nrrd_resource.cellType[0]["label"])
+            layer = comm.get_layer(forge, nrrd_resource.cellType[0]["label"])
             if layer:
                 nrrd_resource.brainLocation["layer"] = layer
 
@@ -244,7 +255,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
                 component_dim_index = i
                 current_dim["@type"] = "ComponentDimension"
                 try:
-                    current_dim["name"] = get_voxel_type(voxel_type,
+                    current_dim["name"] = comm.get_voxel_type(voxel_type,
                                                          current_dim["size"])
                 except ValueError as e:
                     L.error(f"ValueError: {e}")
@@ -263,7 +274,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
     else:
         # prepend a dimension component
         try:
-            name = get_voxel_type(voxel_type, 1)
+            name = comm.get_voxel_type(voxel_type, 1)
         except ValueError as e:
             L.error(f"ValueError: {e}")
             exit(1)
@@ -313,7 +324,7 @@ def get_cellAnnotation(forge, label):
     cellTypes = get_cellType(forge, label)
     for i in range(len(cellTypes)):
         itype = types[i]
-        annotation = return_base_annotation(itype)
+        annotation = comm.return_base_annotation(itype)
         annotation["hasBody"].update(cellTypes[i])
 
         annotations.append(annotation)
@@ -338,7 +349,7 @@ def get_cellType(forge, name):
 
     cellTypes = []
     for t in me_types:
-        cellType = resolve_cellType(forge, t, name)
+        cellType = comm.resolve_cellType(forge, t, name)
         cellTypes.append(cellType)
 
     return cellTypes

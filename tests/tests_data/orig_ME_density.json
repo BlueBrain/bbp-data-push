@@ -1,0 +1,176 @@
+{
+  "@context": "https://bbp.neuroshapes.org",
+  "id": "https://bbp.epfl.ch/neurosciencegraph/data/f656ad5b-41d6-4e24-8b72-190b6717abac",
+  "@type": [
+    "NeuronDensity",
+    "VolumetricDataLayer",
+    "CellDensityDataLayer",
+    "METypeDensity"
+  ],
+  "annotation": [
+    {
+      "@type": [
+        "Annotation",
+        "MTypeAnnotation"
+      ],
+      "hasBody": {
+        "@id": "https://bbp.epfl.ch/ontologies/core/bmo/L1_NGC",
+        "@type": [
+          "AnnotationBody",
+          "MType"
+        ],
+        "label": "L1_NGC"
+      },
+      "name": "M-type Annotation"
+    },
+    {
+      "@type": [
+        "Annotation",
+        "ETypeAnnotation"
+      ],
+      "hasBody": {
+        "@id": "http://uri.interlex.org/base/ilx_0738201",
+        "@type": [
+          "AnnotationBody",
+          "EType"
+        ],
+        "label": "cNAC"
+      },
+      "name": "E-type Annotation"
+    }
+  ],
+  "atlasRelease": {
+    "@id": "https://bbp.epfl.ch/neurosciencegraph/data/brainatlasrelease/c96c71a8-4c0d-4bc1-8a1a-141d9ed6693d",
+    "@type": [
+      "AtlasRelease",
+      "BrainAtlasRelease",
+      "Entity"
+    ]
+  },
+  "brainLocation": {
+    "atlasSpatialReferenceSystem": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system",
+      "@type": [
+        "BrainAtlasSpatialReferenceSystem",
+        "AtlasSpatialReferenceSystem"
+      ]
+    },
+    "brainRegion": {
+      "@id": "http://api.brain-map.org/api/v2/data/Structure/997",
+      "label": "root"
+    },
+    "layer": {
+      "@id": "http://purl.obolibrary.org/obo/UBERON_0005390",
+      "label": "layer 1"
+    }
+  },
+  "bufferEncoding": "gzip",
+  "cellType": [
+    {
+      "@id": "https://bbp.epfl.ch/ontologies/core/bmo/L1_NGC",
+      "label": "L1_NGC"
+    },
+    {
+      "@id": "http://uri.interlex.org/base/ilx_0738201",
+      "label": "cNAC"
+    }
+  ],
+  "componentEncoding": "float64",
+  "contribution": [
+    {
+      "@type": "Contribution",
+      "agent": {
+        "@id": "https://bbp.epfl.ch/neurosciencegraph/data/b1e71aec-0e4e-4ce3-aca2-99f1614da975",
+        "@type": [
+          "Agent",
+          "Person"
+        ]
+      },
+      "hadRole": {
+        "@id": "https://neuroshapes.org/BrainAtlasPipelineExecutionRole",
+        "label": "Brain Atlas Pipeline Executor role"
+      }
+    },
+    {
+      "@type": "Contribution",
+      "agent": {
+        "@id": "https://www.grid.ac/institutes/grid.5333.6",
+        "@type": "Organization"
+      }
+    }
+  ],
+  "dataSampleModality": "quantity",
+  "description": "L1 NGC-SA-CNAC densities v3 volume for the original Allen ccfv3 annotation volume at 25 µm with the isocortex layer 2 and 3 split. It has been generated from a probability mapping, using the corrected nissl volume and transplanted.",
+  "dimension": [
+    {
+      "@type": "ComponentDimension",
+      "name": "intensity",
+      "size": 1
+    },
+    {
+      "@type": "SpaceDimension",
+      "size": 528,
+      "unitCode": "µm"
+    },
+    {
+      "@type": "SpaceDimension",
+      "size": 320,
+      "unitCode": "µm"
+    },
+    {
+      "@type": "SpaceDimension",
+      "size": 456,
+      "unitCode": "µm"
+    }
+  ],
+  "endianness": "little",
+  "fileExtension": "nrrd",
+  "generation": {
+    "@type": "Generation",
+    "activity": {
+      "@id": "https://bbp.epfl.ch/neurosciencegraph/data/activity/3fbcbe00-515a-47cb-bae0-926934ae05b6",
+      "@type": [
+        "Activity",
+        "PushCelldensityPipelineDatasets"
+      ]
+    }
+  },
+  "isRegisteredIn": {
+    "@id": "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system",
+    "@type": [
+      "BrainAtlasSpatialReferenceSystem",
+      "AtlasSpatialReferenceSystem"
+    ]
+  },
+  "name": "L1 Ngc-Sa-Cnac Densities V3",
+  "resolution": {
+    "unitCode": "µm",
+    "value": 25
+  },
+  "sampleType": "intensity",
+  "subject": {
+    "@type": "Subject",
+    "species": {
+      "@id": "http://purl.obolibrary.org/obo/NCBITaxon_10090",
+      "label": "Mus musculus"
+    }
+  },
+  "worldMatrix": [
+    25,
+    0,
+    0,
+    0,
+    0,
+    25,
+    0,
+    0,
+    0,
+    0,
+    25,
+    0,
+    0,
+    0,
+    0,
+    1
+  ]
+}
