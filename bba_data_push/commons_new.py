@@ -9,13 +9,13 @@ from kgforge.core import Resource
 atlas_release_desc = "original Allen ccfv3 annotation at 25 um with the isocortex" \
                      " layer 2 and 3 split."
 
-meType = "METypeDensity"
+meTypeDensity = "METypeDensity"
 all_types = {
-    meType: ["NeuronDensity", "VolumetricDataLayer", "CellDensityDataLayer", meType]}
+    meTypeDensity: ["NeuronDensity", "VolumetricDataLayer", "CellDensityDataLayer", meTypeDensity]}
 type_dsm_map = {
-    meType: "quantity", }
+    meTypeDensity: "quantity", }
 desc = {
-    meType: "It has been generated from a probability mapping, using the "
+    meTypeDensity: "It has been generated from a probability mapping, using the "
             "corrected nissl volume and transplanted."}
 
 file_config = {
@@ -310,9 +310,9 @@ def get_layer(forge, label):
                 ls.append(forge_resolve(forge, initial + layers[2], label))
         for res in ls:
             if res:
-                layer.append({"@id": res.id, "label": res.label})
+                layer.append(Resource(id=res.id, label=res.label))
             else:
-                layer.append({"@id": None, "label": "not_resolved"})
+                raise Exception(f"Layer {layers} was not found in the Knowledge graph")
     return layer
 
 

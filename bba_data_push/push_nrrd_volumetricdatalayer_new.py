@@ -7,10 +7,10 @@ from pathlib import Path
 from copy import deepcopy
 import numpy as np
 import nrrd
-from kgforge.core import Resource
 
 import bba_data_push.commons_new as comm
 from bba_data_push.logging import create_log_handler
+from kgforge.specializations.resources import Dataset
 
 L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
 
@@ -20,10 +20,11 @@ def create_volumetric_resources(
         dataset_type,
         atlas_release,
         forge,
-        species,
-        brain_region,
+        subject,
+        brain_location,
         reference_system,
         contribution,
+        derivation,
         L
 ) -> list:
     """
@@ -39,7 +40,7 @@ def create_volumetric_resources(
         atlas release info
     forge: KnowledgeGraphForge
         instance of forge
-    species: dict
+    subject: dict
         species info
     brain_region: dict
         brain region info
@@ -55,19 +56,6 @@ def create_volumetric_resources(
     resources: list
         Resources to be pushed in Nexus.
     """
-
-    subject = {"@type": "Subject", "species": species}
-
-    brain_location = {
-        "brainRegion": brain_region,
-        "atlasSpatialReferenceSystem": reference_system}
-
-    base_derivation = {
-        "@type": "Derivation",
-        "entity": {
-            "@id": atlas_release["@id"],
-            "@type": "Entity"}
-    }
 
     resources = []
 
@@ -89,12 +77,13 @@ def create_volumetric_resources(
         file_config["file_extension"] = filename_split[1][1:]
 
         description = f"{filename} densities volume for the {comm.atlas_release_desc}. "
-        description += comm.desc[comm.meType]
+        description += comm.desc[comm.meTypeDensity]
 
-        nrrd_resource = Resource(
+        nrrd_resource = Dataset(forge,
             type=comm.all_types[dataset_type],
             name=filename,
             distribution=forge.attach(filepath, "application/nrrd"),
+            temp_filepath = filepath,
             description=description,
             isRegisteredIn=reference_system,
             brainLocation=brain_location,
@@ -102,7 +91,7 @@ def create_volumetric_resources(
             dataSampleModality=comm.type_dsm_map[dataset_type],
             subject=subject,
             contribution=contribution,
-            derivation=[base_derivation]
+            derivation=[derivation]
         )
 
         L.info("Adding nrrd_props")
@@ -113,12 +102,13 @@ def create_volumetric_resources(
             L.error(f"NrrdError: {e}")
 
         L.info("Adding annotation")
-        if dataset_type in [comm.meType]:
+        if dataset_type in [comm.meTypeDensity]:
             nrrd_resource.annotation = get_cellAnnotation(forge, filename)
             nrrd_resource.cellType = get_cellType(forge, filename)
             layer = comm.get_layer(forge, nrrd_resource.cellType[0]["label"])
+            print("\nlayer", layer)
             if layer:
-                nrrd_resource.brainLocation["layer"] = layer
+                nrrd_resource.brainLocation.layer = layer
 
         resources.append(nrrd_resource)
 
