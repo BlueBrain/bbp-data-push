@@ -16,10 +16,10 @@ from datetime import datetime
 from kgforge.core import KnowledgeGraphForge, Resource
 from kgforge.core.wrappings.paths import Filter, FilterOperator, create_filters_from_dict
 
-from bba_data_push.push_nrrd_volumetricdatalayer_new import create_volumetric_resources
-from bba_data_push.push_cellComposition_new import create_cellComposition_prop
+from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
+from bba_data_push.push_cellComposition import create_cellComposition_prop
 from bba_data_push.logging import log_args, close_handler, create_log_handler
-import bba_data_push.commons_new as comm
+import bba_data_push.commons as comm
 
 from bba_data_push import __version__
 

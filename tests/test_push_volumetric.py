@@ -5,9 +5,9 @@ from pathlib import Path
 from kgforge.core import Resource
 from kgforge.specializations.resources import Dataset
 
-from bba_data_push.commons_new import return_contribution
-from bba_data_push.push_nrrd_volumetricdatalayer_new import create_volumetric_resources
-from bba_data_push.bba_dataset_push_new import get_existing_resources, get_subject_prop, ATLASRELEASE_TYPE, get_property_type, get_brain_location_prop
+from bba_data_push.commons import return_contribution
+from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
+from bba_data_push.bba_dataset_push import get_existing_resources, get_subject_prop, ATLASRELEASE_TYPE, get_property_type, get_brain_location_prop
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)

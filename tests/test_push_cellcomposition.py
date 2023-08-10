@@ -2,8 +2,8 @@ import os
 import logging
 from datetime import datetime
 
-from bba_data_push.bba_dataset_push_new import create_cellComposition_prop, VOLUME_TYPE, COMPOSITION_ABOUT, get_subject_prop, get_derivation
-from bba_data_push.commons_new import return_contribution
+from bba_data_push.bba_dataset_push import create_cellComposition_prop, VOLUME_TYPE, COMPOSITION_ABOUT, get_subject_prop, get_derivation
+from bba_data_push.commons import return_contribution
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

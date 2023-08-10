@@ -8,7 +8,7 @@ from copy import deepcopy
 import numpy as np
 import nrrd
 
-import bba_data_push.commons_new as comm
+import bba_data_push.commons as comm
 from bba_data_push.logging import create_log_handler
 from kgforge.specializations.resources import Dataset
 
