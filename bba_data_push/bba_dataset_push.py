@@ -52,7 +52,6 @@ type_for_schema = {
 
 
 def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
-    print(res)
     filters = {"type": dataset_type,
                "atlasRelease": {"id": atlas_release_id},
                "brainLocation": {"brainRegion": {"id": res.brainLocation.brainRegion.get_identifier()}},
