@@ -2,6 +2,10 @@ import os
 import pytest
 from kgforge.core import KnowledgeGraphForge
 
+from bba_data_push.bba_dataset_push import (REFSYSTEM_TYPE, get_property_type,
+    get_subject_prop, get_brain_location_prop)
+import bba_data_push.commons as comm
+
 
 @pytest.fixture
 def nexus_env():
@@ -45,6 +49,11 @@ def atlas_release_id():
 
 
 @pytest.fixture
+def atlas_release_prop(atlas_release_id):
+    return get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+
+
+@pytest.fixture
 def cell_composition_id():
     return "https://bbp.epfl.ch/neurosciencegraph/data/cellcompositions/54818e46-cf8c-4bd6-9b68-34dffbc8a68c"
 
@@ -55,10 +64,54 @@ def brain_region_id():
 
 
 @pytest.fixture
+def brain_region_prop(brain_region_id):
+    return {"@id": brain_region_id, "label": "root"}
+
+
+@pytest.fixture
 def reference_system_id():
     return "https://bbp.epfl.ch/neurosciencegraph/data/allen_ccfv3_spatial_reference_system"
 
 
 @pytest.fixture
+def reference_system_prop(reference_system_id):
+    return get_property_type(reference_system_id, REFSYSTEM_TYPE)
+
+
+@pytest.fixture
 def species_id():
     return "http://purl.obolibrary.org/obo/NCBITaxon_10090"
+
+
+@pytest.fixture
+def species_prop(species_id):
+    return {"@id": species_id, "label": "Mus Musculus"}
+
+
+@pytest.fixture
+def brain_location_prop(brain_region_prop, reference_system_prop):
+    return get_brain_location_prop(brain_region_prop, reference_system_prop)
+
+
+@pytest.fixture()
+def subject_prop(species_prop):
+    return get_subject_prop(species_prop)
+
+
+@pytest.fixture
+def brain_template_id():
+    return "https://bbp.epfl.ch/neurosciencegraph/data/dca40f99-b494-4d2c-9a2f-c407180138b7"
+
+
+@pytest.fixture
+def brain_template_id():
+    return "https://bbp.epfl.ch/neurosciencegraph/data/dca40f99-b494-4d2c-9a2f-c407180138b7"
+
+
+@pytest.fixture
+def base_derivation(atlas_release_id):
+    return {
+        "@type": "Derivation",
+        "entity": {
+            "@id": atlas_release_id,
+            "@type": "Entity"}}

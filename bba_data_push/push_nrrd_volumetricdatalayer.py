@@ -14,6 +14,21 @@ from kgforge.specializations.resources import Dataset
 
 L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
 
+type_attributes_map = {
+    comm.meTypeDensity: {"dsm": "quantity", "voxel_type": "intensity",
+                         "desc": "density volume for the original Allen ccfv3 annotation at "
+                                 "25 um with the isocortex layer 2 and 3 split. It has been generated from a "
+                                 "probability mapping, using the corrected nissl volume and transplanted."},
+    comm.parcellationType: {"dsm": "parcellationId", "voxel_type": "label",
+                          "desc": "raster volume for brain region annotation as IDs, "
+                                  "including the separation of cortical layers 2 and 3."},
+    comm.hemisphereType: {"dsm": "parcellationId", "voxel_type": "label",
+                          "desc": "hemisphere annotation from Allen ccfv3 volume."},
+    comm.placementHintsType: {"dsm": "distance", "voxel_type": "vector",
+                             "desc": "placement hints volume"},
+    comm.cellOrientationType: {"dsm": "quaternion", "voxel_type": "vector",
+                               "desc": "cell orientation field volume"}
+}
 
 def create_volumetric_resources(
         input_paths,
@@ -25,7 +40,8 @@ def create_volumetric_resources(
         reference_system,
         contribution,
         derivation,
-        L
+        L,
+        res_name=None
 ) -> list:
     """
     Construct the input volumetric dataset that will be push with the corresponding files into Nexus as a resource.
@@ -57,38 +73,54 @@ def create_volumetric_resources(
         Resources to be pushed in Nexus.
     """
 
-    resources = []
+    attr = type_attributes_map[dataset_type]
 
     extension = ".nrrd"
+    exc_etype = "cADpyr"
+    generic_types = {
+        "Generic_Inhibitory_Neuron_MType_Generic_Inhibitory_Neuron_EType": ["GIN_mtype",
+                                                                            "GIN_etype"],
+        "Generic_Excitatory_Neuron_MType_Generic_Excitatory_Neuron_EType": ["GEN_mtype",
+                                                                            "GEN_etype"]
+    }
+
+    resources = []
+
     file_paths = []
     for input_path in input_paths:
         if input_path.endswith(extension):
-            file_paths.append(input_path)
+            if os.path.isfile(input_path):
+                file_paths.append(input_path)
         elif os.path.isdir(input_path):
             file_paths.extend([str(path) for path in Path(input_path).rglob("*"+extension)])
 
-    L.info(f"{len(file_paths)} {extension} files found under '{input_paths}', creating the respective payloads...")
+    tot_files = len(file_paths)
+    L.info(f"{tot_files} {extension} files found under '{input_paths}', creating the respective payloads...")
+    file_count = 0
     for filepath in file_paths:
+        file_count += 1
+
         filename_split = os.path.splitext(os.path.basename(filepath))
         filename = filename_split[0]
 
-        L.info(f"\nCreating payload for '{filename}'")
+        L.info(f"Creating payload for '{filename}' ({file_count} of {tot_files})")
         file_config = deepcopy(comm.file_config)
         file_config["file_extension"] = filename_split[1][1:]
 
-        description = f"{filename} densities volume for the {comm.atlas_release_desc}. "
-        description += comm.desc[comm.meTypeDensity]
+        description = f"{filename} {attr['desc']}."
+
+        res_brain_location = deepcopy(brain_location)
 
         nrrd_resource = Dataset(forge,
             type=comm.all_types[dataset_type],
-            name=filename,
+            name=res_name if res_name else filename,
             distribution=forge.attach(filepath, "application/nrrd"),
             temp_filepath = filepath,
             description=description,
             isRegisteredIn=reference_system,
-            brainLocation=brain_location,
+            brainLocation=res_brain_location,
             atlasRelease=atlas_release,
-            dataSampleModality=comm.type_dsm_map[dataset_type],
+            dataSampleModality=attr["dsm"],
             subject=subject,
             contribution=contribution,
             derivation=[derivation]
@@ -97,18 +129,31 @@ def create_volumetric_resources(
         L.info("Adding nrrd_props")
         try:
             header = nrrd.read_header(filepath)
-            add_nrrd_props(nrrd_resource, header, file_config, "intensity")
+            voxel_type = attr["voxel_type"]
+            if (dataset_type == comm.placementHintsType) and (header["dimension"]) < 4:
+                voxel_type = "label"
+            add_nrrd_props(nrrd_resource, header, file_config, voxel_type)
         except nrrd.errors.NRRDError as e:
             L.error(f"NrrdError: {e}")
 
-        L.info("Adding annotation")
         if dataset_type in [comm.meTypeDensity]:
-            nrrd_resource.annotation = get_cellAnnotation(forge, filename)
-            nrrd_resource.cellType = get_cellType(forge, filename)
+            L.info("Adding annotation")
+            filename_ann = filename
+            for generic_filename in generic_types:
+                if generic_filename in filename:
+                    filename_ann = "-".join([generic_types[generic_filename][0],
+                                             generic_types[generic_filename][1]])
+            if exc_etype in filename_ann:
+                filename_ann = filename_ann.replace(f"_{exc_etype}", f"-{exc_etype}")
+
+            nrrd_resource.annotation = get_cellAnnotation(forge, filename_ann)
+            nrrd_resource.cellType = get_cellType(forge, filename_ann)
+
             layer = comm.get_layer(forge, nrrd_resource.cellType[0]["label"])
-            print("\nlayer", layer)
             if layer:
                 nrrd_resource.brainLocation.layer = layer
+
+        L.info("Payload creation completed\n")
 
         resources.append(nrrd_resource)
 
@@ -323,7 +368,10 @@ def get_cellAnnotation(forge, label):
 
 
 def get_cellType(forge, name):
-    label = name.split("_densities")[0]
+    # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
+    metype_separator = "_densities"
+    metype_separator_excitatory = "_v3"
+    label = name.split(metype_separator)[0].split(metype_separator_excitatory)[0]
     parts = label.split("-")
     n_parts = len(parts)
     if n_parts > 3:

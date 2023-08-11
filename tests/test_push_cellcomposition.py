@@ -45,8 +45,8 @@ def test_push_cellcomposition(forge, nexus_env, nexus_bucket, nexus_token, atlas
         "brainRegion": brain_region_prop,
         "atlasSpatialReferenceSystem": reference_system_prop}
 
-    contribution, _ = return_contribution(forge, nexus_bucket, nexus_token,
-                                          organization="staging" not in nexus_env)
+    contribution, _ = return_contribution(forge, nexus_env, nexus_bucket, nexus_token,
+                                          add_org_contributor=False)
     derivation = get_derivation(atlas_release_id)
 
     cell_comp_volume = create_cellComposition_prop(Ctx.obj["forge"], VOLUME_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location, subject_prop, contribution,

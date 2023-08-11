@@ -1,0 +1,22 @@
+{
+  "msg": [
+    {
+     "id": 998,
+     "name": "root",
+     "children": [
+      {
+       "id": 2,
+       "acronym": "grey",
+       "name": "Some cell groups and regions",
+       "children": [
+        {
+         "id": 1,
+         "name": "region_1",
+         "acronym": "end"
+       }
+       ]
+     }
+     ]
+    }
+  ]
+}

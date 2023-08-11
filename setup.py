@@ -21,6 +21,7 @@ setup(
         "PyYAML>=5.3.1",
         "PyJWT>=2.0.0",
         "rdflib==6.2.0",
+        "urllib3",
     ],
     extras_require={
         "dev": ["pytest>=4.3", "pytest-cov>=2.8.0"],
