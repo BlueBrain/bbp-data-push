@@ -19,6 +19,10 @@ type_attributes_map = {
         "desc": "density volume for the original Allen ccfv3 annotation at 25 um with "
             "the isocortex layer 2 and 3 split. It has been generated from a "
             "probability mapping, using the corrected nissl volume and transplanted."},
+    comm.gliaDensityType: {"dsm": "quantity", "voxel_type": "intensity",
+        "desc": "volume"},
+    comm.neuronDensityType: {"dsm": "quantity", "voxel_type": "intensity",
+        "desc": "neuron density volume"},
     comm.parcellationType: {"dsm": "parcellationId", "voxel_type": "label",
         "desc": "raster volume for brain region annotation as IDs, including the "
             "separation of cortical layers 2 and 3."},
@@ -149,9 +153,19 @@ def create_volumetric_resources(
         except nrrd.errors.NRRDError as e:
             L.error(f"NrrdError: {e}")
 
-        if dataset_type in [comm.meTypeDensity]:
+        if dataset_type in [comm.meTypeDensity, comm.gliaDensityType]:
             L.info("Adding annotation")
             filename_ann = filename
+
+            # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
+            separator = {
+                comm.meTypeDensity: "_densities",
+                comm.gliaDensityType: "_density",}
+            if dataset_type in [comm.gliaDensityType, comm.neuronDensityType]:
+                filename_ann = filename_ann.capitalize()
+                if dataset_type in [comm.gliaDensityType]:
+                    if "Astrocyte" in filename_ann or "Olia" in filename_ann:
+                        filename_ann = filename_ann.replace(separator[dataset_type], " Type"+separator[dataset_type])
             for generic_filename in generic_types:
                 if generic_filename in filename:
                     filename_ann = "-".join([generic_types[generic_filename][0],
@@ -159,8 +173,8 @@ def create_volumetric_resources(
             if exc_etype in filename_ann:
                 filename_ann = filename_ann.replace(f"_{exc_etype}", f"-{exc_etype}")
 
-            nrrd_resource.annotation = get_cellAnnotation(forge, filename_ann)
-            nrrd_resource.cellType = get_cellType(forge, filename_ann)
+            nrrd_resource.annotation = get_cellAnnotation(forge, filename_ann, separator[dataset_type])
+            nrrd_resource.cellType = get_cellType(forge, filename_ann, separator[dataset_type])
 
             layer = comm.get_layer(forge, nrrd_resource.cellType[0]["label"])
             if layer:
@@ -365,11 +379,11 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
     resource.resolution = {"value": r[0][0], "unitCode": config["sampling_space_unit"]}
 
 
-def get_cellAnnotation(forge, label):
+def get_cellAnnotation(forge, label, separator):
     annotations = []
 
     types = ["M", "E"]
-    cellTypes = get_cellType(forge, label)
+    cellTypes = get_cellType(forge, label, separator)
     for i in range(len(cellTypes)):
         itype = types[i]
         annotation = comm.return_base_annotation(itype)
@@ -380,11 +394,14 @@ def get_cellAnnotation(forge, label):
     return annotations
 
 
-def get_cellType(forge, name):
+def get_cellType(forge, name, separator):
     # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
-    metype_separator = "_densities"
     metype_separator_excitatory = "_v3"
-    label = name.split(metype_separator)[0].split(metype_separator_excitatory)[0]
+    target = "CellType"
+    if separator == "_density":  # comm.gliaDensityType
+        target = None
+
+    label = name.split(separator)[0].split(metype_separator_excitatory)[0]
     parts = label.split("-")
     n_parts = len(parts)
     if n_parts > 3:
@@ -400,7 +417,7 @@ def get_cellType(forge, name):
 
     cellTypes = []
     for t in me_types:
-        cellType = comm.resolve_cellType(forge, t, name)
+        cellType = comm.resolve_cellType(forge, t, target, name)
         cellTypes.append(cellType)
 
     return cellTypes

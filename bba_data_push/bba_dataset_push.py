@@ -51,9 +51,9 @@ def check_tag(forge, res_id, tag):
 
 type_for_schema = {
     comm.meTypeDensity: "VolumetricDataLayer",
-    VOLUME_TYPE: VOLUME_TYPE,
-    SUMMARY_TYPE: SUMMARY_TYPE,
-    COMPOSITION_TYPE: COMPOSITION_TYPE}
+    comm.gliaDensityType: "VolumetricDataLayer",
+    comm.cellOrientationType: "VolumetricDataLayer",
+    comm.brainMaskType: "VolumetricDataLayer"}
 
 
 def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
@@ -109,7 +109,7 @@ def check_res_list(res_list, filepath_list, logger, action):
 
 def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id, tag, force_registration=False):
 
-    dataset_schema = forge._model.schema_id(dataset_type)
+    dataset_schema = forge._model.schema_id(type_for_schema.get(dataset_type, dataset_type))
 
     ress_to_update = []
     ress_to_regster = []
@@ -298,7 +298,7 @@ def common_options(opt):
         help="The json file containing the hierachy of the brain regions", )(opt)
     opt = click.option("--reference-system-id", type=click.STRING, required=True,
         help="Nexus ID of the reference system Resource")(opt)
-    opt = click.option("--is-prod-env", is_flag=True, default=False,
+    opt = click.option("--is-prod-env", default=False,
         help="Boolean flag indicating whether the Nexus environment provided with the"
              " '--nexus-env' argument is the production environment.")(opt)
 
@@ -312,7 +312,7 @@ def common_options(opt):
 @click.option("--dataset-path",
               type=click.Path(exists=True),
               required=True,
-              multiple=False,
+              multiple=True,
               help="The files or directories of files to push on Nexus", )
 @click.option("--dataset-type",
               type=click.STRING,
@@ -356,7 +356,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
 
     L.info("Filling the metadata of the volumetric payloads...")
     resources = create_volumetric_resources(
-        [dataset_path],
+        dataset_path,
         dataset_type,
         atlas_release_prop,
         forge,
@@ -392,7 +392,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
               help="The files or directories of files to push on Nexus",)
 @click.option("--dataset-type", type=click.STRING, required=True,
               help="Type to set for registration of Resources from dataset-path")
-def push_meshes(ctx, dataset_path, dataset_type, hierarchy_path, atlas_release_id, species,
+def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path, atlas_release_id, species,
     reference_system_id, resource_tag, is_prod_env
 ):
     """Create a BrainParcellationMesh Resource payload and push it along with the "

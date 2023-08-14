@@ -11,6 +11,8 @@ import blue_brain_atlas_web_exporter.TreeIndexer as TreeIndexer
 # Constants
 atlasrelaseType = "BrainAtlasRelease"
 meTypeDensity = "METypeDensity"
+gliaDensityType = "GliaCellDensity"
+neuronDensityType = "NeuronDensity"
 parcellationType = "BrainParcellationDataLayer"
 hemisphereType = "HemisphereAnnotationDataLayer"
 ontologyType = "ParcellationOntology"
@@ -22,6 +24,8 @@ volumetricType = ["VolumetricDataLayer", "Dataset"]
 
 all_types = {
     meTypeDensity: [meTypeDensity, "NeuronDensity", "VolumetricDataLayer", "CellDensityDataLayer"],
+    gliaDensityType: [gliaDensityType, "VolumetricDataLayer", "CellDensityDataLayer"],
+    neuronDensityType: [neuronDensityType, "VolumetricDataLayer", "CellDensityDataLayer"],
     parcellationType: [parcellationType] + volumetricType,
     hemisphereType: [hemisphereType] + volumetricType,
     ontologyType: [ontologyType, "Ontology", "Entity"],
@@ -356,13 +360,16 @@ def return_base_annotation(t):
     return base_annotation
 
 
-def resolve_cellType(forge, t, name=None):
+def resolve_cellType(forge, t, target, name=None):
     cellType = {
         "@id": None,
         "label": None,
         # "prefLabel": "" # to define
     }
-    res = forge_resolve(forge, t, name, "CellType")
+    if target:
+        res = forge_resolve(forge, t, name, target)
+    else:
+        res = forge_resolve(forge, t, name)
     if res:
         cellType["@id"] = res.id
         cellType["label"] = res.label
