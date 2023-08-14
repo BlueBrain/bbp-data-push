@@ -16,18 +16,20 @@ L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
 
 type_attributes_map = {
     comm.meTypeDensity: {"dsm": "quantity", "voxel_type": "intensity",
-                         "desc": "density volume for the original Allen ccfv3 annotation at "
-                                 "25 um with the isocortex layer 2 and 3 split. It has been generated from a "
-                                 "probability mapping, using the corrected nissl volume and transplanted."},
+        "desc": "density volume for the original Allen ccfv3 annotation at 25 um with "
+            "the isocortex layer 2 and 3 split. It has been generated from a "
+            "probability mapping, using the corrected nissl volume and transplanted."},
     comm.parcellationType: {"dsm": "parcellationId", "voxel_type": "label",
-                          "desc": "raster volume for brain region annotation as IDs, "
-                                  "including the separation of cortical layers 2 and 3."},
+        "desc": "raster volume for brain region annotation as IDs, including the "
+            "separation of cortical layers 2 and 3."},
     comm.hemisphereType: {"dsm": "parcellationId", "voxel_type": "label",
-                          "desc": "hemisphere annotation from Allen ccfv3 volume."},
+        "desc": "hemisphere annotation from Allen ccfv3 volume."},
     comm.placementHintsType: {"dsm": "distance", "voxel_type": "vector",
-                             "desc": "placement hints volume"},
+        "desc": "placement hints volume"},
     comm.cellOrientationType: {"dsm": "quaternion", "voxel_type": "vector",
-                               "desc": "cell orientation field volume"}
+        "desc": "cell orientation field volume"},
+    comm.brainMaskType: {"dsm": "parcellationId", "voxel_type": "label",
+        "desc": "binary mask volume"}
 }
 
 def create_volumetric_resources(
@@ -41,7 +43,8 @@ def create_volumetric_resources(
         contribution,
         derivation,
         L,
-        res_name=None
+        res_name=None,
+        flat_tree=None
 ) -> list:
     """
     Construct the input volumetric dataset that will be push with the corresponding files into Nexus as a resource.
@@ -52,20 +55,24 @@ def create_volumetric_resources(
         input datasets paths. These datasets are either volumetric files or folder containing volumetric files
     dataset_type: str
         type of the Resources to build
-    atlas_release: dict
+    atlas_release: Resource
         atlas release info
     forge: KnowledgeGraphForge
         instance of forge
-    subject: dict
+    subject: Resource
         species info
-    brain_region: dict
+    brain_location: Resource
         brain region info
-    reference_system: dict
+    reference_system: Resource
         reference system info
     contribution: list
         contributor Resources
     L: Logger
         log_handler
+    res_name: str
+        name to assign to the Resource
+    flat_tree: dict
+        flattened brain regions hierarchy
 
     Returns
     -------
@@ -109,12 +116,18 @@ def create_volumetric_resources(
 
         description = f"{filename} {attr['desc']}."
 
-        res_brain_location = deepcopy(brain_location)
+        if brain_location:
+            res_brain_location = deepcopy(brain_location)
+        else:
+            res_brain_location = comm.create_brain_location_prop(forge, filename,
+                flat_tree, reference_system)
+            if dataset_type == comm.brainMaskType:
+                res_name = f"Mask of {res_brain_location.brainRegion.label}"
 
         nrrd_resource = Dataset(forge,
             type=comm.all_types[dataset_type],
             name=res_name if res_name else filename,
-            distribution=forge.attach(filepath, "application/nrrd"),
+            distribution=forge.attach(filepath, f"application/{extension[1:]}"),
             temp_filepath = filepath,
             description=description,
             isRegisteredIn=reference_system,

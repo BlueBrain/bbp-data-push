@@ -17,16 +17,19 @@ ontologyType = "ParcellationOntology"
 placementHintsType = "PlacementHintsDataLayer"
 cellOrientationType = "CellOrientationField"
 brainMeshType = "BrainParcellationMesh"
+brainMaskType = "BrainParcellationMask"
+volumetricType = ["VolumetricDataLayer", "Dataset"]
 
 all_types = {
     meTypeDensity: [meTypeDensity, "NeuronDensity", "VolumetricDataLayer", "CellDensityDataLayer"],
-    parcellationType: [parcellationType, "VolumetricDataLayer", "Dataset"],
-    hemisphereType: [hemisphereType, "VolumetricDataLayer", "Dataset"],
+    parcellationType: [parcellationType] + volumetricType,
+    hemisphereType: [hemisphereType] + volumetricType,
     ontologyType: [ontologyType, "Ontology", "Entity"],
     atlasrelaseType: [atlasrelaseType, "AtlasRelease", "Entity"],
-    placementHintsType: [placementHintsType, "VolumetricDataLayer", "Dataset"],
-    cellOrientationType: [cellOrientationType, "VolumetricDataLayer", "Dataset"],
-    brainMeshType: [brainMeshType, "Mesh"]
+    placementHintsType: [placementHintsType] + volumetricType,
+    cellOrientationType: [cellOrientationType] + volumetricType,
+    brainMeshType: [brainMeshType, "Mesh"],
+    brainMaskType: [brainMaskType] + volumetricType
 }
 
 
@@ -64,6 +67,15 @@ def add_distribution(res, forge, distribution):
     res.distribution = res_dis if len(res_dis) > 1 else res_dis[0]
 
 
+def create_brain_location_prop(forge, region_id, flat_tree, reference_system):
+    region_prefix = forge.get_model_context().expand("mba")
+    mba_region_id = region_prefix + region_id
+    region_label = get_region_label(flat_tree, int(region_id))
+    brain_region = get_property_id_label(mba_region_id, region_label)
+
+    return get_brain_location_prop(brain_region, reference_system)
+
+
 def get_brain_location_prop(brain_region, reference_system):
     return Resource(
         brainRegion=brain_region,
@@ -81,6 +93,10 @@ def get_region_label(flat_tree, region_id):
         raise Exception(f"Region id {region_id} was not found in the input hierarchy")
 
     return region["name"]
+
+
+def get_property_id_label(id, label):
+    return Resource(id=id, label=label)
 
 
 def get_voxel_type(voxel_type, component_size: int):

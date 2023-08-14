@@ -3,7 +3,7 @@ import pytest
 from kgforge.core import KnowledgeGraphForge
 
 from bba_data_push.bba_dataset_push import (REFSYSTEM_TYPE, get_property_type,
-    get_subject_prop)
+                                            get_subject_prop)
 import bba_data_push.commons as comm
 
 
@@ -38,9 +38,15 @@ def nexus_token():
 
 
 @pytest.fixture
-def forge(nexus_env, forge_config_file, nexus_org, nexus_proj, nexus_token):
-    return KnowledgeGraphForge(forge_config_file, endpoint=nexus_env, bucket="/".join([nexus_org, nexus_proj]),
-                               token=nexus_token)
+def forge(nexus_env, forge_config_file, nexus_bucket, nexus_token):
+    return KnowledgeGraphForge(forge_config_file, endpoint=nexus_env,
+                               bucket=nexus_bucket, token=nexus_token)
+
+
+@pytest.fixture
+def contribution(forge, nexus_env, nexus_bucket, nexus_token):
+    comm.return_contribution(forge, nexus_env, nexus_bucket, nexus_token,
+                             add_org_contributor=False)[0]
 
 
 @pytest.fixture

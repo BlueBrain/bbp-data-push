@@ -3,7 +3,6 @@ import logging
 
 from kgforge.core import Resource
 
-from bba_data_push.commons import return_contribution
 from bba_data_push.push_atlas_release import create_atlas_release
 from bba_data_push.bba_dataset_push import get_property_type, BRAIN_TEMPLATE_TYPE
 import bba_data_push.commons as comm
@@ -12,8 +11,9 @@ logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
 
-def test_create_atas_release(forge, nexus_bucket, nexus_token, nexus_env, atlas_release_id, brain_location_prop,
-        reference_system_prop, subject_prop, brain_template_id):
+def test_create_atas_release(forge, nexus_bucket, nexus_token, nexus_env,
+    atlas_release_id, brain_location_prop, reference_system_prop, subject_prop,
+    brain_template_id, contribution):
 
     test_folder = os.environ["TEST_FOLDER"]
     folder = os.path.join(test_folder, "tests_data")
@@ -24,9 +24,6 @@ def test_create_atas_release(forge, nexus_bucket, nexus_token, nexus_env, atlas_
     hemisphere_path = os.path.join(folder, "hemispheres.nrrd")
 
     brain_template_prop = get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE)
-
-    contribution, _ = return_contribution(forge, nexus_env, nexus_bucket, nexus_token,
-                                          add_org_contributor=False)
 
     test_id = "dummy-id"
     ont_prop = get_property_type(test_id, comm.ontologyType)

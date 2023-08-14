@@ -1,10 +1,8 @@
 import logging
-import json
 from pathlib import Path
 
 from kgforge.specializations.resources import Dataset
 
-from bba_data_push.commons import return_contribution
 from bba_data_push.push_brainmesh import create_mesh_resources
 import bba_data_push.commons as comm
 
@@ -16,7 +14,7 @@ TEST_PATH = Path(Path(__file__).parent.parent)
 
 def test_create_mesh_resources(forge, nexus_bucket, nexus_token, nexus_env,
     atlas_release_prop, subject_prop, brain_location_prop, reference_system_prop,
-    base_derivation):
+    contribution, base_derivation):
 
     # Arguments
     dataset_path = [
@@ -28,9 +26,6 @@ def test_create_mesh_resources(forge, nexus_bucket, nexus_token, nexus_env,
     flat_tree = comm.get_flat_tree(hierarchy_path)
 
     dataset_type = comm.brainMeshType
-
-    contribution, _ = return_contribution(forge, nexus_env, nexus_bucket, nexus_token,
-                                          add_org_contributor=False)
 
     resources = create_mesh_resources(
         dataset_path,

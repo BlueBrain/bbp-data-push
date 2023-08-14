@@ -125,7 +125,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             res_id = res.id
             res_store_metadata = get_res_store_metadata(res_id, forge)
         else:
-            res_id = None
+            res_id = res_store_metadata = None
             logger.info(f"Searching Nexus for {res_msg}")
             limit = 100
             orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit)
@@ -260,7 +260,7 @@ def get_property_label(name, arg, forge):
         raise Exception(
             f"The provided '{name}' argument ({arg}) can not be retrieved/resolved")
 
-    return get_property_id_label(arg_res.id, arg_res.label)
+    return comm.get_property_id_label(arg_res.id, arg_res.label)
 
 
 def get_region_prop(hierarchy_path, brain_region):
@@ -268,11 +268,7 @@ def get_region_prop(hierarchy_path, brain_region):
     brain_region_id = brain_region.split("/")[-1]
     brain_region_label = comm.get_region_label(flat_tree, int(brain_region_id))
 
-    return get_property_id_label(brain_region_id, brain_region_label)
-
-
-def get_property_id_label(id, label):
-    return Resource(id=id, label=label)
+    return comm.get_property_id_label(brain_region_id, brain_region_label)
 
 
 def get_derivation(atlas_release_id):
@@ -285,9 +281,7 @@ def get_derivation(atlas_release_id):
     return base_derivation
 
 def get_subject_prop(species_prop):
-    return Resource(
-        type="Subject",
-        species=species_prop)
+    return Resource(type="Subject", species=species_prop)
 
 
 def common_options(opt):
@@ -298,8 +292,8 @@ def common_options(opt):
         help="Optional tag value with which to tag the resources (default to 'datetime.today()')")(opt)
     opt = click.option("--" + Args.species, type=click.STRING, required=True,
         help="Nexus ID or label of the species")(opt)
-    opt = click.option("--" + Args.brain_region, type=click.STRING, required=True,
-        help="Nexus ID or label of the brain region")(opt)
+    opt = click.option("--" + Args.brain_region, type=click.STRING, required=False,
+        default=None, help="Nexus ID of the brain region")(opt)
     opt = click.option("--hierarchy-path", type=click.Path(exists=True), required=True, multiple=False,
         help="The json file containing the hierachy of the brain regions", )(opt)
     opt = click.option("--reference-system-id", type=click.STRING, required=True,
@@ -343,9 +337,18 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
     atlas_release_prop = get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
     species_prop = get_property_label(Args.species, species, forge)
     subject = get_subject_prop(species_prop)
-    brain_region_prop = get_region_prop(hierarchy_path, brain_region)
     reference_system_prop = get_property_type(reference_system_id, REFSYSTEM_TYPE)
-    brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
+    brain_location_prop = flat_tree = None
+    if brain_region:
+        if dataset_type in [comm.brainMaskType]:
+            raise Exception(f"The argument --{Args.brain_region} can not be used with "
+                f"dataset-type '{dataset_type}' because the brain region for such files"
+                " is extracted automatically from the filename")
+        brain_region_prop = get_region_prop(hierarchy_path, brain_region)
+        brain_location_prop = comm.get_brain_location_prop(brain_region_prop,
+                                                           reference_system_prop)
+    else:
+        flat_tree = comm.get_flat_tree(hierarchy_path)
     derivation = get_derivation(atlas_release_id)
     contribution, log_info = comm.return_contribution(forge, ctx.obj["env"], ctx.obj["bucket"],
         ctx.obj["token"], add_org_contributor=is_prod_env)
@@ -362,7 +365,9 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
         reference_system_prop,
         contribution,
         derivation,
-        L
+        L,
+        None,
+        flat_tree
     )
 
     n_resources = len(resources)

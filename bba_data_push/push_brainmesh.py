@@ -13,16 +13,19 @@ from bba_data_push.logging import create_log_handler
 
 L = create_log_handler(__name__, "./push_brainmesh.log")
 
+
 def create_mesh_resources(input_paths, dataset_type, flat_tree, atlas_release, forge,
     subject, reference_system, contribution, derivation, logger,
 ) -> list:
     """
-    Construct the payload of the Mesh Resources that will be push with the corresponding files into Nexus.
+    Construct the payload of the Mesh Resources that will be push with the corresponding
+    files into Nexus.
 
     Parameters
     ----------
     input_paths: list
-        input datasets paths. These datasets is either a mesh file or folder containing mesh files
+        input datasets paths. This dataset is either a mesh file or folder
+        containing mesh files
     dataset_type: str
         type of the Resources to build
     flat_tree: dict
@@ -72,17 +75,12 @@ def create_mesh_resources(input_paths, dataset_type, flat_tree, atlas_release, f
 
         logger.info(f"Creating Mesh payload for file '{region_id}' ({file_count} of {tot_files})")
 
-        region_prefix = forge.get_model_context().expand("mba")
-        mba_region_id = region_prefix + region_id
-        region_label = comm.get_region_label(flat_tree, int(region_id))
-        brain_region = Resource(
-            id=mba_region_id,
-            label=region_label)
+        brain_location = comm.create_brain_location_prop(forge, region_id,
+            flat_tree, reference_system)
+        region_label = brain_location.brainRegion.label
 
         name = f"Mesh of {region_label}"
-        description = f"Mesh of the region {name}."
-
-        brain_location = comm.get_brain_location_prop(brain_region, reference_system)
+        description = f"Mesh of the region {region_label}."
 
         mesh_resource = Dataset(forge,
             type=comm.all_types[dataset_type],
