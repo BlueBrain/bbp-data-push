@@ -3,7 +3,7 @@ import pytest
 from kgforge.core import KnowledgeGraphForge
 
 from bba_data_push.bba_dataset_push import (REFSYSTEM_TYPE, get_property_type,
-    get_subject_prop, get_brain_location_prop)
+    get_subject_prop)
 import bba_data_push.commons as comm
 
 
@@ -90,7 +90,7 @@ def species_prop(species_id):
 
 @pytest.fixture
 def brain_location_prop(brain_region_prop, reference_system_prop):
-    return get_brain_location_prop(brain_region_prop, reference_system_prop)
+    return comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
 
 
 @pytest.fixture()

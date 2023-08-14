@@ -6,6 +6,8 @@ import hashlib
 import re
 from kgforge.core import Resource
 
+import blue_brain_atlas_web_exporter.TreeIndexer as TreeIndexer
+
 # Constants
 atlasrelaseType = "BrainAtlasRelease"
 meTypeDensity = "METypeDensity"
@@ -14,6 +16,7 @@ hemisphereType = "HemisphereAnnotationDataLayer"
 ontologyType = "ParcellationOntology"
 placementHintsType = "PlacementHintsDataLayer"
 cellOrientationType = "CellOrientationField"
+brainMeshType = "BrainParcellationMesh"
 
 all_types = {
     meTypeDensity: [meTypeDensity, "NeuronDensity", "VolumetricDataLayer", "CellDensityDataLayer"],
@@ -22,7 +25,8 @@ all_types = {
     ontologyType: [ontologyType, "Ontology", "Entity"],
     atlasrelaseType: [atlasrelaseType, "AtlasRelease", "Entity"],
     placementHintsType: [placementHintsType, "VolumetricDataLayer", "Dataset"],
-    cellOrientationType: [cellOrientationType, "VolumetricDataLayer", "Dataset"]
+    cellOrientationType: [cellOrientationType, "VolumetricDataLayer", "Dataset"],
+    brainMeshType: [brainMeshType, "Mesh"]
 }
 
 
@@ -58,6 +62,25 @@ def add_distribution(res, forge, distribution):
     for dis_file in distribution:
         res_dis.append(forge.attach(dis_file["path"], dis_file["content_type"]))
     res.distribution = res_dis if len(res_dis) > 1 else res_dis[0]
+
+
+def get_brain_location_prop(brain_region, reference_system):
+    return Resource(
+        brainRegion=brain_region,
+        atlasSpatialReferenceSystem=reference_system)
+
+
+def get_flat_tree(hierarchy_path):
+    hierarchy = json.loads(open(hierarchy_path).read())
+    root_region = hierarchy['msg'][0]
+    return TreeIndexer.flattenTree(root_region, id_prop_name="id", children_prop_name="children")
+
+def get_region_label(flat_tree, region_id):
+    region = flat_tree.get(region_id)
+    if not region:
+        raise Exception(f"Region id {region_id} was not found in the input hierarchy")
+
+    return region["name"]
 
 
 def get_voxel_type(voxel_type, component_size: int):

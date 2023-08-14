@@ -25,3 +25,4 @@ h5py>=2.10.0
 pynrrd>=0.4.0
 rdflib==6.2.0
 urllib3
+blue_brain_atlas_web_exporter @ git+https://gitlab-ci-token:${CI_JOB_TOKEN}@bbpgitlab.epfl.ch/dke/apps/blue_brain_atlas_web_exporter.git@v2.0.2
