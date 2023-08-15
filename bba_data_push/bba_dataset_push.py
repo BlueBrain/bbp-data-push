@@ -560,7 +560,10 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     bucket = ctx.obj["bucket"]
 
     atlas_release_id_orig = None
-    ont_id = par_id = hem_id = ph_id = None
+    properties_id_map = {"parcellationOntology": None,
+                         "parcellationVolume": None,
+                         "hemisphereVolume": None,
+                         "placementHints": None}
     if atlas_release_id:
         force_registration = False
         atlas_release_orig = comm.retrieve_resource(atlas_release_id, forge)
@@ -569,10 +572,10 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
                             "Please provide a valid id (or 'None' to create a new AtlasRelease)")
         else:
             atlas_release_id_orig = atlas_release_id
-            ont_id = atlas_release_orig.parcellationOntology.id
-            par_id = atlas_release_orig.parcellationVolume.id
-            hem_id = atlas_release_orig.hemisphereVolume.id
-            ph_id = atlas_release_orig.placementHints.id
+            for prop in properties_id_map:
+                existing_prop = getattr(atlas_release_orig, prop, None)
+                if existing_prop:
+                    properties_id_map[prop] = existing_prop.id
     else:
         atlas_release_schema = forge._model.schema_id(comm.atlasrelaseType)
         atlas_release_id = "/".join([ctx.obj["env"], "resources", bucket,
@@ -586,8 +589,8 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
     brain_template_prop = get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE)
 
-    contribution, log_info = comm.return_contribution(forge, ctx.obj["env"], ctx.obj["bucket"], ctx.obj["token"],
-                                                      add_org_contributor=is_prod_env)
+    contribution, log_info = comm.return_contribution(forge, ctx.obj["env"],
+        ctx.obj["bucket"], ctx.obj["token"], add_org_contributor=is_prod_env)
     logger.info("\n".join(log_info))
 
     atlas_release_prop = get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
@@ -597,7 +600,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     ont_name = "BBP Mouse Brain region ontology"
     ont_res = create_base_resource(comm.all_types[comm.ontologyType],
         brain_location_prop, reference_system_prop, subject_prop, contribution,
-        atlas_release_prop, ont_name, None, ont_id)
+        atlas_release_prop, ont_name, None, properties_id_map["parcellationOntology"])
     ont_dis = [{"path": hierarchy_path, "content_type": "application/json"},
                {"path": hierarchy_ld_path, "content_type": "application/ld+json"}]
     comm.add_distribution(ont_res, forge, ont_dis)
@@ -610,8 +613,8 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     par_res = create_volumetric_resources([annotation_path], comm.parcellationType,
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger, par_name)[0]
-    if par_id:
-        par_res.id = par_id
+    if properties_id_map["parcellationVolume"]:
+        par_res.id = properties_id_map["parcellationVolume"]
     _integrate_datasets_to_Nexus(forge, [par_res], comm.parcellationType, atlas_release_id_orig,
                                  resource_tag)
 
@@ -620,8 +623,8 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     hem_res = create_volumetric_resources([hemisphere_path], comm.hemisphereType,
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger, hem_name)[0]
-    if hem_id:
-        hem_res.id = hem_id
+    if properties_id_map["hemisphereVolume"]:
+        hem_res.id = properties_id_map["hemisphereVolume"]
     _integrate_datasets_to_Nexus(forge, [hem_res], comm.hemisphereType, atlas_release_id_orig,
                                  resource_tag)
 
@@ -630,8 +633,8 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     ph_res = create_volumetric_resources(placement_hints_path, comm.placementHintsType,
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger, ph_name)
-    if ph_id:
-        ph_res[0].id = ph_id  # To generalize for a set of Placement Hints
+    #if properties_id_map["placementHints"]:
+    #    ph_res[0].id = properties_id_map["placementHints"]  # To generalize for a set of Placement Hints
     _integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType, atlas_release_id_orig,
                                  resource_tag)
 
@@ -640,10 +643,10 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     ont_prop = get_property_type(ont_res.id, comm.ontologyType)
     par_prop = get_property_type(par_res.id, comm.parcellationType)
     hem_prop = get_property_type(hem_res.id, comm.hemisphereType)
-    ph_prop = get_property_type(ph_res.id, comm.placementHintsType)
+    #ph_prop = get_property_type(ph_res[0].id, comm.placementHintsType)
     atlas_release_resource = create_atlas_release(atlas_release_id_orig, brain_location_prop,
         reference_system_prop, brain_template_prop, subject_prop, ont_prop,
-        par_prop, hem_prop, ph_prop, contribution, name, description)
+        par_prop, hem_prop, None, contribution, name, description)
     _integrate_datasets_to_Nexus(forge, [atlas_release_resource], comm.atlasrelaseType,
         atlas_release_id_orig, resource_tag, force_registration)
 
