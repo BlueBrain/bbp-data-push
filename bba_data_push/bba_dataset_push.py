@@ -53,7 +53,8 @@ type_for_schema = {
     comm.meTypeDensity: "VolumetricDataLayer",
     comm.gliaDensityType: "VolumetricDataLayer",
     comm.cellOrientationType: "VolumetricDataLayer",
-    comm.brainMaskType: "VolumetricDataLayer"}
+    comm.brainMaskType: "VolumetricDataLayer",
+    comm.hemisphereType: "VolumetricDataLayer"}
 
 
 def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
@@ -545,9 +546,11 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
               help="The files or directory of placement hints",)
 @click.option("--name",
     type=click.STRING, required=False, multiple=False,
+    default="Blue Brain Atlas",
     help="The name to assign to the AtlasRelease resource.")
 @click.option("--description",
     type=click.STRING, required=False, multiple=False,
+    default="The official Atlas of the Blue Brain Project",
     help="The description to assign to the AtlasRelease resource.")
 def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_template_id,
     hierarchy_path, hierarchy_ld_path, annotation_path, hemisphere_path, placement_hints_path,
@@ -608,8 +611,8 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger, par_name)[0]
     if par_id:
-        par_res[0].id = par_id
-    _integrate_datasets_to_Nexus(forge, par_res, comm.parcellationType, atlas_release_id_orig,
+        par_res.id = par_id
+    _integrate_datasets_to_Nexus(forge, [par_res], comm.parcellationType, atlas_release_id_orig,
                                  resource_tag)
 
     # Create HemisphereAnnotation resource
@@ -618,15 +621,15 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger, hem_name)[0]
     if hem_id:
-        hem_res[0].id = hem_id
-    _integrate_datasets_to_Nexus(forge, hem_res, comm.hemisphereType, atlas_release_id_orig,
+        hem_res.id = hem_id
+    _integrate_datasets_to_Nexus(forge, [hem_res], comm.hemisphereType, atlas_release_id_orig,
                                  resource_tag)
 
     # Create PlacementHints resource
     ph_name = "Placement Hints volumes"
     ph_res = create_volumetric_resources(placement_hints_path, comm.placementHintsType,
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
-        contribution, derivation, logger, ph_name)[0]
+        contribution, derivation, logger, ph_name)
     if ph_id:
         ph_res[0].id = ph_id  # To generalize for a set of Placement Hints
     _integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType, atlas_release_id_orig,
