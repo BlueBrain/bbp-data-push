@@ -306,7 +306,7 @@ def common_options(opt):
     return opt
 
 
-@initialize_pusher_cli.command()
+@initialize_pusher_cli.command("push-volumetric")
 @click.pass_context
 @log_args(logger)
 @common_options
@@ -385,7 +385,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
         resource_tag,
     )
 
-@initialize_pusher_cli.command()
+@initialize_pusher_cli.command("push-meshes")
 @click.pass_context
 @log_args(logger)
 @common_options
@@ -525,7 +525,7 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
     return cell_composition.id
 
 
-@initialize_pusher_cli.command()
+@initialize_pusher_cli.command("push-atlasrelease")
 @click.pass_context
 @common_options
 @log_args(logger)
