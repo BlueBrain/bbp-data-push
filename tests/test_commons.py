@@ -1,3 +1,4 @@
+import os
 import pytest
 from pathlib import Path
 
@@ -8,8 +9,18 @@ from bba_data_push.deprecated_commons import (
     # return_contribution,
 )
 
+from bba_data_push.bba_dataset_push import get_region_prop
+
+from kgforge.core import Resource
+
 TEST_PATH = Path(Path(__file__).parent.parent)
 
+
+def test_get_region_prop(brain_region_id):
+    hierarchy_path = str(Path(TEST_PATH, "tests/tests_data/hierarchy_l23split.json"))
+    region_prop = get_region_prop(hierarchy_path, brain_region_id)
+
+    assert region_prop == Resource(id=brain_region_id, label="root")
 
 def test_get_voxel_type():
 

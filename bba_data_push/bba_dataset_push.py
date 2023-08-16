@@ -270,7 +270,7 @@ def get_region_prop(hierarchy_path, brain_region):
     brain_region_id = brain_region.split("/")[-1]
     brain_region_label = comm.get_region_label(flat_tree, int(brain_region_id))
 
-    return comm.get_property_id_label(brain_region_id, brain_region_label)
+    return comm.get_property_id_label(brain_region, brain_region_label)
 
 
 def get_derivation(atlas_release_id):
