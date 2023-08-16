@@ -98,6 +98,8 @@ def create_volumetric_resources(
     resources = []
 
     file_paths = []
+    if not isinstance(input_paths, list):
+        raise Exception(f"The 'input_paths' argument provided is not a list: {input_paths}")
     for input_path in input_paths:
         if input_path.endswith(extension):
             if os.path.isfile(input_path):

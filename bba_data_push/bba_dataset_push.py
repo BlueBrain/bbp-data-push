@@ -54,7 +54,8 @@ type_for_schema = {
     comm.gliaDensityType: "VolumetricDataLayer",
     comm.cellOrientationType: "VolumetricDataLayer",
     comm.brainMaskType: "VolumetricDataLayer",
-    comm.hemisphereType: "VolumetricDataLayer"}
+    comm.hemisphereType: "VolumetricDataLayer",
+    comm.placementHintsType: "VolumetricDataLayer"}
 
 
 def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
@@ -169,7 +170,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
 
     ress_to_tag = ress_to_update + ress_to_regster
     filepath_tag_list = filepath_update_list + filepath_register_list
-    logger.info(f"Tagging {len(ress_to_tag)} Resources with tag '{tag}'")
+    logger.info(f"Tagging {len(ress_to_tag)} Resources with tag '{tag}'\n")
     forge.tag(ress_to_tag, tag)
     check_res_list(ress_to_tag, filepath_tag_list, "tagging", logger)
 
@@ -630,7 +631,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
 
     # Create PlacementHints resource
     ph_name = "Placement Hints volumes"
-    ph_res = create_volumetric_resources(placement_hints_path, comm.placementHintsType,
+    ph_res = create_volumetric_resources([placement_hints_path], comm.placementHintsType,
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger, ph_name)
     #if properties_id_map["placementHints"]:
