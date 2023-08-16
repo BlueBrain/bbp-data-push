@@ -95,7 +95,7 @@ def get_res_store_metadata(res_id, forge):
     res = comm.retrieve_resource(res_id, forge)
     return res._store_metadata
 
-def check_res_list(res_list, filepath_list, logger, action):
+def check_res_list(res_list, filepath_list, action, logger):
     error_messages = []
     for i, res in enumerate(res_list):
         if not res._last_action.succeeded:
