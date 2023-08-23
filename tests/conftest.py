@@ -2,8 +2,7 @@ import os
 import pytest
 from kgforge.core import KnowledgeGraphForge
 
-from bba_data_push.bba_dataset_push import (REFSYSTEM_TYPE, get_property_type,
-                                            get_subject_prop)
+from bba_data_push.bba_dataset_push import REFSYSTEM_TYPE, get_subject_prop
 import bba_data_push.commons as comm
 
 
@@ -56,7 +55,7 @@ def atlas_release_id():
 
 @pytest.fixture
 def atlas_release_prop(atlas_release_id):
-    return get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    return comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
 
 
 @pytest.fixture
@@ -81,7 +80,7 @@ def reference_system_id():
 
 @pytest.fixture
 def reference_system_prop(reference_system_id):
-    return get_property_type(reference_system_id, REFSYSTEM_TYPE)
+    return comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
 
 
 @pytest.fixture
@@ -102,11 +101,6 @@ def brain_location_prop(brain_region_prop, reference_system_prop):
 @pytest.fixture()
 def subject_prop(species_prop):
     return get_subject_prop(species_prop)
-
-
-@pytest.fixture
-def brain_template_id():
-    return "https://bbp.epfl.ch/neurosciencegraph/data/dca40f99-b494-4d2c-9a2f-c407180138b7"
 
 
 @pytest.fixture

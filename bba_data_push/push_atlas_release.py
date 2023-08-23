@@ -6,13 +6,14 @@ from kgforge.core import Resource
 
 from bba_data_push.logging import create_log_handler
 import bba_data_push.commons as comm
+from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
 
 logger = create_log_handler(__name__, "./create_atlas_release.log")
 
 
 def create_atlas_release(atlas_release_id, brain_location_prop,
         reference_system_prop, brain_template_prop, subject_prop, ont_prop, par_prop,
-        hem_prop, ph_prop, contribution, name, description):
+        hem_prop, ph_prop, dv_prop, co_prop, contribution, name, description):
 
     atlas_release = create_base_resource(comm.all_types[comm.atlasrelaseType],
         brain_location_prop, reference_system_prop, subject_prop, contribution, None,
@@ -22,10 +23,27 @@ def create_atlas_release(atlas_release_id, brain_location_prop,
     atlas_release.parcellationVolume = par_prop
     atlas_release.hemisphereVolume = hem_prop
     if ph_prop:
-        atlas_release.placementHints = ph_prop
+        atlas_release.placementHintsDataCatalog = ph_prop
+    atlas_release.directionVector = dv_prop
+    atlas_release.cellOrientationField = co_prop
 
     return atlas_release
 
+
+def create_volumetric_property(res_name, res_type, res_id, file_path, atlas_release_prop,
+    atlas_release_id_orig, forge, subject_prop, brain_location_prop, reference_system_prop,
+    contribution, derivation, resource_tag, logger):
+
+    vol_res = create_volumetric_resources((file_path,), res_type, atlas_release_prop,
+        forge, subject_prop, brain_location_prop, reference_system_prop,
+        contribution, derivation, logger, res_name)[0]
+    if res_id:
+        vol_res.id = res_id
+    comm._integrate_datasets_to_Nexus(forge, [vol_res], res_type,
+                                      atlas_release_id_orig, resource_tag, logger)
+    vol_prop = comm.get_property_type(vol_res.id, res_type)
+
+    return vol_prop
 
 def create_base_resource(res_type, brain_location_prop, reference_system_prop, subject_prop,
     contribution, atlas_release_prop=None, name=None, description=None, res_id=None):

@@ -16,9 +16,8 @@ from uuid import uuid4
 import urllib.parse
 
 from kgforge.core import KnowledgeGraphForge, Resource
-from kgforge.core.wrappings.paths import Filter, FilterOperator, create_filters_from_dict
 
-from bba_data_push.push_atlas_release import create_base_resource, create_atlas_release
+from bba_data_push.push_atlas_release import create_base_resource, create_volumetric_property, create_atlas_release
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources, type_attributes_map
 from bba_data_push.push_brainmesh import create_mesh_resources
 
@@ -37,142 +36,6 @@ VOLUME_TYPE = "CellCompositionVolume"
 SUMMARY_TYPE = "CellCompositionSummary"
 COMPOSITION_TYPE = "CellComposition"
 COMPOSITION_ABOUT = ["nsg:Neuron", "nsg:Glia"]
-
-
-def check_tag(forge, res_id, tag):
-    logger.debug(f"Verify that tag '{tag}' does not exist already for Resource id '{res_id}':")
-    res = forge.retrieve(res_id, version=tag)
-    if res:
-        msg = f"Tag '{tag}' already exists for res id '{res_id}' (revision {res._store_metadata._rev}, Nexus address"\
-              f" '{res._store_metadata._self}'), please choose a different tag."
-        msg += " No resource with this schema has been tagged."
-        raise Exception(msg)
-
-
-type_for_schema = {
-    comm.meTypeDensity: "VolumetricDataLayer",
-    comm.gliaDensityType: "VolumetricDataLayer",
-    comm.cellOrientationType: "VolumetricDataLayer",
-    comm.brainMaskType: "VolumetricDataLayer",
-    comm.hemisphereType: "VolumetricDataLayer",
-    comm.placementHintsType: "VolumetricDataLayer"}
-
-
-def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
-    filters = {"type": dataset_type,
-               "atlasRelease": {"id": atlas_release_id},
-               "brainLocation": {"brainRegion": {"id": res.brainLocation.brainRegion.get_identifier()}},
-               "subject": {"species": {"id": res.subject.species.get_identifier()}}
-               }
-
-    def get_filters_by_type(res, type):
-        filters_by_type = []
-        if type == comm.meTypeDensity:
-            filters_by_type.append(Filter(operator=FilterOperator.EQUAL, path=["annotation", "type"],
-                       value=res.annotation[0].get_type()))
-            filters_by_type.append(Filter(operator=FilterOperator.EQUAL, path=["annotation", "type"],
-                       value=res.annotation[1].get_type()))
-            filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
-                       path=["annotation", "hasBody", "id"],
-                       value=res.annotation[0].hasBody.get_identifier()))
-            filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
-                       path=["annotation", "hasBody", "id"],
-                       value=res.annotation[1].hasBody.get_identifier()))
-
-        return filters_by_type
-
-    filter_list = create_filters_from_dict(filters)
-
-    filter_list.extend(get_filters_by_type(res, dataset_type))
-
-    if hasattr(res.brainLocation, "layer"):
-        for layer in res.brainLocation.layer:
-            filter_list.append(Filter(operator=FilterOperator.EQUAL, path=["brainLocation", "layer", "id"], value=layer.get_identifier()))
-
-    return forge.search(filters, limit=limit), filter_list
-
-def get_res_store_metadata(res_id, forge):
-    res = comm.retrieve_resource(res_id, forge)
-    return res._store_metadata
-
-def check_res_list(res_list, filepath_list, action, logger):
-    error_messages = []
-    for i, res in enumerate(res_list):
-        if not res._last_action.succeeded:
-            l_a = res._last_action
-            error_messages.append(f"{res.get_identifier()},{res.name},{res.get_type()},{filepath_list[i]},"
-                                  f"{l_a.error},{action},{l_a.message}")
-    n_error_msg = len(error_messages)
-    if n_error_msg != 0:
-        errors = "\n".join(error_messages)
-        logger.warning(f"Got the following {n_error_msg} errors:\n"
-                       "res ID,res name,res tyoe,filepath,error,action,message\n"
-                       f"{errors}")
-
-def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id, tag, force_registration=False):
-
-    dataset_schema = forge._model.schema_id(type_for_schema.get(dataset_type, dataset_type))
-
-    ress_to_update = []
-    ress_to_regster = []
-    filepath_update_list = []  # matching the resource list by list index
-    filepath_register_list = []  # matching the resource list by list index
-    res_count = 0
-    for res in resources:
-        res_count += 1
-        res_name = res.name
-        res_msg = f"Resource '{res_name}' ({res_count} of {len(resources)})"
-
-        if hasattr(res, "id") and not force_registration:
-            res_id = res.id
-            res_store_metadata = get_res_store_metadata(res_id, forge)
-        else:
-            res_id = res_store_metadata = None
-            logger.info(f"Searching Nexus for {res_msg}")
-            limit = 100
-            orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit)
-            if len(orig_ress) > 1:
-                raise Exception(f"Error: at least {limit} matching Resources found using the criteria: {matching_filters}")
-            elif len(orig_ress) == 1:
-                res_id = orig_ress[0].id
-                res_store_metadata = get_res_store_metadata(res_id, forge)
-            else:
-                logger.info("No Resource found")
-
-        if res_id:
-            res.id = res_id
-            check_tag(forge, res_id, tag)
-            # TODO: consider to skip update if distribution SHA is identical between res and existing_res
-            logger.info(f"Scheduling to update {res_msg} with Nexus id: {res_id}")
-            setattr(res, "_store_metadata", res_store_metadata)
-            if hasattr(res, "filepath"):
-                filepath_update_list.append(res.filepath)
-                delattr(res, "filepath")
-            else:
-                filepath_update_list.append(None)
-            ress_to_update.append(res)
-        else:
-            logger.info(f"Scheduling to register {res_msg}")
-            if hasattr(res, "filepath"):
-                filepath_register_list.append(res.filepath)
-                delattr(res, "filepath")
-            else:
-                filepath_register_list.append(None)
-            ress_to_regster.append(res)
-
-    logger.info(f"Updating {len(ress_to_update)} Resources with schema '{dataset_schema}'")
-    forge.update(ress_to_update, dataset_schema)
-    check_res_list(ress_to_update, filepath_update_list, "updating", logger)
-
-    logger.info(f"Registering {len(ress_to_regster)} Resources with schema '{dataset_schema}'")
-    forge.register(ress_to_regster, dataset_schema)
-    check_res_list(ress_to_regster, filepath_register_list, "registering", logger)
-
-    ress_to_tag = ress_to_update + ress_to_regster
-    filepath_tag_list = filepath_update_list + filepath_register_list
-    logger.info(f"Tagging {len(ress_to_tag)} Resources with tag '{tag}'\n")
-    forge.tag(ress_to_tag, tag)
-    check_res_list(ress_to_tag, filepath_tag_list, "tagging", logger)
 
 
 def validate_token(ctx, param, value):
@@ -247,9 +110,6 @@ class Args:
     name_target_map = {species: "Species",
                        brain_region: "BrainRegion"}
 
-def get_property_type(arg_id, arg_type):
-    return Resource(id=arg_id, type=arg_type)
-
 
 def get_property_label(name, arg, forge):
 
@@ -281,6 +141,7 @@ def get_derivation(atlas_release_id):
             "@type": "Entity"}}
     )
     return base_derivation
+
 
 def get_subject_prop(species_prop):
     return Resource(type="Subject", species=species_prop)
@@ -336,10 +197,10 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
     forge = ctx.obj["forge"]
 
     # Validate input arguments
-    atlas_release_prop = get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
     species_prop = get_property_label(Args.species, species, forge)
     subject = get_subject_prop(species_prop)
-    reference_system_prop = get_property_type(reference_system_id, REFSYSTEM_TYPE)
+    reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     brain_location_prop = flat_tree = None
     if brain_region:
         if dataset_type in [comm.brainMaskType]:
@@ -378,12 +239,13 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
         return
 
     L.info(f"{n_resources} resources will be pushed into Nexus.")
-    _integrate_datasets_to_Nexus(
+    comm._integrate_datasets_to_Nexus(
         forge,
         resources,
         dataset_type,
         atlas_release_id,
         resource_tag,
+        L
     )
 
 @initialize_pusher_cli.command(name="push-meshes")
@@ -408,10 +270,10 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path, a
     forge = ctx.obj["forge"]
 
     # Validate input arguments
-    atlas_release_prop = get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
     species_prop = get_property_label(Args.species, species, forge)
     subject = get_subject_prop(species_prop)
-    reference_system_prop = get_property_type(reference_system_id, REFSYSTEM_TYPE)
+    reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     derivation = get_derivation(atlas_release_id)
     contribution, log_info = comm.return_contribution(forge, ctx.obj["env"], ctx.obj["bucket"],
         ctx.obj["token"], add_org_contributor=is_prod_env)
@@ -437,8 +299,8 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path, a
         return
 
     L.info(f"{n_resources} resources will be pushed into Nexus.")
-    _integrate_datasets_to_Nexus(
-        forge, resources, dataset_type, atlas_release_id, resource_tag)
+    comm._integrate_datasets_to_Nexus(
+        forge, resources, dataset_type, atlas_release_id, resource_tag, L)
 
 
 @initialize_pusher_cli.command(name="push-cellcomposition")
@@ -487,9 +349,9 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
 
     forge = ctx.obj["forge"]
 
-    atlas_release_prop = get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
     brain_region_prop = get_region_prop(hierarchy_path, brain_region)
-    reference_system_prop = get_property_type(reference_system_id, REFSYSTEM_TYPE)
+    reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
     species_prop = get_property_label(Args.species, species, forge)
     subject_prop = get_subject_prop(species_prop)
@@ -505,13 +367,15 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
     cell_comp_volume = create_cellComposition_prop(
         forge, VOLUME_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
         derivation, name, description, volume_path)
-    _integrate_datasets_to_Nexus(forge, [cell_comp_volume], VOLUME_TYPE, atlas_release_id, resource_tag)
+    comm._integrate_datasets_to_Nexus(forge, [cell_comp_volume], VOLUME_TYPE,
+                                      atlas_release_id, resource_tag, logger)
     check_id(cell_comp_volume, VOLUME_TYPE)
 
     cell_comp_summary = create_cellComposition_prop(
         forge, SUMMARY_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
         derivation, name, description, summary_path)
-    _integrate_datasets_to_Nexus(forge, [cell_comp_summary], SUMMARY_TYPE, atlas_release_id, resource_tag)
+    comm._integrate_datasets_to_Nexus(forge, [cell_comp_summary], SUMMARY_TYPE,
+                                      atlas_release_id, resource_tag, logger)
     check_id(cell_comp_summary, SUMMARY_TYPE)
 
     cell_composition = create_cellComposition_prop(
@@ -520,7 +384,8 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
     cell_composition.cellCompositionVolume = {"@id": cell_comp_volume.id, "@type": VOLUME_TYPE}
     cell_composition.cellCompositionSummary = [{"@id": cell_comp_summary.id, "@type": SUMMARY_TYPE}]
     cell_composition.id = cell_composition_id
-    _integrate_datasets_to_Nexus(forge, [cell_composition], COMPOSITION_TYPE, atlas_release_id, resource_tag)
+    comm._integrate_datasets_to_Nexus(forge, [cell_composition], COMPOSITION_TYPE,
+                                      atlas_release_id, resource_tag, logger)
     check_id(cell_composition, COMPOSITION_TYPE)
 
     return cell_composition.id
@@ -545,6 +410,12 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
 @click.option("--placement-hints-path",
               type=click.Path(exists=True), required=True, multiple=False,
               help="The files or directory of placement hints",)
+@click.option("--direction-vectors-path",
+              type=click.Path(exists=True), required=True, multiple=False,
+              help="The direction vectors file to push in Nexus",)
+@click.option("--cell-orientations-path",
+              type=click.Path(exists=True), required=True, multiple=False,
+              help="The cell orientations file to push in Nexus",)
 @click.option("--name",
     type=click.STRING, required=False, multiple=False,
     default="Blue Brain Atlas",
@@ -555,7 +426,8 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
     help="The description to assign to the AtlasRelease resource.")
 def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_template_id,
     hierarchy_path, hierarchy_ld_path, annotation_path, hemisphere_path, placement_hints_path,
-    atlas_release_id, resource_tag, name, description, is_prod_env
+    direction_vectors_path, cell_orientations_path, atlas_release_id, resource_tag, name,
+    description, is_prod_env
 ):
     forge = ctx.obj["forge"]
     bucket = ctx.obj["bucket"]
@@ -564,7 +436,9 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     properties_id_map = {"parcellationOntology": None,
                          "parcellationVolume": None,
                          "hemisphereVolume": None,
-                         "placementHints": None}
+                         "placementHintsDataCatalog": None,
+                         "directionVector": None,
+                         "cellOrientationField": None}
     if atlas_release_id:
         force_registration = False
         atlas_release_orig = comm.retrieve_resource(atlas_release_id, forge)
@@ -586,15 +460,15 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     species_prop = get_property_label(Args.species, species, forge)
     subject_prop = get_subject_prop(species_prop)
     brain_region_prop = get_region_prop(hierarchy_path, brain_region)
-    reference_system_prop = get_property_type(reference_system_id, REFSYSTEM_TYPE)
+    reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
-    brain_template_prop = get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE)
+    brain_template_prop = comm.get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE)
 
     contribution, log_info = comm.return_contribution(forge, ctx.obj["env"],
         ctx.obj["bucket"], ctx.obj["token"], add_org_contributor=is_prod_env)
     logger.info("\n".join(log_info))
 
-    atlas_release_prop = get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
     derivation = get_derivation(atlas_release_id)
 
     # Create ParcellationOntology resource
@@ -606,50 +480,51 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
                {"path": hierarchy_ld_path, "content_type": "application/ld+json"}]
     comm.add_distribution(ont_res, forge, ont_dis)
     ont_res.label = "BBP Mouse Brain region ontology"
-    _integrate_datasets_to_Nexus(forge, [ont_res], comm.ontologyType, atlas_release_id_orig,
-                                 resource_tag)
+    comm._integrate_datasets_to_Nexus(forge, [ont_res], comm.ontologyType,
+                                      atlas_release_id_orig, resource_tag, logger)
 
     # Create ParcellationVolume resource
     par_name = "BBP Mouse Brain Annotation Volume"
-    par_res = create_volumetric_resources([annotation_path], comm.parcellationType,
-        atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
-        contribution, derivation, logger, par_name)[0]
-    if properties_id_map["parcellationVolume"]:
-        par_res.id = properties_id_map["parcellationVolume"]
-    _integrate_datasets_to_Nexus(forge, [par_res], comm.parcellationType, atlas_release_id_orig,
-                                 resource_tag)
+    par_prop = create_volumetric_property(par_name, comm.parcellationType, properties_id_map["parcellationVolume"],
+        annotation_path, atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
+        brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
 
     # Create HemisphereAnnotation resource
     hem_name = "Hemisphere annotation from Allen ccfv3 volume"
-    hem_res = create_volumetric_resources([hemisphere_path], comm.hemisphereType,
-        atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
-        contribution, derivation, logger, hem_name)[0]
-    if properties_id_map["hemisphereVolume"]:
-        hem_res.id = properties_id_map["hemisphereVolume"]
-    _integrate_datasets_to_Nexus(forge, [hem_res], comm.hemisphereType, atlas_release_id_orig,
-                                 resource_tag)
+    hem_prop = create_volumetric_property(hem_name, comm.hemisphereType, properties_id_map["hemisphereVolume"],
+        hemisphere_path, atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
+        brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
 
     # Create PlacementHints resource
     ph_name = "Placement Hints volumes"
-    ph_res = create_volumetric_resources([placement_hints_path], comm.placementHintsType,
+    ph_res = create_volumetric_resources((placement_hints_path,), comm.placementHintsType,
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger, ph_name)
     #if properties_id_map["placementHints"]:
     #    ph_res[0].id = properties_id_map["placementHints"]  # To generalize for a set of Placement Hints
-    _integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType, atlas_release_id_orig,
-                                 resource_tag)
+    comm._integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType,
+                                      atlas_release_id_orig, resource_tag, logger)
 
+    # Create DirectionVectorsField resource
+    dv_name = "Direction Vectors volume"
+    dv_prop = create_volumetric_property(dv_name, comm.directionVectorsType, properties_id_map["directionVector"],
+        direction_vectors_path, atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
+        brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
+
+    # Create CellOrientationField resource
+    co_name = "Orientation Field volume"
+    co_prop = create_volumetric_property(co_name, comm.cellOrientationType, properties_id_map["cellOrientationField"],
+        cell_orientations_path, atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
+        brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
 
     # Create AtlasRelease resource
-    ont_prop = get_property_type(ont_res.id, comm.ontologyType)
-    par_prop = get_property_type(par_res.id, comm.parcellationType)
-    hem_prop = get_property_type(hem_res.id, comm.hemisphereType)
-    #ph_prop = get_property_type(ph_res[0].id, comm.placementHintsType)
+    ont_prop = comm.get_property_type(ont_res.id, comm.ontologyType)
+    #ph_prop = comm.get_property_type(ph_res[0].id, comm.placementHintsType)
     atlas_release_resource = create_atlas_release(atlas_release_id_orig, brain_location_prop,
-        reference_system_prop, brain_template_prop, subject_prop, ont_prop,
-        par_prop, hem_prop, None, contribution, name, description)
-    _integrate_datasets_to_Nexus(forge, [atlas_release_resource], comm.atlasrelaseType,
-        atlas_release_id_orig, resource_tag, force_registration)
+        reference_system_prop, brain_template_prop, subject_prop, ont_prop, par_prop,
+        hem_prop, None, dv_prop, co_prop, contribution, name, description)
+    comm._integrate_datasets_to_Nexus(forge, [atlas_release_resource], comm.atlasrelaseType,
+        atlas_release_id_orig, resource_tag, logger, force_registration)
 
 
 def start():

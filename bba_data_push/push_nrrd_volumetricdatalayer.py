@@ -30,6 +30,8 @@ type_attributes_map = {
         "desc": "hemisphere annotation from Allen ccfv3 volume."},
     comm.placementHintsType: {"dsm": "distance", "voxel_type": "vector",
         "desc": "placement hints volume"},
+    comm.directionVectorsType: {"dsm": "vector3D", "voxel_type": "vector",
+        "desc": "direction vectors field volume"},
     comm.cellOrientationType: {"dsm": "quaternion", "voxel_type": "vector",
         "desc": "cell orientation field volume"},
     comm.brainMaskType: {"dsm": "parcellationId", "voxel_type": "label",
@@ -55,7 +57,7 @@ def create_volumetric_resources(
 
     Parameters
     ----------
-    input_paths: list
+    input_paths: tuple
         input datasets paths. These datasets are either volumetric files or folder containing volumetric files
     dataset_type: str
         type of the Resources to build
@@ -98,8 +100,8 @@ def create_volumetric_resources(
     resources = []
 
     file_paths = []
-    if not isinstance(input_paths, list):
-        raise Exception(f"The 'input_paths' argument provided is not a list: {input_paths}")
+    if not isinstance(input_paths, tuple):
+        raise Exception(f"The 'input_paths' argument provided is not a tuple: {input_paths}")
     for input_path in input_paths:
         if input_path.endswith(extension):
             if os.path.isfile(input_path):

@@ -5,6 +5,7 @@ import jwt
 import hashlib
 import re
 from kgforge.core import Resource
+from kgforge.core.wrappings.paths import Filter, FilterOperator, create_filters_from_dict
 
 import blue_brain_atlas_web_exporter.TreeIndexer as TreeIndexer
 
@@ -17,6 +18,7 @@ parcellationType = "BrainParcellationDataLayer"
 hemisphereType = "HemisphereAnnotationDataLayer"
 ontologyType = "ParcellationOntology"
 placementHintsType = "PlacementHintsDataLayer"
+directionVectorsType = "DirectionVectorsField"
 cellOrientationType = "CellOrientationField"
 brainMeshType = "BrainParcellationMesh"
 brainMaskType = "BrainParcellationMask"
@@ -31,16 +33,157 @@ all_types = {
     ontologyType: [ontologyType, "Ontology", "Entity"],
     atlasrelaseType: [atlasrelaseType, "AtlasRelease", "Entity"],
     placementHintsType: [placementHintsType] + volumetricType,
+    directionVectorsType: [directionVectorsType] + volumetricType,
     cellOrientationType: [cellOrientationType] + volumetricType,
     brainMeshType: [brainMeshType, "Mesh"],
     brainMaskType: [brainMaskType] + volumetricType
 }
 
-
 file_config = {
     "sampling_space_unit": "um",
     "sampling_period": 30,
     "sampling_time_unit": "ms"}
+
+type_for_schema = {
+    meTypeDensity: "VolumetricDataLayer",
+    gliaDensityType: "VolumetricDataLayer",
+    directionVectorsType: "VolumetricDataLayer",
+    cellOrientationType: "VolumetricDataLayer",
+    brainMaskType: "VolumetricDataLayer",
+    hemisphereType: "VolumetricDataLayer",
+    placementHintsType: "VolumetricDataLayer"}
+
+
+def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id, tag,
+                                 logger, force_registration=False):
+
+    dataset_schema = forge._model.schema_id(type_for_schema.get(dataset_type, dataset_type))
+
+    ress_to_update = []
+    ress_to_regster = []
+    filepath_update_list = []  # matching the resource list by list index
+    filepath_register_list = []  # matching the resource list by list index
+    res_count = 0
+    for res in resources:
+        res_count += 1
+        res_name = res.name
+        res_msg = f"Resource '{res_name}' ({res_count} of {len(resources)})"
+
+        if hasattr(res, "id") and not force_registration:
+            res_id = res.id
+            res_store_metadata = get_res_store_metadata(res_id, forge)
+        else:
+            res_id = None
+            res_store_metadata = None
+            logger.info(f"Searching Nexus for {res_msg}")
+            limit = 100
+            orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit)
+            if len(orig_ress) > 1:
+                raise Exception(f"Error: at least {limit} matching Resources found using the criteria: {matching_filters}")
+            elif len(orig_ress) == 1:
+                res_id = orig_ress[0].id
+                res_store_metadata = get_res_store_metadata(res_id, forge)
+            else:
+                logger.info("No Resource found")
+
+        if res_id:
+            res.id = res_id
+            check_tag(forge, res_id, tag, logger)
+            # TODO: consider to skip update if distribution SHA is identical between res and existing_res
+            logger.info(f"Scheduling to update {res_msg} with Nexus id: {res_id}")
+            setattr(res, "_store_metadata", res_store_metadata)
+            if hasattr(res, "filepath"):
+                filepath_update_list.append(res.filepath)
+                delattr(res, "filepath")
+            else:
+                filepath_update_list.append(None)
+            ress_to_update.append(res)
+        else:
+            logger.info(f"Scheduling to register {res_msg}")
+            if hasattr(res, "filepath"):
+                filepath_register_list.append(res.filepath)
+                delattr(res, "filepath")
+            else:
+                filepath_register_list.append(None)
+            ress_to_regster.append(res)
+
+    logger.info(f"Updating {len(ress_to_update)} Resources with schema '{dataset_schema}'")
+    forge.update(ress_to_update, dataset_schema)
+    check_res_list(ress_to_update, filepath_update_list, "updating", logger)
+
+    logger.info(f"Registering {len(ress_to_regster)} Resources with schema '{dataset_schema}'")
+    forge.register(ress_to_regster, dataset_schema)
+    check_res_list(ress_to_regster, filepath_register_list, "registering", logger)
+
+    ress_to_tag = ress_to_update + ress_to_regster
+    filepath_tag_list = filepath_update_list + filepath_register_list
+    logger.info(f"Tagging {len(ress_to_tag)} Resources with tag '{tag}'\n")
+    forge.tag(ress_to_tag, tag)
+    check_res_list(ress_to_tag, filepath_tag_list, "tagging", logger)
+
+
+def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
+    filters = {"type": dataset_type,
+               "atlasRelease": {"id": atlas_release_id},
+               "brainLocation": {"brainRegion": {"id": res.brainLocation.brainRegion.get_identifier()}},
+               "subject": {"species": {"id": res.subject.species.get_identifier()}}
+               }
+
+    def get_filters_by_type(res, type):
+        filters_by_type = []
+        if type == meTypeDensity:
+            filters_by_type.append(Filter(operator=FilterOperator.EQUAL, path=["annotation", "type"],
+                       value=res.annotation[0].get_type()))
+            filters_by_type.append(Filter(operator=FilterOperator.EQUAL, path=["annotation", "type"],
+                       value=res.annotation[1].get_type()))
+            filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
+                       path=["annotation", "hasBody", "id"],
+                       value=res.annotation[0].hasBody.get_identifier()))
+            filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
+                       path=["annotation", "hasBody", "id"],
+                       value=res.annotation[1].hasBody.get_identifier()))
+
+        return filters_by_type
+
+    filter_list = create_filters_from_dict(filters)
+
+    filter_list.extend(get_filters_by_type(res, dataset_type))
+
+    if hasattr(res.brainLocation, "layer"):
+        for layer in res.brainLocation.layer:
+            filter_list.append(Filter(operator=FilterOperator.EQUAL, path=["brainLocation", "layer", "id"], value=layer.get_identifier()))
+
+    return forge.search(filters, limit=limit), filter_list
+
+
+def check_res_list(res_list, filepath_list, action, logger):
+    error_messages = []
+    for i, res in enumerate(res_list):
+        if not res._last_action.succeeded:
+            l_a = res._last_action
+            error_messages.append(f"{res.get_identifier()},{res.name},{res.get_type()},{filepath_list[i]},"
+                                  f"{l_a.error},{action},{l_a.message}")
+    n_error_msg = len(error_messages)
+    if n_error_msg != 0:
+        errors = "\n".join(error_messages)
+        logger.warning(f"Got the following {n_error_msg} errors:\n"
+                       "res ID,res name,res tyoe,filepath,error,action,message\n"
+                       f"{errors}")
+
+
+def check_tag(forge, res_id, tag, logger):
+    logger.debug(f"Verify that tag '{tag}' does not exist already for Resource id '{res_id}':")
+    res = forge.retrieve(res_id, version=tag)
+    if res:
+        msg = f"Tag '{tag}' already exists for res id '{res_id}' (revision {res._store_metadata._rev}, Nexus address"\
+              f" '{res._store_metadata._self}'), please choose a different tag."
+        msg += " No resource with this schema has been tagged."
+        raise Exception(msg)
+
+
+def get_res_store_metadata(res_id, forge):
+    res = retrieve_resource(res_id, forge)
+    return res._store_metadata
 
 
 def retrieve_resource(res_id, forge):
@@ -91,6 +234,7 @@ def get_flat_tree(hierarchy_path):
     root_region = hierarchy['msg'][0]
     return TreeIndexer.flattenTree(root_region, id_prop_name="id", children_prop_name="children")
 
+
 def get_region_label(flat_tree, region_id):
     region = flat_tree.get(region_id)
     if not region:
@@ -101,6 +245,10 @@ def get_region_label(flat_tree, region_id):
 
 def get_property_id_label(id, label):
     return Resource(id=id, label=label)
+
+
+def get_property_type(arg_id, arg_type):
+    return Resource(id=arg_id, type=arg_type)
 
 
 def get_voxel_type(voxel_type, component_size: int):
