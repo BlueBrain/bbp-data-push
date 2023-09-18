@@ -410,6 +410,9 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
 @click.option("--placement-hints-path",
               type=click.Path(exists=True), required=True, multiple=False,
               help="The files or directory of placement hints",)
+@click.option("--placement-hints-metadata",
+              type=click.Path(exists=True), required=True, multiple=False,
+              help="The file path of placement hints metadata",)
 @click.option("--direction-vectors-path",
               type=click.Path(exists=True), required=True, multiple=False,
               help="The direction vectors file to push in Nexus",)
@@ -425,7 +428,7 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
     default="The official Atlas of the Blue Brain Project",
     help="The description to assign to the AtlasRelease resource.")
 def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_template_id,
-    hierarchy_path, hierarchy_ld_path, annotation_path, hemisphere_path, placement_hints_path,
+    hierarchy_path, hierarchy_ld_path, annotation_path, hemisphere_path, placement_hints_path, placement_hints_metadata,
     direction_vectors_path, cell_orientations_path, atlas_release_id, resource_tag, name,
     description, is_prod_env
 ):
