@@ -10,6 +10,7 @@ import nrrd
 
 import bba_data_push.commons as comm
 from bba_data_push.logging import create_log_handler
+from kgforge.core import Resource
 from kgforge.specializations.resources import Dataset
 
 L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
@@ -37,6 +38,9 @@ type_attributes_map = {
     comm.brainMaskType: {"dsm": "parcellationId", "voxel_type": "label",
         "desc": "binary mask volume"}
 }
+
+me_separator = "|"
+
 
 def create_volumetric_resources(
         input_paths,
@@ -163,7 +167,7 @@ def create_volumetric_resources(
 
             # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
             separator = {
-                comm.meTypeDensity: "_densities",
+                comm.meTypeDensity: "_INH_densities",
                 comm.gliaDensityType: "_density",}
             if dataset_type in [comm.gliaDensityType, comm.neuronDensityType]:
                 filename_ann = filename_ann.capitalize()
@@ -172,17 +176,17 @@ def create_volumetric_resources(
                         filename_ann = filename_ann.replace(separator[dataset_type], " Type"+separator[dataset_type])
             for generic_filename in generic_types:
                 if generic_filename in filename:
-                    filename_ann = "-".join([generic_types[generic_filename][0],
-                                             generic_types[generic_filename][1]])
+                    filename_ann = me_separator.join([generic_types[generic_filename][0],
+                                                      generic_types[generic_filename][1]])
             if exc_etype in filename_ann:
-                filename_ann = filename_ann.replace(f"_{exc_etype}", f"-{exc_etype}")
+                filename_ann = filename_ann.replace(f"_{exc_etype}", f"{me_separator}{exc_etype}")
 
-            nrrd_resource.annotation = get_cellAnnotation(forge, filename_ann, separator[dataset_type])
-            nrrd_resource.cellType = get_cellType(forge, filename_ann, separator[dataset_type])
+            nrrd_resource.annotation = Resource.from_json(get_cellAnnotation(forge, filename_ann, separator[dataset_type]))
+            nrrd_resource.cellType = Resource.from_json(get_cellType(forge, filename_ann, separator[dataset_type]))
 
-            layer = comm.get_layer(forge, nrrd_resource.cellType[0]["label"])
+            layer = comm.get_layer(forge, nrrd_resource.cellType[0].label)
             if layer:
-                nrrd_resource.brainLocation.layer = layer
+                nrrd_resource.brainLocation.layer = Resource.from_json(layer)
 
         L.info("Payload creation completed\n")
 
@@ -406,15 +410,15 @@ def get_cellType(forge, name, separator):
         target = None
 
     label = name.split(separator)[0].split(metype_separator_excitatory)[0]
-    parts = label.split("-")
+    parts = label.split(me_separator)  # split M from E type
     n_parts = len(parts)
-    if n_parts > 3:
+    if n_parts > 2:
         raise Exception(
             f"Too many ({n_parts}) components identified in the density filename '"
             f"{name}': {', '.join(parts)}")
-    if n_parts > 1:
-        mtype = "-".join(parts[0:-1])  # account for a compound MType
-        etype = parts[-1]
+    if n_parts == 2:
+        mtype = parts[0]
+        etype = parts[1]
         me_types = [mtype, etype]
     else:
         me_types = parts

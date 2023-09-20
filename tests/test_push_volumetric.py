@@ -20,7 +20,7 @@ def test_create_volumetric_resources(forge, nexus_bucket, nexus_token, nexus_env
 
     # Arguments
     dataset_path = (
-        str(Path(TEST_PATH, "tests/tests_data/L1_NGC-SA-cNAC.nrrd")),
+        str(Path(TEST_PATH, "tests/tests_data/L1_NGC-SA|cNAC.nrrd")),
     )
     dataset_type = comm.meTypeDensity
 

@@ -78,13 +78,15 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             logger.info(f"Searching Nexus for {res_msg}")
             limit = 100
             orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit)
-            if len(orig_ress) > 1:
-                raise Exception(f"Error: at least {limit} matching Resources found using the criteria: {matching_filters}")
-            elif len(orig_ress) == 1:
+            n_orig_ress = len(orig_ress)
+            if n_orig_ress > 1:
+                prefix = f"{n_orig_ress}" if n_orig_ress < limit else f"at least {limit}"
+                raise Exception(f"Error: {prefix} matching Resources found using the criteria: {matching_filters}")
+            elif n_orig_ress == 1:
                 res_id = orig_ress[0].id
                 res_store_metadata = get_res_store_metadata(res_id, forge)
             else:
-                logger.info("No Resource found")
+                logger.info(f"No Resource found using the criteria: {matching_filters}")
 
         if res_id:
             res.id = res_id
@@ -133,9 +135,9 @@ def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
         filters_by_type = []
         if type == meTypeDensity:
             filters_by_type.append(Filter(operator=FilterOperator.EQUAL, path=["annotation", "type"],
-                       value=res.annotation[0].get_type()))
+                       value=res.annotation[0].get_type()[1]))
             filters_by_type.append(Filter(operator=FilterOperator.EQUAL, path=["annotation", "type"],
-                       value=res.annotation[1].get_type()))
+                       value=res.annotation[1].get_type()[1]))
             filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
                        path=["annotation", "hasBody", "id"],
                        value=res.annotation[0].hasBody.get_identifier()))
@@ -153,7 +155,7 @@ def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
         for layer in res.brainLocation.layer:
             filter_list.append(Filter(operator=FilterOperator.EQUAL, path=["brainLocation", "layer", "id"], value=layer.get_identifier()))
 
-    return forge.search(filters, limit=limit), filter_list
+    return forge.search(*filter_list, limit=limit), filter_list
 
 
 def check_res_list(res_list, filepath_list, action, logger):
