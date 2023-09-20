@@ -8,6 +8,7 @@ To know more about Nexus, see https://bluebrainnexus.io.
 Link to BBP Atlas pipeline confluence documentation:
 https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 """
+import json
 import os
 import logging
 import click
@@ -17,7 +18,7 @@ import urllib.parse
 
 from kgforge.core import KnowledgeGraphForge, Resource
 
-from bba_data_push.push_atlas_release import create_base_resource, create_volumetric_property, create_atlas_release
+from bba_data_push.push_atlas_release import create_base_resource, create_volumetric_property, create_atlas_release, create_ph_catalog_distribution
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources, type_attributes_map
 from bba_data_push.push_brainmesh import create_mesh_resources
 
@@ -35,7 +36,7 @@ REFSYSTEM_TYPE = ["AtlasSpatialReferenceSystem", "BrainAtlasSpatialReferenceSyst
 VOLUME_TYPE = "CellCompositionVolume"
 SUMMARY_TYPE = "CellCompositionSummary"
 COMPOSITION_TYPE = "CellComposition"
-COMPOSITION_ABOUT = ["nsg:Neuron", "nsg:Glia"]
+COMPOSITION_ABOUT = ["Neuron", "Glia"]
 
 
 def validate_token(ctx, param, value):
@@ -104,27 +105,6 @@ def _initialize_pusher_cli(
     return forge, logger.level
 
 
-class Args:
-    species = "species"
-    brain_region = "brain-region"
-    name_target_map = {species: "Species",
-                       brain_region: "BrainRegion"}
-
-
-def get_property_label(name, arg, forge):
-
-    if arg.startswith("http"):
-        arg_res = forge.retrieve(arg, cross_bucket=True)
-    else:
-        arg_res = forge.resolve(arg, scope="ontology", target=Args.name_target_map[name],
-                                strategy="EXACT_MATCH")
-    if not arg_res:
-        raise Exception(
-            f"The provided '{name}' argument ({arg}) can not be retrieved/resolved")
-
-    return comm.get_property_id_label(arg_res.id, arg_res.label)
-
-
 def get_region_prop(hierarchy_path, brain_region):
     flat_tree = comm.get_flat_tree(hierarchy_path)
     brain_region_id = brain_region.split("/")[-1]
@@ -153,9 +133,9 @@ def common_options(opt):
     opt = click.option("--resource-tag", type=click.STRING,
         default=f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}",
         help="Optional tag value with which to tag the resources (default to 'datetime.today()')")(opt)
-    opt = click.option("--" + Args.species, type=click.STRING, required=True,
+    opt = click.option("--" + comm.Args.species, type=click.STRING, required=True,
         help="Nexus ID or label of the species")(opt)
-    opt = click.option("--" + Args.brain_region, type=click.STRING, required=False,
+    opt = click.option("--" + comm.Args.brain_region, type=click.STRING, required=False,
         default=None, help="Nexus ID of the brain region")(opt)
     opt = click.option("--hierarchy-path", type=click.Path(exists=True), required=True, multiple=False,
         help="The json file containing the hierachy of the brain regions", )(opt)
@@ -198,13 +178,13 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
 
     # Validate input arguments
     atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
-    species_prop = get_property_label(Args.species, species, forge)
+    species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject = get_subject_prop(species_prop)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     brain_location_prop = flat_tree = None
     if brain_region:
         if dataset_type in [comm.brainMaskType]:
-            raise Exception(f"The argument --{Args.brain_region} can not be used with "
+            raise Exception(f"The argument --{comm.Args.brain_region} can not be used with "
                 f"dataset-type '{dataset_type}' because the brain region for such files"
                 " is extracted automatically from the filename")
         brain_region_prop = get_region_prop(hierarchy_path, brain_region)
@@ -271,7 +251,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path, a
 
     # Validate input arguments
     atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
-    species_prop = get_property_label(Args.species, species, forge)
+    species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject = get_subject_prop(species_prop)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     derivation = get_derivation(atlas_release_id)
@@ -353,7 +333,7 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
     brain_region_prop = get_region_prop(hierarchy_path, brain_region)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
-    species_prop = get_property_label(Args.species, species, forge)
+    species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject_prop = get_subject_prop(species_prop)
     contribution, log_info = comm.return_contribution(forge, ctx.obj["env"], ctx.obj["bucket"], ctx.obj["token"],
                                                       add_org_contributor=is_prod_env)
@@ -450,6 +430,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
                             "Please provide a valid id (or 'None' to create a new AtlasRelease)")
         else:
             atlas_release_id_orig = atlas_release_id
+            atlas_release_rev= atlas_release_orig.store_metadata["_rev"]
             for prop in properties_id_map:
                 existing_prop = getattr(atlas_release_orig, prop, None)
                 if existing_prop:
@@ -458,9 +439,10 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         atlas_release_schema = forge._model.schema_id(comm.atlasrelaseType)
         atlas_release_id = "/".join([ctx.obj["env"], "resources", bucket,
                                      urllib.parse.quote(atlas_release_schema), str(uuid4())])
+        atlas_release_rev = 1
         force_registration = True
 
-    species_prop = get_property_label(Args.species, species, forge)
+    species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject_prop = get_subject_prop(species_prop)
     brain_region_prop = get_region_prop(hierarchy_path, brain_region)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
@@ -471,7 +453,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         ctx.obj["bucket"], ctx.obj["token"], add_org_contributor=is_prod_env)
     logger.info("\n".join(log_info))
 
-    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType], rev=atlas_release_rev+1)
     derivation = get_derivation(atlas_release_id)
 
     # Create ParcellationOntology resource
@@ -498,15 +480,34 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         hemisphere_path, atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
         brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
 
-    # Create PlacementHints resource
+    # Create PlacementHints resources
     ph_name = "Placement Hints volumes"
     ph_res = create_volumetric_resources((placement_hints_path,), comm.placementHintsType,
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger, ph_name)
-    #if properties_id_map["placementHints"]:
-    #    ph_res[0].id = properties_id_map["placementHints"]  # To generalize for a set of Placement Hints
-    comm._integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType,
+    
+    resource_to_filepath = comm._integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType,
                                       atlas_release_id_orig, resource_tag, logger)
+
+    #Create PlacementHints catalog (i.e a collection of PlacementHints)
+    ph_catalog_name = "Placement Hints volumes catalog"
+    ph_catalog_description = "Placement Hints volumes catalog"
+    ph_catalog = create_base_resource(comm.all_types[comm.placementHintsDataLayerCatalogType],
+        brain_location_prop, reference_system_prop, subject_prop, contribution,
+        atlas_release_prop, ph_catalog_name, ph_catalog_description, properties_id_map["placementHintsDataCatalog"])
+
+    ph_catalog_distribution = create_ph_catalog_distribution(ph_res, placement_hints_metadata, resource_to_filepath)
+
+    with open("./ph_catalog_distribution.json", "w") as f:
+        json.dump(ph_catalog_distribution, f)
+    
+    comm.add_distribution(ph_catalog, forge, [{"path":"./ph_catalog_distribution.json", "content_type":"application/json"}])
+    
+    comm._integrate_datasets_to_Nexus(forge, [ph_catalog], comm.placementHintsDataLayerCatalogType, atlas_release_id,
+                                 resource_tag)
+
+    ph_catalog_prop = comm.get_property_type(ph_catalog.id, comm.placementHintsDataLayerCatalogType)
+
 
     # Create DirectionVectorsField resource
     dv_name = "Direction Vectors volume"
@@ -522,10 +523,9 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
 
     # Create AtlasRelease resource
     ont_prop = comm.get_property_type(ont_res.id, comm.ontologyType)
-    #ph_prop = comm.get_property_type(ph_res[0].id, comm.placementHintsType)
     atlas_release_resource = create_atlas_release(atlas_release_id_orig, brain_location_prop,
         reference_system_prop, brain_template_prop, subject_prop, ont_prop, par_prop,
-        hem_prop, None, dv_prop, co_prop, contribution, name, description)
+        hem_prop, ph_catalog_prop, dv_prop, co_prop, contribution, name, description)
     comm._integrate_datasets_to_Nexus(forge, [atlas_release_resource], comm.atlasrelaseType,
         atlas_release_id_orig, resource_tag, logger, force_registration)
 

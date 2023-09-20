@@ -102,7 +102,6 @@ def create_volumetric_resources(
     }
 
     resources = []
-
     file_paths = []
     if not isinstance(input_paths, tuple):
         raise Exception(f"The 'input_paths' argument provided is not a tuple: {input_paths}")
@@ -181,13 +180,20 @@ def create_volumetric_resources(
             if exc_etype in filename_ann:
                 filename_ann = filename_ann.replace(f"_{exc_etype}", f"{me_separator}{exc_etype}")
 
-            nrrd_resource.annotation = Resource.from_json(get_cellAnnotation(forge, filename_ann, separator[dataset_type]))
-            nrrd_resource.cellType = Resource.from_json(get_cellType(forge, filename_ann, separator[dataset_type]))
+            cellTypes = get_cellType(forge, filename_ann, separator[dataset_type])
+            annotation = get_cellAnnotation(cellTypes)
+            nrrd_resource.annotation = Resource.from_json(annotation)
+            nrrd_resource.cellType = Resource.from_json(cellTypes)
 
             layer = comm.get_layer(forge, nrrd_resource.cellType[0].label)
             if layer:
                 nrrd_resource.brainLocation.layer = Resource.from_json(layer)
-
+        
+        if dataset_type == comm.placementHintsType:
+            layer = comm.get_placementhintlayerlabel_from_name(forge, filename)
+            if layer:
+                nrrd_resource.brainLocation.layer = Resource.from_json(layer)
+    
         L.info("Payload creation completed\n")
 
         resources.append(nrrd_resource)
@@ -387,16 +393,13 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
     resource.resolution = {"value": r[0][0], "unitCode": config["sampling_space_unit"]}
 
 
-def get_cellAnnotation(forge, label, separator):
-    annotations = []
-
+def get_cellAnnotation(cellTypes):
+    annotations = []    
     types = ["M", "E"]
-    cellTypes = get_cellType(forge, label, separator)
     for i in range(len(cellTypes)):
         itype = types[i]
         annotation = comm.return_base_annotation(itype)
         annotation["hasBody"].update(cellTypes[i])
-
         annotations.append(annotation)
 
     return annotations

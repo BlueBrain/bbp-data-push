@@ -6,6 +6,7 @@ import hashlib
 import re
 from kgforge.core import Resource
 from kgforge.core.wrappings.paths import Filter, FilterOperator, create_filters_from_dict
+from kgforge.core.commons.actions import LazyAction
 
 import blue_brain_atlas_web_exporter.TreeIndexer as TreeIndexer
 
@@ -23,6 +24,7 @@ cellOrientationType = "CellOrientationField"
 brainMeshType = "BrainParcellationMesh"
 brainMaskType = "BrainParcellationMask"
 volumetricType = ["VolumetricDataLayer", "Dataset"]
+placementHintsDataLayerCatalogType = "PlacementHintsDataLayerCatalog"
 
 all_types = {
     meTypeDensity: [meTypeDensity, "NeuronDensity", "VolumetricDataLayer", "CellDensityDataLayer"],
@@ -34,6 +36,7 @@ all_types = {
     atlasrelaseType: [atlasrelaseType, "AtlasRelease", "Entity"],
     placementHintsType: [placementHintsType] + volumetricType,
     directionVectorsType: [directionVectorsType] + volumetricType,
+    placementHintsDataLayerCatalogType: [placementHintsDataLayerCatalogType, "DataCatalog"],
     cellOrientationType: [cellOrientationType] + volumetricType,
     brainMeshType: [brainMeshType, "Mesh"],
     brainMaskType: [brainMaskType] + volumetricType
@@ -63,6 +66,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
     ress_to_regster = []
     filepath_update_list = []  # matching the resource list by list index
     filepath_register_list = []  # matching the resource list by list index
+    resource_to_filepath = {}
     res_count = 0
     for res in resources:
         res_count += 1
@@ -94,17 +98,19 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             # TODO: consider to skip update if distribution SHA is identical between res and existing_res
             logger.info(f"Scheduling to update {res_msg} with Nexus id: {res_id}")
             setattr(res, "_store_metadata", res_store_metadata)
-            if hasattr(res, "filepath"):
-                filepath_update_list.append(res.filepath)
-                delattr(res, "filepath")
+            if hasattr(res, "temp_filepath"):
+                filepath_update_list.append(res.temp_filepath)
+                resource_to_filepath[res.get_identifier()] = res.temp_filepath
+                delattr(res, "temp_filepath")
             else:
                 filepath_update_list.append(None)
             ress_to_update.append(res)
         else:
             logger.info(f"Scheduling to register {res_msg}")
-            if hasattr(res, "filepath"):
-                filepath_register_list.append(res.filepath)
-                delattr(res, "filepath")
+            if hasattr(res, "temp_filepath"):
+                filepath_register_list.append(res.temp_filepath)
+                resource_to_filepath[res.get_identifier()] = res.temp_filepath
+                delattr(res, "temp_filepath")
             else:
                 filepath_register_list.append(None)
             ress_to_regster.append(res)
@@ -122,7 +128,19 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
     logger.info(f"Tagging {len(ress_to_tag)} Resources with tag '{tag}'\n")
     forge.tag(ress_to_tag, tag)
     check_res_list(ress_to_tag, filepath_tag_list, "tagging", logger)
+    return resource_to_filepath
 
+def get_placementhintlayerlabel_from_name(forge, filename):
+    layer_label = None
+    if "]" in filename:
+        layer_label = str(filename).split(".nrrd")[0]
+        layer_label = layer_label.split("]")[1]
+    else:
+        layer_label = filename
+   
+    layer_prop_resource_list = get_layer(forge, layer_label, initial="layer", regex="_(\d){1,}", split_separator=None, layer_number_offset=1) 
+    return layer_prop_resource_list[0].get_identifier() if layer_prop_resource_list and len(layer_prop_resource_list) > 0 else None
+    
 
 def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
     filters = {"type": dataset_type,
@@ -144,7 +162,6 @@ def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
             filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
                        path=["annotation", "hasBody", "id"],
                        value=res.annotation[1].hasBody.get_identifier()))
-
         return filters_by_type
 
     filter_list = create_filters_from_dict(filters)
@@ -244,13 +261,36 @@ def get_region_label(flat_tree, region_id):
 
     return region["name"]
 
+class Args:
+    species = "species"
+    brain_region = "brain-region"
+    name_target_map = {species: "Species",
+                       brain_region: "BrainRegion"}
+
+
+def get_property_label(name, arg, forge):
+
+    if arg.startswith("http"):
+        arg_res = forge.retrieve(arg, cross_bucket=True)
+    else:
+        arg_res = forge.resolve(arg, scope="ontology", target=Args.name_target_map[name],
+                                strategy="EXACT_MATCH")
+    if not arg_res:
+        raise Exception(
+            f"The provided '{name}' argument ({arg}) can not be retrieved/resolved")
+
+    return get_property_id_label(arg_res.id, arg_res.label)
+
 
 def get_property_id_label(id, label):
     return Resource(id=id, label=label)
 
 
-def get_property_type(arg_id, arg_type):
-    return Resource(id=arg_id, type=arg_type)
+def get_property_type(arg_id, arg_type, rev=None):
+    prop = Resource(id=arg_id, type=arg_type)
+    if rev:
+        prop._rev = rev
+    return prop
 
 
 def get_voxel_type(voxel_type, component_size: int):
@@ -526,12 +566,12 @@ def resolve_cellType(forge, t, target, name=None):
     return cellType
 
 
-def get_layer(forge, label):
+def get_layer(forge, label, initial="L", regex="(\d){1,}_", split_separator="_", layer_number_offset = 0):
     layer = []
-    initial = "L"
-    if re.match("^" + re.escape(initial) + "(\d){1,}_", label):
-        layers = label.split("_")[0]
-        layers_digits = layers[1:]  # 'L23' for instance
+    if re.match("^" + re.escape(initial) + regex, label):
+        layers = label.split(split_separator)[0]
+        layers_digits = layers[len(initial)+layer_number_offset:]
+        initial = initial + " " if layer_number_offset > 0 else initial
         for digit in layers_digits:
             res = forge_resolve(forge, initial + digit, label, "BrainRegion")
             if res:

@@ -26,9 +26,13 @@ def create_cellComposition_prop(
     if schema == "CellCompositionVolume":
         res_type.append("AtlasDatasetRelease")
 
+    expanded_about=[]
+    for a in about:
+        expanded_about.append(forge.get_model_context().expand(a))
+
     base_res = Dataset(forge, type=res_type,
         atlasRelease = atlas_release,
-        about = about,
+        about = expanded_about,
         brainLocation = brain_location,
         subject = subject,
         contribution = contribution,
