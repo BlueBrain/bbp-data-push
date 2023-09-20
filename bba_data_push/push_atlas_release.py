@@ -60,8 +60,7 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json_fi
             voxelDistanceToRegionBottom  = a_ph_item
         else:
             # get layer from filename
-            layer_label = comm.get_placementhintlayerlabel_from_name(forge, ph_resource.distribution.name)
-            layer_prop_resource_list = comm.get_layer(forge, layer_label, initial="layer", regex="_(\d){1,}", split_separator=None, layer_number_offset=1)
+            layer_prop_resource_list = comm.get_placementhintlayer_prop_from_name(forge, ph_resource.distribution.name)
             layer_prop = layer_prop_resource_list[0]
             ph_resource_filepath = ph_res_to_filepath[ph_resource.get_identifier()]
             brain_region_names = filepath_to_brainregion[ph_resource_filepath]

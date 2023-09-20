@@ -130,6 +130,8 @@ def get_subject_prop(species_prop):
 def common_options(opt):
     opt = click.option("--atlas-release-id", type=click.STRING, required=True, multiple=False,
         help="Nexus ID of the atlas release of interest")(opt)
+    opt = click.option("--atlas-release-rev", type=click.INT, default=None, multiple=False,
+        help="Nexus revision of the atlas release of interest")(opt)
     opt = click.option("--resource-tag", type=click.STRING,
         default=f"{datetime.today().strftime('%Y-%m-%dT%H:%M:%S')}",
         help="Optional tag value with which to tag the resources (default to 'datetime.today()')")(opt)
@@ -161,8 +163,8 @@ def common_options(opt):
               type=click.STRING,
               required=True,
               help="Type to set for registration of Resources from dataset-path")
-def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, hierarchy_path,
-    brain_region, reference_system_id, resource_tag, is_prod_env
+def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, atlas_release_rev,
+    species, hierarchy_path, brain_region, reference_system_id, resource_tag, is_prod_env
 ):
     """Create a VolumetricDataLayer resource payload and push it along with the "
     corresponding volumetric input dataset files into Nexus.
@@ -177,7 +179,8 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
     forge = ctx.obj["forge"]
 
     # Validate input arguments
-    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    atlas_release_prop = comm.get_property_type(atlas_release_id,
+        comm.all_types[comm.atlasrelaseType], atlas_release_rev)
     species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject = get_subject_prop(species_prop)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
@@ -236,8 +239,8 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, species, 
               help="The files or directories of files to push on Nexus",)
 @click.option("--dataset-type", type=click.STRING, required=True,
               help="Type to set for registration of Resources from dataset-path")
-def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path, atlas_release_id, species,
-    reference_system_id, resource_tag, is_prod_env
+def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
+    atlas_release_id, atlas_release_rev, species, reference_system_id, resource_tag, is_prod_env
 ):
     """Create a BrainParcellationMesh Resource payload and push it along with the "
     corresponding input dataset files into Nexus.
@@ -250,7 +253,8 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path, a
     forge = ctx.obj["forge"]
 
     # Validate input arguments
-    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    atlas_release_prop = comm.get_property_type(atlas_release_id,
+        comm.all_types[comm.atlasrelaseType], atlas_release_rev)
     species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject = get_subject_prop(species_prop)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
@@ -305,7 +309,8 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path, a
     help = "The output dir for log and by-products",)
 @click.pass_context
 def cli_push_cellcomposition(
-    ctx, atlas_release_id, cell_composition_id, species, brain_region, hierarchy_path, reference_system_id, volume_path, summary_path,
+    ctx, atlas_release_id, atlas_release_rev, cell_composition_id, species, brain_region,
+    hierarchy_path, reference_system_id, volume_path, summary_path,
     name, description, log_dir, resource_tag, is_prod_env) -> str:
     """Create a CellComposition resource payload and push it along with the "
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
@@ -315,7 +320,8 @@ def cli_push_cellcomposition(
     logger = create_log_handler(__name__, os.path.join(log_dir, "push_cellComposition.log"))
     logger.setLevel(ctx.obj["verbose"])
 
-    return push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_region, hierarchy_path, reference_system_id, species,
+    return push_cellcomposition(ctx, atlas_release_id, atlas_release_rev,
+        cell_composition_id, brain_region, hierarchy_path, reference_system_id, species,
         volume_path, summary_path, name, description, resource_tag, logger, is_prod_env)
 
 
@@ -324,12 +330,14 @@ def check_id(resource, resource_type):
         raise Exception(f"The following {resource_type} has no id, probably it has not been pushed in Nexus:\n{resource}")
 
 
-def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_region, hierarchy_path,
-    reference_system_id, species, volume_path, summary_path, name, description, resource_tag, logger, is_prod_env) -> str:
+def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composition_id,
+    brain_region, hierarchy_path, reference_system_id, species, volume_path,
+    summary_path, name, description, resource_tag, logger, is_prod_env) -> str:
 
     forge = ctx.obj["forge"]
 
-    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    atlas_release_prop = comm.get_property_type(atlas_release_id,
+        comm.all_types[comm.atlasrelaseType], atlas_release_rev)
     brain_region_prop = get_region_prop(hierarchy_path, brain_region)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
@@ -408,9 +416,9 @@ def push_cellcomposition(ctx, atlas_release_id, cell_composition_id, brain_regio
     default="The official Atlas of the Blue Brain Project",
     help="The description to assign to the AtlasRelease resource.")
 def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_template_id,
-    hierarchy_path, hierarchy_ld_path, annotation_path, hemisphere_path, placement_hints_path, placement_hints_metadata,
-    direction_vectors_path, cell_orientations_path, atlas_release_id, resource_tag, name,
-    description, is_prod_env
+    hierarchy_path, hierarchy_ld_path, annotation_path, hemisphere_path,
+    placement_hints_path, placement_hints_metadata, direction_vectors_path,
+    cell_orientations_path, atlas_release_id, atlas_release_rev, resource_tag, name, description, is_prod_env
 ):
     forge = ctx.obj["forge"]
     bucket = ctx.obj["bucket"]
@@ -430,7 +438,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
                             "Please provide a valid id (or 'None' to create a new AtlasRelease)")
         else:
             atlas_release_id_orig = atlas_release_id
-            atlas_release_rev= atlas_release_orig.store_metadata["_rev"]
+            atlas_release_rev = atlas_release_orig._store_metadata["_rev"]
             for prop in properties_id_map:
                 existing_prop = getattr(atlas_release_orig, prop, None)
                 if existing_prop:
@@ -496,15 +504,15 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         brain_location_prop, reference_system_prop, subject_prop, contribution,
         atlas_release_prop, ph_catalog_name, ph_catalog_description, properties_id_map["placementHintsDataCatalog"])
 
-    ph_catalog_distribution = create_ph_catalog_distribution(ph_res, placement_hints_metadata, resource_to_filepath)
+    ph_catalog_distribution = create_ph_catalog_distribution(ph_res, placement_hints_metadata, resource_to_filepath, forge)
 
     with open("./ph_catalog_distribution.json", "w") as f:
         json.dump(ph_catalog_distribution, f)
     
     comm.add_distribution(ph_catalog, forge, [{"path":"./ph_catalog_distribution.json", "content_type":"application/json"}])
     
-    comm._integrate_datasets_to_Nexus(forge, [ph_catalog], comm.placementHintsDataLayerCatalogType, atlas_release_id,
-                                 resource_tag)
+    comm._integrate_datasets_to_Nexus(forge, [ph_catalog],
+        comm.placementHintsDataLayerCatalogType, atlas_release_id, resource_tag, logger)
 
     ph_catalog_prop = comm.get_property_type(ph_catalog.id, comm.placementHintsDataLayerCatalogType)
 

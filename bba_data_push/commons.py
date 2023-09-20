@@ -81,7 +81,12 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             res_store_metadata = None
             logger.info(f"Searching Nexus for {res_msg}")
             limit = 100
-            orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit)
+            filename = None
+            if hasattr(res, "temp_filepath"):
+                basename = os.path.basename(res.temp_filepath)
+                if basename in ["[PH]y.nrrd", "Isocortex_problematic_voxel_mask.nrrd"]:
+                    filename = basename
+            orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, filename)
             n_orig_ress = len(orig_ress)
             if n_orig_ress > 1:
                 prefix = f"{n_orig_ress}" if n_orig_ress < limit else f"at least {limit}"
@@ -130,8 +135,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
     check_res_list(ress_to_tag, filepath_tag_list, "tagging", logger)
     return resource_to_filepath
 
-def get_placementhintlayerlabel_from_name(forge, filename):
-    layer_label = None
+def get_placementhintlayer_prop_from_name(forge, filename):
     if "]" in filename:
         layer_label = str(filename).split(".nrrd")[0]
         layer_label = layer_label.split("]")[1]
@@ -139,10 +143,10 @@ def get_placementhintlayerlabel_from_name(forge, filename):
         layer_label = filename
    
     layer_prop_resource_list = get_layer(forge, layer_label, initial="layer", regex="_(\d){1,}", split_separator=None, layer_number_offset=1) 
-    return layer_prop_resource_list[0].get_identifier() if layer_prop_resource_list and len(layer_prop_resource_list) > 0 else None
+    return layer_prop_resource_list
     
 
-def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
+def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, filename=None):
     filters = {"type": dataset_type,
                "atlasRelease": {"id": atlas_release_id},
                "brainLocation": {"brainRegion": {"id": res.brainLocation.brainRegion.get_identifier()}},
@@ -171,6 +175,9 @@ def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit):
     if hasattr(res.brainLocation, "layer"):
         for layer in res.brainLocation.layer:
             filter_list.append(Filter(operator=FilterOperator.EQUAL, path=["brainLocation", "layer", "id"], value=layer.get_identifier()))
+
+    if filename:
+        filter_list.append(Filter(operator=FilterOperator.EQUAL, path=["distribution", "name"], value=filename))
 
     return forge.search(*filter_list, limit=limit), filter_list
 

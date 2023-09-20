@@ -190,7 +190,7 @@ def create_volumetric_resources(
                 nrrd_resource.brainLocation.layer = Resource.from_json(layer)
         
         if dataset_type == comm.placementHintsType:
-            layer = comm.get_placementhintlayerlabel_from_name(forge, filename)
+            layer = comm.get_placementhintlayer_prop_from_name(forge, filename)
             if layer:
                 nrrd_resource.brainLocation.layer = Resource.from_json(layer)
     
