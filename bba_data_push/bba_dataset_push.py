@@ -354,14 +354,14 @@ def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composit
 
     cell_comp_volume = create_cellComposition_prop(
         forge, VOLUME_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
-        derivation, name, description, volume_path)
+        derivation, name, description, volume_path, reference_system_prop)
     comm._integrate_datasets_to_Nexus(forge, [cell_comp_volume], VOLUME_TYPE,
                                       atlas_release_id, resource_tag, logger)
     check_id(cell_comp_volume, VOLUME_TYPE)
 
     cell_comp_summary = create_cellComposition_prop(
         forge, SUMMARY_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
-        derivation, name, description, summary_path)
+        derivation, name, description, summary_path, reference_system_prop)
     comm._integrate_datasets_to_Nexus(forge, [cell_comp_summary], SUMMARY_TYPE,
                                       atlas_release_id, resource_tag, logger)
     check_id(cell_comp_summary, SUMMARY_TYPE)
@@ -468,7 +468,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     ont_name = "BBP Mouse Brain region ontology"
     ont_res = create_base_resource(comm.all_types[comm.ontologyType],
         brain_location_prop, reference_system_prop, subject_prop, contribution,
-        atlas_release_prop, ont_name, None, properties_id_map["parcellationOntology"])
+        atlas_release_prop, ont_name, None, None, properties_id_map["parcellationOntology"])
     ont_dis = [{"path": hierarchy_path, "content_type": "application/json"},
                {"path": hierarchy_ld_path, "content_type": "application/ld+json"}]
     comm.add_distribution(ont_res, forge, ont_dis)
@@ -489,10 +489,9 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
 
     # Create PlacementHints resources
-    ph_name = "Placement Hints volumes"
     ph_res = create_volumetric_resources((placement_hints_path,), comm.placementHintsType,
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
-        contribution, derivation, logger, ph_name)
+        contribution, derivation, logger)
     
     resource_to_filepath = comm._integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType,
                                       atlas_release_id_orig, resource_tag, logger)
@@ -502,7 +501,9 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     ph_catalog_description = "Placement Hints volumes catalog"
     ph_catalog = create_base_resource(comm.all_types[comm.placementHintsDataLayerCatalogType],
         brain_location_prop, reference_system_prop, subject_prop, contribution,
-        atlas_release_prop, ph_catalog_name, ph_catalog_description, properties_id_map["placementHintsDataCatalog"])
+        atlas_release_prop, ph_catalog_name, ph_catalog_description,
+        forge.get_model_context().expand(comm.placementHintsType),
+        properties_id_map["placementHintsDataCatalog"])
 
     ph_catalog_distribution = create_ph_catalog_distribution(ph_res, placement_hints_metadata, resource_to_filepath, forge)
 

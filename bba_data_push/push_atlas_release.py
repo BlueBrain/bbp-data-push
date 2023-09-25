@@ -18,7 +18,8 @@ def create_atlas_release(atlas_release_id, brain_location_prop,
 
     atlas_release = create_base_resource(comm.all_types[comm.atlasrelaseType],
         brain_location_prop, reference_system_prop, subject_prop, contribution, None,
-        name, description, atlas_release_id)
+        name, description, None, atlas_release_id)
+    atlas_release.spatialReferenceSystem = reference_system_prop
     atlas_release.brainTemplateDataLayer = brain_template_prop
     atlas_release.parcellationOntology = ont_prop
     atlas_release.parcellationVolume = par_prop
@@ -26,6 +27,7 @@ def create_atlas_release(atlas_release_id, brain_location_prop,
     atlas_release.placementHintsDataCatalogDataCatalog = ph_catalog_prop
     atlas_release.directionVector = dv_prop
     atlas_release.cellOrientationField = co_prop
+    atlas_release.releaseDate = comm.get_date_prop()
 
     return atlas_release
 
@@ -50,7 +52,7 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json_fi
    placementHints = []
    voxelDistanceToRegionBottom = {}
    with open(filepath_to_brainregion_json_file, "r") as f:
-        filepath_to_brainregion= json.load(f)
+       filepath_to_brainregion = json.load(f)
    for ph_resource in ph_resources:
         a_ph_item = {}
         a_ph_item["id"] = ph_resource.get_identifier()
@@ -58,15 +60,18 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json_fi
         a_ph_item["distribution"] = {"atLocation": {"location":ph_resource.distribution.atLocation.location}, "name":ph_resource.distribution.name}
         if ph_resource.distribution.name == "[PH]y.nrrd":
             voxelDistanceToRegionBottom  = a_ph_item
-        else:
+        elif (ph_resource.distribution.name != "Isocortex_problematic_voxel_mask.nrrd"):
             # get layer from filename
             layer_prop_resource_list = comm.get_placementhintlayer_prop_from_name(forge, ph_resource.distribution.name)
             layer_prop = layer_prop_resource_list[0]
             ph_resource_filepath = ph_res_to_filepath[ph_resource.get_identifier()]
             brain_region_names = filepath_to_brainregion[ph_resource_filepath]
+            if not isinstance(brain_region_names, list):
+                raise Exception(f"The type of the '{ph_resource_filepath}' value in "
+                    f"file '{filepath_to_brainregion_json_file}' is not a list")
             regions = {}
             for brain_region_name in brain_region_names:
-                regions[brain_region_name] = {"hasLeafRegionPart":[], "layer":layer_prop}
+                regions[brain_region_name] = {"hasLeafRegionPart": [], "layer": forge.as_json(layer_prop)}
                 # resolve brain_region_name and get leaf under layer
                 brai_region_prop = comm.get_property_label(comm.Args.brain_region, brain_region_name, forge)
                 
@@ -80,7 +85,7 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json_fi
    return {"placementHints":placementHints, "voxelDistanceToRegionBottom":voxelDistanceToRegionBottom}
 
 def create_base_resource(res_type, brain_location_prop, reference_system_prop, subject_prop,
-    contribution, atlas_release_prop=None, name=None, description=None, res_id=None):
+    contribution, atlas_release_prop=None, name=None, description=None, about=None, res_id=None):
     resource = Resource(
         type=res_type,
         brainLocation=brain_location_prop,
@@ -94,6 +99,8 @@ def create_base_resource(res_type, brain_location_prop, reference_system_prop, s
         resource.name = name
     if description:
         resource.description = description
+    if about:
+        resource.about = about
 
     if res_id:
         resource.id = res_id

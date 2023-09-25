@@ -4,6 +4,7 @@ import json
 import jwt
 import hashlib
 import re
+from datetime import datetime
 from kgforge.core import Resource
 from kgforge.core.wrappings.paths import Filter, FilterOperator, create_filters_from_dict
 from kgforge.core.commons.actions import LazyAction
@@ -54,7 +55,8 @@ type_for_schema = {
     cellOrientationType: "VolumetricDataLayer",
     brainMaskType: "VolumetricDataLayer",
     hemisphereType: "VolumetricDataLayer",
-    placementHintsType: "VolumetricDataLayer"}
+    placementHintsType: "VolumetricDataLayer",
+    placementHintsDataLayerCatalogType: "DataCatalog"}
 
 
 def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id, tag,
@@ -73,10 +75,12 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
         res_name = res.name
         res_msg = f"Resource '{res_name}' ({res_count} of {len(resources)})"
 
+        res_deprecated = None
         if hasattr(res, "id") and not force_registration:
             res_id = res.id
             res_store_metadata = get_res_store_metadata(res_id, forge)
-        else:
+            res_deprecated = res_store_metadata._deprecated
+        if (res_deprecated is not False) or force_registration:
             res_id = None
             res_store_metadata = None
             logger.info(f"Searching Nexus for {res_msg}")
@@ -86,22 +90,23 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
                 basename = os.path.basename(res.temp_filepath)
                 if basename in ["[PH]y.nrrd", "Isocortex_problematic_voxel_mask.nrrd"]:
                     filename = basename
-            orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, filename)
-            n_orig_ress = len(orig_ress)
-            if n_orig_ress > 1:
-                prefix = f"{n_orig_ress}" if n_orig_ress < limit else f"at least {limit}"
-                raise Exception(f"Error: {prefix} matching Resources found using the criteria: {matching_filters}")
-            elif n_orig_ress == 1:
-                res_id = orig_ress[0].id
-                res_store_metadata = get_res_store_metadata(res_id, forge)
-            else:
-                logger.info(f"No Resource found using the criteria: {matching_filters}")
+            if not force_registration:
+                orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, filename)
+                n_orig_ress = len(orig_ress)
+                if n_orig_ress > 1:
+                    prefix = f"{n_orig_ress}" if n_orig_ress < limit else f"at least {limit}"
+                    raise Exception(f"Error: {prefix} matching Resources found using the criteria: {matching_filters}")
+                elif n_orig_ress == 1:
+                    res_id = orig_ress[0].id
+                    res_store_metadata = get_res_store_metadata(res_id, forge)
+                else:
+                    logger.info(f"No Resource found using the criteria: {matching_filters}")
 
         if res_id:
             res.id = res_id
             check_tag(forge, res_id, tag, logger)
             # TODO: consider to skip update if distribution SHA is identical between res and existing_res
-            logger.info(f"Scheduling to update {res_msg} with Nexus id: {res_id}")
+            logger.info(f"Scheduling to update {res_msg} with Nexus id: {res_id}\n")
             setattr(res, "_store_metadata", res_store_metadata)
             if hasattr(res, "temp_filepath"):
                 filepath_update_list.append(res.temp_filepath)
@@ -111,7 +116,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
                 filepath_update_list.append(None)
             ress_to_update.append(res)
         else:
-            logger.info(f"Scheduling to register {res_msg}")
+            logger.info(f"Scheduling to register {res_msg}\n")
             if hasattr(res, "temp_filepath"):
                 filepath_register_list.append(res.temp_filepath)
                 resource_to_filepath[res.get_identifier()] = res.temp_filepath
@@ -193,7 +198,7 @@ def check_res_list(res_list, filepath_list, action, logger):
     if n_error_msg != 0:
         errors = "\n".join(error_messages)
         logger.warning(f"Got the following {n_error_msg} errors:\n"
-                       "res ID,res name,res tyoe,filepath,error,action,message\n"
+                       "res ID,res name,res type,filepath,error,action,message\n"
                        f"{errors}")
 
 
@@ -299,6 +304,10 @@ def get_property_type(arg_id, arg_type, rev=None):
         prop._rev = rev
     return prop
 
+def get_date_prop():
+    res_dict = {"type": 'xsd:date',
+                "@value": datetime.today().strftime('%Y-%m-%d')}
+    return Resource.from_json(res_dict)
 
 def get_voxel_type(voxel_type, component_size: int):
     """
@@ -507,7 +516,7 @@ def return_contribution(forge, nexus_env, bucket, token, add_org_contributor=Fal
     agent = {"@id": contributor_user.id, "@type": contributor_user.type}
     hadRole = {
         "@id": forge.get_model_context().expand("nsg:BrainAtlasPipelineExecutionRole"),
-        "@label": "Brain Atlas Pipeline Executor role"}
+        "label": "Brain Atlas Pipeline Executor role"}
     contribution_contributor = Resource(type="Contribution", agent=agent)
     contribution_contributor.hadRole = hadRole
 
