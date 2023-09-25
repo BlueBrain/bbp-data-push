@@ -37,8 +37,8 @@ def create_cellComposition_prop(
         subject = subject,
         contribution = contribution,
         derivation = [derivation],
-        name = get_name(name, schema, contribution)
-                       )
+        name = name if name else get_name(schema, contribution)
+    )
     if description:
         base_res.description = f"{description} ({schema})"
 
@@ -51,9 +51,6 @@ def create_cellComposition_prop(
 
     return base_res
 
-def get_name(name, schema, user_contribution):
-    if name:
-        return f"{name} {schema}"
-    else:
-        username = user_contribution[0].agent['@id'].split("/")[-1]
-        return f"{schema} from {username}"
+def get_name(schema, user_contribution):
+    username = user_contribution[0].agent['@id'].split("/")[-1]
+    return f"{schema} from {username}"

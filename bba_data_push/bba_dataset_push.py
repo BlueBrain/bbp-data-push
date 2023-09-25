@@ -299,10 +299,10 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     type=click.Path(exists=True), required=False, multiple=False,
     help="The path to the json CellCompositionSummary file.")
 @click.option("--name",
-    type=click.STRING, required=False, multiple=False,
+    type=click.STRING, nargs=3, required=False, default=(None, None, None),
     help="The name to assign to the CellComposition(Volume,Summary).")
 @click.option("--description",
-    type=click.STRING, required=False, multiple=False,
+    type=click.STRING, nargs=3, required=False, default=(None, None, None),
     help="The description to assign to the CellComposition(Volume,Summary).")
 @click.option("--log-dir",
     type = click.Path(), default = ("."),
@@ -354,21 +354,21 @@ def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composit
 
     cell_comp_volume = create_cellComposition_prop(
         forge, VOLUME_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
-        derivation, name, description, volume_path, reference_system_prop)
+        derivation, name[2], description[2], volume_path, reference_system_prop)
     comm._integrate_datasets_to_Nexus(forge, [cell_comp_volume], VOLUME_TYPE,
                                       atlas_release_id, resource_tag, logger)
     check_id(cell_comp_volume, VOLUME_TYPE)
 
     cell_comp_summary = create_cellComposition_prop(
         forge, SUMMARY_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
-        derivation, name, description, summary_path, reference_system_prop)
+        derivation, name[1], description[1], summary_path, reference_system_prop)
     comm._integrate_datasets_to_Nexus(forge, [cell_comp_summary], SUMMARY_TYPE,
                                       atlas_release_id, resource_tag, logger)
     check_id(cell_comp_summary, SUMMARY_TYPE)
 
     cell_composition = create_cellComposition_prop(
         forge, COMPOSITION_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
-        derivation, name, description, None, reference_system_prop)
+        derivation, name[0], description[0], None, reference_system_prop)
     cell_composition.cellCompositionVolume = {"@id": cell_comp_volume.id, "@type": VOLUME_TYPE}
     cell_composition.cellCompositionSummary = [{"@id": cell_comp_summary.id, "@type": SUMMARY_TYPE}]
     cell_composition.id = cell_composition_id
