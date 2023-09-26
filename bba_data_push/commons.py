@@ -60,7 +60,7 @@ type_for_schema = {
 
 
 def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id, tag,
-                                 logger, force_registration=False):
+                                 logger, force_registration=False, dryrun=False):
 
     dataset_schema = forge._model.schema_id(type_for_schema.get(dataset_type, dataset_type))
 
@@ -126,18 +126,25 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             ress_to_regster.append(res)
 
     logger.info(f"Updating {len(ress_to_update)} Resources with schema '{dataset_schema}'")
-    forge.update(ress_to_update, dataset_schema)
-    check_res_list(ress_to_update, filepath_update_list, "updating", logger)
+    if not dryrun:
+        forge.update(ress_to_update, dataset_schema)
+        check_res_list(ress_to_update, filepath_update_list, "updating", logger)
 
     logger.info(f"Registering {len(ress_to_regster)} Resources with schema '{dataset_schema}'")
-    forge.register(ress_to_regster, dataset_schema)
-    check_res_list(ress_to_regster, filepath_register_list, "registering", logger)
+    if not dryrun:
+        forge.register(ress_to_regster, dataset_schema)
+        check_res_list(ress_to_regster, filepath_register_list, "registering", logger)
+    else:
+        for res in ress_to_regster:
+            res.id = None
 
     ress_to_tag = ress_to_update + ress_to_regster
     filepath_tag_list = filepath_update_list + filepath_register_list
     logger.info(f"Tagging {len(ress_to_tag)} Resources with tag '{tag}'\n")
-    forge.tag(ress_to_tag, tag)
-    check_res_list(ress_to_tag, filepath_tag_list, "tagging", logger)
+    if not dryrun:
+        forge.tag(ress_to_tag, tag)
+        check_res_list(ress_to_tag, filepath_tag_list, "tagging", logger)
+
     return resource_to_filepath
 
 def get_placementhintlayer_prop_from_name(forge, filename):
@@ -203,7 +210,7 @@ def check_res_list(res_list, filepath_list, action, logger):
 
 
 def check_tag(forge, res_id, tag, logger):
-    logger.debug(f"Verify that tag '{tag}' does not exist already for Resource id '{res_id}':")
+    logger.info(f"Verify that tag '{tag}' does not exist already for Resource id '{res_id}':")
     res = forge.retrieve(res_id, version=tag)
     if res:
         msg = f"Tag '{tag}' already exists for res id '{res_id}' (revision {res._store_metadata._rev}, Nexus address"\

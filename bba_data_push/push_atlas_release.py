@@ -34,7 +34,7 @@ def create_atlas_release(atlas_release_id, brain_location_prop,
 
 def create_volumetric_property(res_name, res_type, res_id, file_path, atlas_release_prop,
     atlas_release_id_orig, forge, subject_prop, brain_location_prop, reference_system_prop,
-    contribution, derivation, resource_tag, logger):
+    contribution, derivation, resource_tag, logger, dryrun=False):
 
     vol_res = create_volumetric_resources((file_path,), res_type, atlas_release_prop,
         forge, subject_prop, brain_location_prop, reference_system_prop,
@@ -42,7 +42,7 @@ def create_volumetric_property(res_name, res_type, res_id, file_path, atlas_rele
     if res_id:
         vol_res.id = res_id
     comm._integrate_datasets_to_Nexus(forge, [vol_res], res_type,
-                                      atlas_release_id_orig, resource_tag, logger)
+        atlas_release_id_orig, resource_tag, logger, dryrun=dryrun)
     vol_prop = comm.get_property_type(vol_res.id, res_type)
 
     return vol_prop

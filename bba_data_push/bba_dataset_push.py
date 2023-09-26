@@ -146,6 +146,9 @@ def common_options(opt):
     opt = click.option("--is-prod-env", default=False,
         help="Boolean flag indicating whether the Nexus environment provided with the"
              " '--nexus-env' argument is the production environment.")(opt)
+    opt = click.option("--dryrun", default=False,
+        help="Boolean flag indicating whether to perform a dryrun execution that will "
+             "run the CLI without pushing data in Nexus.")(opt)
 
     return opt
 
@@ -163,8 +166,9 @@ def common_options(opt):
               type=click.STRING,
               required=True,
               help="Type to set for registration of Resources from dataset-path")
-def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, atlas_release_rev,
-    species, hierarchy_path, brain_region, reference_system_id, resource_tag, is_prod_env
+def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
+    atlas_release_rev, species, hierarchy_path, brain_region, reference_system_id,
+    resource_tag, is_prod_env, dryrun
 ):
     """Create a VolumetricDataLayer resource payload and push it along with the "
     corresponding volumetric input dataset files into Nexus.
@@ -222,14 +226,8 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, atlas_rel
         return
 
     L.info(f"{n_resources} resources will be pushed into Nexus.")
-    comm._integrate_datasets_to_Nexus(
-        forge,
-        resources,
-        dataset_type,
-        atlas_release_id,
-        resource_tag,
-        L
-    )
+    comm._integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id,
+        resource_tag, L, dryrun=dryrun)
 
 @initialize_pusher_cli.command(name="push-meshes")
 @click.pass_context
@@ -240,7 +238,8 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id, atlas_rel
 @click.option("--dataset-type", type=click.STRING, required=True,
               help="Type to set for registration of Resources from dataset-path")
 def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
-    atlas_release_id, atlas_release_rev, species, reference_system_id, resource_tag, is_prod_env
+    atlas_release_id, atlas_release_rev, species, reference_system_id, resource_tag,
+    is_prod_env, dryrun
 ):
     """Create a BrainParcellationMesh Resource payload and push it along with the "
     corresponding input dataset files into Nexus.
@@ -283,8 +282,8 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
         return
 
     L.info(f"{n_resources} resources will be pushed into Nexus.")
-    comm._integrate_datasets_to_Nexus(
-        forge, resources, dataset_type, atlas_release_id, resource_tag, L)
+    comm._integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id,
+                                      resource_tag, L, dryrun=dryrun)
 
 
 @initialize_pusher_cli.command(name="push-cellcomposition")
@@ -311,7 +310,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
 def cli_push_cellcomposition(
     ctx, atlas_release_id, atlas_release_rev, cell_composition_id, species, brain_region,
     hierarchy_path, reference_system_id, volume_path, summary_path,
-    name, description, log_dir, resource_tag, is_prod_env) -> str:
+    name, description, log_dir, resource_tag, is_prod_env, dryrun) -> str:
     """Create a CellComposition resource payload and push it along with the "
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
     Tag all these resources with the input tag or, if not provided, with a timestamp\n
@@ -322,7 +321,8 @@ def cli_push_cellcomposition(
 
     return push_cellcomposition(ctx, atlas_release_id, atlas_release_rev,
         cell_composition_id, brain_region, hierarchy_path, reference_system_id, species,
-        volume_path, summary_path, name, description, resource_tag, logger, is_prod_env)
+        volume_path, summary_path, name, description, resource_tag, logger, is_prod_env,
+        dryrun)
 
 
 def check_id(resource, resource_type):
@@ -332,7 +332,7 @@ def check_id(resource, resource_type):
 
 def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composition_id,
     brain_region, hierarchy_path, reference_system_id, species, volume_path,
-    summary_path, name, description, resource_tag, logger, is_prod_env) -> str:
+    summary_path, name, description, resource_tag, logger, is_prod_env, dryrun=False) -> str:
 
     forge = ctx.obj["forge"]
 
@@ -356,14 +356,14 @@ def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composit
         forge, VOLUME_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
         derivation, name[2], description[2], volume_path, reference_system_prop)
     comm._integrate_datasets_to_Nexus(forge, [cell_comp_volume], VOLUME_TYPE,
-                                      atlas_release_id, resource_tag, logger)
+        atlas_release_id, resource_tag, logger, dryrun=dryrun)
     check_id(cell_comp_volume, VOLUME_TYPE)
 
     cell_comp_summary = create_cellComposition_prop(
         forge, SUMMARY_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
         derivation, name[1], description[1], summary_path, reference_system_prop)
     comm._integrate_datasets_to_Nexus(forge, [cell_comp_summary], SUMMARY_TYPE,
-                                      atlas_release_id, resource_tag, logger)
+        atlas_release_id, resource_tag, logger, dryrun=dryrun)
     check_id(cell_comp_summary, SUMMARY_TYPE)
 
     cell_composition = create_cellComposition_prop(
@@ -373,7 +373,7 @@ def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composit
     cell_composition.cellCompositionSummary = [{"@id": cell_comp_summary.id, "@type": SUMMARY_TYPE}]
     cell_composition.id = cell_composition_id
     comm._integrate_datasets_to_Nexus(forge, [cell_composition], COMPOSITION_TYPE,
-                                      atlas_release_id, resource_tag, logger)
+        atlas_release_id, resource_tag, logger, dryrun=dryrun)
     check_id(cell_composition, COMPOSITION_TYPE)
 
     return cell_composition.id
@@ -418,7 +418,8 @@ def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composit
 def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_template_id,
     hierarchy_path, hierarchy_ld_path, annotation_path, hemisphere_path,
     placement_hints_path, placement_hints_metadata, direction_vectors_path,
-    cell_orientations_path, atlas_release_id, atlas_release_rev, resource_tag, name, description, is_prod_env
+    cell_orientations_path, atlas_release_id, atlas_release_rev, resource_tag,
+    name, description, is_prod_env, dryrun
 ):
     forge = ctx.obj["forge"]
     bucket = ctx.obj["bucket"]
@@ -474,19 +475,21 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     comm.add_distribution(ont_res, forge, ont_dis)
     ont_res.label = "BBP Mouse Brain region ontology"
     comm._integrate_datasets_to_Nexus(forge, [ont_res], comm.ontologyType,
-                                      atlas_release_id_orig, resource_tag, logger)
+        atlas_release_id_orig, resource_tag, logger, dryrun=dryrun)
 
     # Create ParcellationVolume resource
     par_name = "BBP Mouse Brain Annotation Volume"
-    par_prop = create_volumetric_property(par_name, comm.parcellationType, properties_id_map["parcellationVolume"],
-        annotation_path, atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
-        brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
+    par_prop = create_volumetric_property(par_name, comm.parcellationType,
+        properties_id_map["parcellationVolume"], annotation_path, atlas_release_prop,
+        atlas_release_id_orig, forge, subject_prop, brain_location_prop,
+        reference_system_prop, contribution, derivation, resource_tag, logger, dryrun)
 
     # Create HemisphereAnnotation resource
     hem_name = "Hemisphere annotation from Allen ccfv3 volume"
-    hem_prop = create_volumetric_property(hem_name, comm.hemisphereType, properties_id_map["hemisphereVolume"],
-        hemisphere_path, atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
-        brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
+    hem_prop = create_volumetric_property(hem_name, comm.hemisphereType,
+        properties_id_map["hemisphereVolume"], hemisphere_path, atlas_release_prop,
+        atlas_release_id_orig, forge, subject_prop, brain_location_prop,
+        reference_system_prop, contribution, derivation, resource_tag, logger, dryrun)
 
     # Create PlacementHints resources
     ph_res = create_volumetric_resources((placement_hints_path,), comm.placementHintsType,
@@ -494,7 +497,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         contribution, derivation, logger)
     
     resource_to_filepath = comm._integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType,
-                                      atlas_release_id_orig, resource_tag, logger)
+        atlas_release_id_orig, resource_tag, logger, dryrun=dryrun)
 
     #Create PlacementHints catalog (i.e a collection of PlacementHints)
     ph_catalog_name = "Placement Hints volumes catalog"
@@ -513,22 +516,27 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     comm.add_distribution(ph_catalog, forge, [{"path":"./ph_catalog_distribution.json", "content_type":"application/json"}])
     
     comm._integrate_datasets_to_Nexus(forge, [ph_catalog],
-        comm.placementHintsDataLayerCatalogType, atlas_release_id, resource_tag, logger)
+        comm.placementHintsDataLayerCatalogType, atlas_release_id, resource_tag, logger,
+        dryrun=dryrun)
 
     ph_catalog_prop = comm.get_property_type(ph_catalog.id, comm.placementHintsDataLayerCatalogType)
 
 
     # Create DirectionVectorsField resource
     dv_name = "Direction Vectors volume"
-    dv_prop = create_volumetric_property(dv_name, comm.directionVectorsType, properties_id_map["directionVector"],
-        direction_vectors_path, atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
-        brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
+    dv_prop = create_volumetric_property(dv_name, comm.directionVectorsType,
+        properties_id_map["directionVector"], direction_vectors_path,
+        atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
+        brain_location_prop, reference_system_prop, contribution, derivation,
+        resource_tag, logger, dryrun)
 
     # Create CellOrientationField resource
     co_name = "Orientation Field volume"
-    co_prop = create_volumetric_property(co_name, comm.cellOrientationType, properties_id_map["cellOrientationField"],
-        cell_orientations_path, atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
-        brain_location_prop, reference_system_prop, contribution, derivation, resource_tag, logger)
+    co_prop = create_volumetric_property(co_name, comm.cellOrientationType,
+        properties_id_map["cellOrientationField"], cell_orientations_path,
+        atlas_release_prop, atlas_release_id_orig, forge, subject_prop,
+        brain_location_prop, reference_system_prop, contribution, derivation,
+        resource_tag, logger, dryrun)
 
     # Create AtlasRelease resource
     ont_prop = comm.get_property_type(ont_res.id, comm.ontologyType)
@@ -536,7 +544,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         reference_system_prop, brain_template_prop, subject_prop, ont_prop, par_prop,
         hem_prop, ph_catalog_prop, dv_prop, co_prop, contribution, name, description)
     comm._integrate_datasets_to_Nexus(forge, [atlas_release_resource], comm.atlasrelaseType,
-        atlas_release_id_orig, resource_tag, logger, force_registration)
+        atlas_release_id_orig, resource_tag, logger, force_registration, dryrun=dryrun)
 
 
 def start():
