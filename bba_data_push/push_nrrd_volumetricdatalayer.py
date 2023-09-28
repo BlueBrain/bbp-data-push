@@ -140,6 +140,7 @@ def create_volumetric_resources(
             name=res_name if res_name else filename,
             distribution=forge.attach(filepath, f"application/{extension[1:]}"),
             temp_filepath = filepath,
+            temp_filename=filename,
             description=description,
             isRegisteredIn=reference_system,
             brainLocation=res_brain_location,

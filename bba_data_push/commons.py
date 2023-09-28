@@ -110,7 +110,6 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             setattr(res, "_store_metadata", res_store_metadata)
             if hasattr(res, "temp_filepath"):
                 filepath_update_list.append(res.temp_filepath)
-                resource_to_filepath[res.get_identifier()] = res.temp_filepath
                 delattr(res, "temp_filepath")
             else:
                 filepath_update_list.append(None)
@@ -119,12 +118,14 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             logger.info(f"Scheduling to register {res_msg}\n")
             if hasattr(res, "temp_filepath"):
                 filepath_register_list.append(res.temp_filepath)
-                resource_to_filepath[res.get_identifier()] = res.temp_filepath
                 delattr(res, "temp_filepath")
             else:
                 filepath_register_list.append(None)
             ress_to_regster.append(res)
-
+        if hasattr(res, "temp_filename"):
+            resource_to_filepath[res.get_identifier()] = res.temp_filename
+            delattr(res, "temp_filename")
+        
     logger.info(f"Updating {len(ress_to_update)} Resources with schema '{dataset_schema}'")
     if not dryrun:
         forge.update(ress_to_update, dataset_schema)
@@ -298,11 +299,14 @@ def get_property_label(name, arg, forge):
         raise Exception(
             f"The provided '{name}' argument ({arg}) can not be retrieved/resolved")
 
-    return get_property_id_label(arg_res.id, arg_res.label)
+    return get_property_id_label(arg_res.id, arg_res.label, notation = arg_res.notation if hasattr(arg_res, "notation") else None)
 
 
-def get_property_id_label(id, label):
-    return Resource(id=id, label=label)
+def get_property_id_label(id, label, notation=None):
+    prop = Resource(id=id, label=label)
+    if notation:
+        prop.notation = notation
+    return prop
 
 
 def get_property_type(arg_id, arg_type, rev=None):

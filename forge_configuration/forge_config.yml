@@ -10,7 +10,7 @@ Store:
   name: BlueBrainNexus
   searchendpoints:
     sparql:
-      endpoint: "https://bluebrain.github.io/nexus/vocabulary/defaultSparqlIndex"
+      endpoint: "https://bbp.epfl.ch/neurosciencegraph/data/views/aggreg-sp/dataset"
     elastic:
       endpoint: "https://bbp.epfl.ch/neurosciencegraph/data/views/aggreg-es/dataset"
       mapping: "https://bbp.epfl.ch/neurosciencegraph/data/views/es/dataset"

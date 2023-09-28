@@ -508,7 +508,10 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         forge.get_model_context().expand(comm.placementHintsType),
         properties_id_map["placementHintsDataCatalog"])
 
-    ph_catalog_distribution = create_ph_catalog_distribution(ph_res, placement_hints_metadata, resource_to_filepath, forge)
+    with open(placement_hints_metadata, "r") as f:
+        filepath_to_brainregion_json= json.load(f)
+
+    ph_catalog_distribution = create_ph_catalog_distribution(ph_res, filepath_to_brainregion_json, resource_to_filepath, forge)
 
     with open("./ph_catalog_distribution.json", "w") as f:
         json.dump(ph_catalog_distribution, f)
