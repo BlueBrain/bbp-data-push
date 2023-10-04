@@ -110,7 +110,6 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             setattr(res, "_store_metadata", res_store_metadata)
             if hasattr(res, "temp_filepath"):
                 filepath_update_list.append(res.temp_filepath)
-                delattr(res, "temp_filepath")
             else:
                 filepath_update_list.append(None)
             ress_to_update.append(res)
@@ -118,14 +117,16 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             logger.info(f"Scheduling to register {res_msg}\n")
             if hasattr(res, "temp_filepath"):
                 filepath_register_list.append(res.temp_filepath)
-                delattr(res, "temp_filepath")
             else:
                 filepath_register_list.append(None)
             ress_to_regster.append(res)
+
+        if hasattr(res, "temp_filepath"):
+            resource_to_filepath[res.get_identifier()] = res.temp_filepath
+            delattr(res, "temp_filepath")
         if hasattr(res, "temp_filename"):
-            resource_to_filepath[res.get_identifier()] = res.temp_filename
             delattr(res, "temp_filename")
-        
+
     logger.info(f"Updating {len(ress_to_update)} Resources with schema '{dataset_schema}'")
     if not dryrun:
         forge.update(ress_to_update, dataset_schema)

@@ -24,7 +24,7 @@ def create_atlas_release(atlas_release_id, brain_location_prop,
     atlas_release.parcellationOntology = ont_prop
     atlas_release.parcellationVolume = par_prop
     atlas_release.hemisphereVolume = hem_prop
-    atlas_release.placementHintsDataCatalogDataCatalog = ph_catalog_prop
+    atlas_release.placementHintsDataCatalog = ph_catalog_prop
     atlas_release.directionVector = dv_prop
     atlas_release.cellOrientationField = co_prop
     atlas_release.releaseDate = comm.get_date_prop()
