@@ -1,5 +1,4 @@
-import json
-import os
+import pytest
 import logging
 import random
 
@@ -17,15 +16,6 @@ L = logging.getLogger(__name__)
 def test_create_atas_release(forge, nexus_bucket, nexus_token, nexus_env,
     atlas_release_id, brain_location_prop, reference_system_prop, subject_prop,
     brain_template_id, contribution):
-
-    test_folder = os.environ["TEST_FOLDER"]
-    folder = os.path.join(test_folder, "tests_data")
-
-    hierarchy_path = os.path.join(folder, "hierarchy_l23split.json")
-    hierarchy_ld_path = os.path.join(folder, "hierarchy_l23split_ld.json")
-    annotation_path = os.path.join(folder, "annotation.nrrd")
-    hemisphere_path = os.path.join(folder, "hemispheres.nrrd")
-
     brain_template_prop = comm.get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE)
 
     test_id = "dummy-id"
@@ -78,7 +68,7 @@ def test_create_ph_catalog_distribution(forge):
     layers = []
     for ph in  ph_catalog_distribution["placementHints"]:
         regions = ph["regions"]
-        assert len(regions) == 1 
+        assert len(regions) == 1
         assert brain_region_label in regions
         hasLeafRegionPart = regions[brain_region_label]["hasLeafRegionPart"]
         layer = regions[brain_region_label]["layer"]
@@ -94,6 +84,12 @@ def test_create_ph_catalog_distribution(forge):
         hasLeafRegionPart.sort()
         assert isocortex_leaf_region_notations_layer_only == hasLeafRegionPart
     assert layers == ["L1", "L2", "L3", "L4", "L5", "L6"]
+
+    # Check for wrong resource
+    wrong_brain_region_label = "TH"  # "Thalamus" region is not in Isocortex layer 1
+    ph_resources, ph_res_to_filepath, filepath_to_brainregion_json = _create_ph_resources(["layer_1"], "file://gpfs/path/%5BPH%5D", wrong_brain_region_label)
+    with pytest.raises(Exception):
+        create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json, ph_res_to_filepath, forge)
 
 
 def _create_ph_resources(layers, location_prefix, brain_region_label):

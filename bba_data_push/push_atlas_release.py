@@ -2,7 +2,6 @@
 Create an Atlas Release , to push into Nexus.
 """
 
-import json
 from kgforge.core import Resource
 
 from bba_data_push.logging import create_log_handler
@@ -47,21 +46,31 @@ def create_volumetric_property(res_name, res_type, res_id, file_path, atlas_rele
 
     return vol_prop
 
-def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion, ph_res_to_filepath, forge):
+def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
+    ph_res_to_filepath, forge, dryrun=False):
 
    placementHints = []
    voxelDistanceToRegionBottom = {}
    for ph_resource in ph_resources:
+        if not dryrun:
+            ph_resource_location = ph_resource.distribution.atLocation.location
+        else:
+            # args[0] corresponds to the LazyAction filename
+            ph_resource.distribution.name = ph_resource.distribution.args[0]
+            ph_resource_location = ph_resource.distribution.args[0]
+
         a_ph_item = {}
         a_ph_item["@id"] = ph_resource.get_identifier()
         a_ph_item["_rev"] = ph_resource._store_metadata._rev
-        a_ph_item["distribution"] = {"atLocation": {"location":ph_resource.distribution.atLocation.location}, "name":ph_resource.distribution.name}
+        a_ph_item["distribution"] = {"atLocation": {"location": ph_resource_location},
+            "name": ph_resource.distribution.name}
         if ph_resource.distribution.name == "[PH]y.nrrd":
             voxelDistanceToRegionBottom  = a_ph_item
         elif (ph_resource.distribution.name != "Isocortex_problematic_voxel_mask.nrrd"):
             # get layer from filename
             layer_prop_resource_list = comm.get_placementhintlayer_prop_from_name(forge, ph_resource.distribution.name)
             layer_prop = layer_prop_resource_list[0]
+            layer_id = layer_prop.get_identifier()
             ph_resource_filepath = ph_res_to_filepath[ph_resource.get_identifier()]
             brain_region_names = filepath_to_brainregion[ph_resource_filepath]
             if not isinstance(brain_region_names, list):
@@ -71,20 +80,24 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion, ph_res
                 # resolve brain_region_name and get leaf under layer
                 brai_region_prop = comm.get_property_label(comm.Args.brain_region, brain_region_name, forge)
                 brain_region_key = brai_region_prop.notation if hasattr(brai_region_prop, "notation") else brain_region_name
+                brain_region_id = brai_region_prop.get_identifier()
                 regions[brain_region_key] = {
-                                              "@id":brai_region_prop.get_identifier(),
-                                              "hasLeafRegionPart": [], "layer": {"@id":layer_prop.get_identifier(), "label":layer_prop.label}
-                                             }
-                brain_region_layer_leaves = forge.search({"^hasLeafRegionPart":{"id":brai_region_prop.get_identifier()},
-                                                "hasLayerLocationPhenotype":layer_prop.get_identifier()}, cross_bucket=True, search_in_graph=False, distinct=True)
-                if layer_prop.get_identifier() == "http://purl.obolibrary.org/obo/UBERON_0005395": # layer 6, need to also collect layer 6a and layer 6b:
-                    brain_region_layer6a_leaves = forge.search({"^hasLeafRegionPart":{"id":brai_region_prop.get_identifier()},
-                                                "hasLayerLocationPhenotype":"https://bbp.epfl.ch/ontologies/core/bmo/neocortex_layer_6a"}, cross_bucket=True, search_in_graph=False, distinct=True)
-                    brain_region_layer6b_leaves = forge.search({"^hasLeafRegionPart":{"id":brai_region_prop.get_identifier()},
-                                                "hasLayerLocationPhenotype":"http://purl.obolibrary.org/obo/UBERON_8440003"}, cross_bucket=True, search_in_graph=False, distinct=True)
+                    "@id": brain_region_id,
+                    "hasLeafRegionPart": [],
+                    "layer": {"@id": layer_id, "label": layer_prop.label}
+                }
+                brain_region_layer_leaves = forge.search({"^hasLeafRegionPart": {"id": brain_region_id},
+                    "hasLayerLocationPhenotype": layer_id}, cross_bucket=True, search_in_graph=False, distinct=True)
+                if layer_id == "http://purl.obolibrary.org/obo/UBERON_0005395":  # layer 6, need to also collect layer 6a and layer 6b:
+                    brain_region_layer6a_leaves = forge.search({"^hasLeafRegionPart": {"id": brain_region_id},
+                        "hasLayerLocationPhenotype": "https://bbp.epfl.ch/ontologies/core/bmo/neocortex_layer_6a"}, cross_bucket=True, search_in_graph=False, distinct=True)
+                    brain_region_layer6b_leaves = forge.search({"^hasLeafRegionPart": {"id": brain_region_id},
+                        "hasLayerLocationPhenotype": "http://purl.obolibrary.org/obo/UBERON_8440003"}, cross_bucket=True, search_in_graph=False, distinct=True)
                     brain_region_layer_leaves.extend(brain_region_layer6a_leaves)
                     brain_region_layer_leaves.extend(brain_region_layer6b_leaves)
-                    
+
+                if not brain_region_layer_leaves:
+                    raise Exception(f"No leaf regions found for region id '{brain_region_id}' and layer id '{layer_id}'")
                 for brain_region_layer_leave in brain_region_layer_leaves:
                     regions[brain_region_key]["hasLeafRegionPart"].append(brain_region_layer_leave.notation)
             a_ph_item["regions"] = regions
