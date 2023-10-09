@@ -52,17 +52,10 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
    placementHints = []
    voxelDistanceToRegionBottom = {}
    for ph_resource in ph_resources:
-        if not dryrun:
-            ph_resource_location = ph_resource.distribution.atLocation.location
-        else:
-            # args[0] corresponds to the LazyAction filename
-            ph_resource.distribution.name = ph_resource.distribution.args[0]
-            ph_resource_location = ph_resource.distribution.args[0]
-
         a_ph_item = {}
         a_ph_item["@id"] = ph_resource.get_identifier()
-        a_ph_item["_rev"] = ph_resource._store_metadata._rev
-        a_ph_item["distribution"] = {"atLocation": {"location": ph_resource_location},
+        a_ph_item["_rev"] = ph_resource._store_metadata.get("_rev")
+        a_ph_item["distribution"] = {"atLocation": {"location": ph_resource.distribution.atLocation.location},
             "name": ph_resource.distribution.name}
         if ph_resource.distribution.name == "[PH]y.nrrd":
             voxelDistanceToRegionBottom  = a_ph_item

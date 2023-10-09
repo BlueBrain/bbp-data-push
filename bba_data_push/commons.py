@@ -7,7 +7,6 @@ import re
 from datetime import datetime
 from kgforge.core import Resource
 from kgforge.core.wrappings.paths import Filter, FilterOperator, create_filters_from_dict
-from kgforge.core.commons.actions import LazyAction
 
 import blue_brain_atlas_web_exporter.TreeIndexer as TreeIndexer
 
@@ -122,7 +121,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             ress_to_regster.append(res)
 
         if hasattr(res, "temp_filepath"):
-            resource_to_filepath[res.get_identifier()] = res.temp_filepath
+            resource_to_filepath[res.get_identifier()] = os.path.basename(res.temp_filepath)
             delattr(res, "temp_filepath")
         if hasattr(res, "temp_filename"):
             delattr(res, "temp_filename")
@@ -136,9 +135,6 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
     if not dryrun:
         forge.register(ress_to_regster, dataset_schema)
         check_res_list(ress_to_regster, filepath_register_list, "registering", logger)
-    else:
-        for res in ress_to_regster:
-            res.id = None
 
     ress_to_tag = ress_to_update + ress_to_regster
     filepath_tag_list = filepath_update_list + filepath_register_list
@@ -146,6 +142,18 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
     if not dryrun:
         forge.tag(ress_to_tag, tag)
         check_res_list(ress_to_tag, filepath_tag_list, "tagging", logger)
+    else:
+        for res in ress_to_tag:
+            if res in ress_to_regster:
+                res.id = None
+                res._store_metadata = {}
+            if hasattr(res, "distribution"):
+                lazyActions = [res.distribution] if not isinstance(res.distribution, list) else res.distribution
+                for lazyAction in lazyActions:
+                    location = lazyAction.args[0]  # args[0] corresponds to the LazyAction filepath
+                    lazyAction.name = os.path.basename(location)
+                    setattr(lazyAction, "atLocation", Resource(location=location))
+                res.distribution = lazyActions if len(lazyActions) > 1 else lazyActions[0]
 
     return resource_to_filepath
 
