@@ -1,6 +1,7 @@
 """
 Create an Atlas Release , to push into Nexus.
 """
+import os
 
 from kgforge.core import Resource
 
@@ -64,10 +65,10 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
             layer_prop_resource_list = comm.get_placementhintlayer_prop_from_name(forge, ph_resource.distribution.name)
             layer_prop = layer_prop_resource_list[0]
             layer_id = layer_prop.get_identifier()
-            ph_resource_filepath = ph_res_to_filepath[ph_resource.get_identifier()]
-            brain_region_names = filepath_to_brainregion[ph_resource_filepath]
+            ph_resource_filename = os.path.basename(ph_res_to_filepath[ph_resource.get_identifier()])
+            brain_region_names = filepath_to_brainregion[ph_resource_filename]
             if not isinstance(brain_region_names, list):
-                raise Exception(f"The type of the '{ph_resource_filepath}' value in the placement hints metadata is not a list")
+                raise Exception(f"The type of the '{ph_resource_filename}' value in the placement hints metadata is not a list")
             regions = {}
             for brain_region_name in brain_region_names:
                 # resolve brain_region_name and get leaf under layer

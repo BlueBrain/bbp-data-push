@@ -1,3 +1,4 @@
+import os
 import pytest
 import logging
 import random
@@ -6,7 +7,7 @@ from kgforge.core import Resource
 from kgforge.core.wrappings.dict import wrap_dict
 
 from bba_data_push.push_atlas_release import create_atlas_release, create_ph_catalog_distribution
-from bba_data_push.bba_dataset_push import BRAIN_TEMPLATE_TYPE
+from bba_data_push.bba_dataset_push import BRAIN_TEMPLATE_TYPE, get_resource_rev
 import bba_data_push.commons as comm
 
 logging.basicConfig(level=logging.INFO)
@@ -51,8 +52,8 @@ def test_create_ph_catalog_distribution(forge):
     ph_res_to_filepath[ph_y.get_identifier()]= "./test_data/placement_hints/[PH]y.nrrd"
     ph_res_to_filepath[ph_mask.get_identifier()]= "./test_data/placement_hints/Isocortex_problematic_voxel_mask.nrrd"
 
-    filepath_to_brainregion_json["./test_data/placement_hints/[PH]y.nrrd"] = [brain_region_label]
-    filepath_to_brainregion_json["./test_data/placement_hints/Isocortex_problematic_voxel_mask.nrrd"] = [brain_region_label]
+    filepath_to_brainregion_json[os.path.basename("./test_data/placement_hints/[PH]y.nrrd")] = [brain_region_label]
+    filepath_to_brainregion_json[os.path.basename("./test_data/placement_hints/Isocortex_problematic_voxel_mask.nrrd")] = [brain_region_label]
 
     random.shuffle(ph_resources)
     ph_catalog_distribution = create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json, ph_res_to_filepath, forge)
@@ -92,6 +93,13 @@ def test_create_ph_catalog_distribution(forge):
         create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json, ph_res_to_filepath, forge)
 
 
+def test_get_resource_rev(forge, atlas_release_id):
+    tag_rev_dict = {"leaves-only_atlas": 10,
+                    "non-existing-tag": None}
+    for tag, rev in tag_rev_dict.items():
+        assert rev == get_resource_rev(forge, atlas_release_id, tag)
+
+
 def _create_ph_resources(layers, location_prefix, brain_region_label):
     ph_resources = []
     ph_res_to_filepath = {}
@@ -102,8 +110,8 @@ def _create_ph_resources(layers, location_prefix, brain_region_label):
         ph_resources.append(ph_layer)
 
         file_path = f"./test_data/placement_hints/[PH]{layer}.nrrd"
-        ph_res_to_filepath[ph_layer.get_identifier()]= file_path
+        ph_res_to_filepath[ph_layer.get_identifier()] = file_path
         
-        filepath_to_brainregion_json[file_path] = [brain_region_label]
+        filepath_to_brainregion_json[os.path.basename(file_path)] = [brain_region_label]
         
     return ph_resources, ph_res_to_filepath, filepath_to_brainregion_json

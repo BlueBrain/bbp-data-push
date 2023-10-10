@@ -121,7 +121,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             ress_to_regster.append(res)
 
         if hasattr(res, "temp_filepath"):
-            resource_to_filepath[res.get_identifier()] = os.path.basename(res.temp_filepath)
+            resource_to_filepath[res.get_identifier()] = res.temp_filepath
             delattr(res, "temp_filepath")
         if hasattr(res, "temp_filename"):
             delattr(res, "temp_filename")

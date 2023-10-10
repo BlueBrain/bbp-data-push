@@ -127,6 +127,14 @@ def get_subject_prop(species_prop):
     return Resource(type="Subject", species=species_prop)
 
 
+def get_resource_rev(forge, res_id, tag):
+    rev = None
+    res = forge.retrieve(res_id, version=tag)
+    if res:
+        rev = res._store_metadata["_rev"]
+    return rev
+
+
 def common_options(opt):
     opt = click.option("--atlas-release-id", type=click.STRING, required=True, multiple=False,
         help="Nexus ID of the atlas release of interest")(opt)
@@ -181,6 +189,8 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
                         f"The types supported are: {', '.join(type_attributes_map.keys())}")
 
     forge = ctx.obj["forge"]
+    rev = get_resource_rev(forge, atlas_release_id, resource_tag)
+    atlas_release_rev = rev if rev else atlas_release_rev
 
     # Validate input arguments
     atlas_release_prop = comm.get_property_type(atlas_release_id,
@@ -250,6 +260,8 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     flat_tree = comm.get_flat_tree(hierarchy_path)
 
     forge = ctx.obj["forge"]
+    rev = get_resource_rev(forge, atlas_release_id, resource_tag)
+    atlas_release_rev = rev if rev else atlas_release_rev
 
     # Validate input arguments
     atlas_release_prop = comm.get_property_type(atlas_release_id,
@@ -335,6 +347,8 @@ def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composit
     summary_path, name, description, resource_tag, logger, is_prod_env, dryrun=False) -> str:
 
     forge = ctx.obj["forge"]
+    rev = get_resource_rev(forge, atlas_release_id, resource_tag)
+    atlas_release_rev = rev if rev else atlas_release_rev
 
     atlas_release_prop = comm.get_property_type(atlas_release_id,
         comm.all_types[comm.atlasrelaseType], atlas_release_rev)
