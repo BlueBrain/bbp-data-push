@@ -127,9 +127,9 @@ def get_subject_prop(species_prop):
     return Resource(type="Subject", species=species_prop)
 
 
-def get_resource_rev(forge, res_id, tag):
+def get_resource_rev(forge, res_id, tag, cross_bucket=False):
     rev = None
-    res = forge.retrieve(res_id, version=tag)
+    res = forge.retrieve(res_id, version=tag, cross_bucket=cross_bucket)
     if res:
         rev = res._store_metadata["_rev"]
     return rev
@@ -347,7 +347,7 @@ def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composit
     summary_path, name, description, resource_tag, logger, is_prod_env, dryrun=False) -> str:
 
     forge = ctx.obj["forge"]
-    rev = get_resource_rev(forge, atlas_release_id, resource_tag)
+    rev = get_resource_rev(forge, atlas_release_id, resource_tag, cross_bucket=True)
     atlas_release_rev = rev if rev else atlas_release_rev
 
     atlas_release_prop = comm.get_property_type(atlas_release_id,
