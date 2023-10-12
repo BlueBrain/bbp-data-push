@@ -553,7 +553,7 @@ def return_contribution(forge, nexus_env, bucket, token, add_org_contributor=Fal
     contributor_org = return_contributor(forge, project_str, epfl_id, epfl_name,
                                          ["Agent", "Organization"],
                                          extra_attr_org, log_info)
-    agent = {"@id": contributor_org.id, "@type": "Organization"}
+    agent = {"@id": contributor_org.id, "@type": contributor_org.type}
     contribution_org = Resource(type="Contribution", agent=agent)
     contribution.append(contribution_org)
 
