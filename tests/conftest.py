@@ -43,9 +43,20 @@ def forge(nexus_env, forge_config_file, nexus_bucket, nexus_token):
 
 
 @pytest.fixture
+def context(forge, nexus_env, nexus_bucket, nexus_token):
+    class Context:
+        obj = {"forge": forge,
+               "env": nexus_env,
+               "bucket": nexus_bucket,
+               "token": nexus_token}
+
+    return Context()
+
+
+@pytest.fixture
 def contribution(forge, nexus_env, nexus_bucket, nexus_token):
-    comm.return_contribution(forge, nexus_env, nexus_bucket, nexus_token,
-                             add_org_contributor=False)[0]
+    return comm.return_contribution(forge, nexus_env, nexus_bucket, nexus_token,
+                                    add_org_contributor=False)[0]
 
 
 @pytest.fixture
@@ -115,3 +126,8 @@ def base_derivation(atlas_release_id):
         "entity": {
             "@id": atlas_release_id,
             "@type": "Entity"}}
+
+
+@pytest.fixture
+def hierarchy_path():
+    return "./tests/tests_data/hierarchy_l23split.json"

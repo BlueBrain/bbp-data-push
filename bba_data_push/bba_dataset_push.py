@@ -322,7 +322,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
 def cli_push_cellcomposition(
     ctx, atlas_release_id, atlas_release_rev, cell_composition_id, species, brain_region,
     hierarchy_path, reference_system_id, volume_path, summary_path,
-    name, description, log_dir, resource_tag, is_prod_env, dryrun) -> str:
+    name, description, log_dir, resource_tag, is_prod_env, dryrun) -> Resource:
     """Create a CellComposition resource payload and push it along with the "
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
     Tag all these resources with the input tag or, if not provided, with a timestamp\n
@@ -334,7 +334,7 @@ def cli_push_cellcomposition(
     return push_cellcomposition(ctx, atlas_release_id, atlas_release_rev,
         cell_composition_id, brain_region, hierarchy_path, reference_system_id, species,
         volume_path, summary_path, name, description, resource_tag, logger, is_prod_env,
-        dryrun)
+        force_registration=False, dryrun=dryrun)
 
 
 def check_id(resource, resource_type):
@@ -344,7 +344,8 @@ def check_id(resource, resource_type):
 
 def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composition_id,
     brain_region, hierarchy_path, reference_system_id, species, volume_path,
-    summary_path, name, description, resource_tag, logger, is_prod_env, dryrun=False) -> str:
+    summary_path, name, description, resource_tag, logger, is_prod_env,
+    force_registration=False, dryrun=False) -> Resource:
 
     forge = ctx.obj["forge"]
     rev = get_resource_rev(forge, atlas_release_id, resource_tag, cross_bucket=True)
@@ -370,27 +371,29 @@ def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composit
         forge, VOLUME_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
         derivation, name[2], description[2], volume_path, reference_system_prop)
     comm._integrate_datasets_to_Nexus(forge, [cell_comp_volume], VOLUME_TYPE,
-        atlas_release_id, resource_tag, logger, dryrun=dryrun)
+        atlas_release_id, resource_tag, logger, force_registration=force_registration,
+        dryrun=dryrun)
     check_id(cell_comp_volume, VOLUME_TYPE)
 
     cell_comp_summary = create_cellComposition_prop(
         forge, SUMMARY_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
         derivation, name[1], description[1], summary_path, reference_system_prop)
     comm._integrate_datasets_to_Nexus(forge, [cell_comp_summary], SUMMARY_TYPE,
-        atlas_release_id, resource_tag, logger, dryrun=dryrun)
+        atlas_release_id, resource_tag, logger, force_registration=force_registration,
+        dryrun=dryrun)
     check_id(cell_comp_summary, SUMMARY_TYPE)
 
     cell_composition = create_cellComposition_prop(
         forge, COMPOSITION_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
         derivation, name[0], description[0], None, reference_system_prop)
     cell_composition.cellCompositionVolume = {"@id": cell_comp_volume.id, "@type": VOLUME_TYPE}
-    cell_composition.cellCompositionSummary = [{"@id": cell_comp_summary.id, "@type": SUMMARY_TYPE}]
+    cell_composition.cellCompositionSummary = {"@id": cell_comp_summary.id, "@type": SUMMARY_TYPE}
     cell_composition.id = cell_composition_id
     comm._integrate_datasets_to_Nexus(forge, [cell_composition], COMPOSITION_TYPE,
         atlas_release_id, resource_tag, logger, dryrun=dryrun)
     check_id(cell_composition, COMPOSITION_TYPE)
 
-    return cell_composition.id
+    return cell_composition
 
 
 @initialize_pusher_cli.command(name="push-atlasrelease")
