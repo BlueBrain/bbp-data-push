@@ -9,11 +9,8 @@ import numpy as np
 import nrrd
 
 import bba_data_push.commons as comm
-from bba_data_push.logging import create_log_handler
 from kgforge.core import Resource
 from kgforge.specializations.resources import Dataset
-
-L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
 
 type_attributes_map = {
     comm.meTypeDensity: {"dsm": "quantity", "voxel_type": "intensity",
@@ -77,6 +74,8 @@ def create_volumetric_resources(
         reference system info
     contribution: list
         contributor Resources
+    derivation: Resource
+        derivation Resource
     L: Logger
         log_handler
     res_name: str
@@ -139,7 +138,7 @@ def create_volumetric_resources(
             type=comm.all_types[dataset_type],
             name=res_name if res_name else filename,
             distribution=forge.attach(filepath, f"application/{extension[1:]}"),
-            temp_filepath = filepath,
+            temp_filepath=filepath,
             temp_filename=filename,
             description=description,
             isRegisteredIn=reference_system,
@@ -157,7 +156,7 @@ def create_volumetric_resources(
             voxel_type = attr["voxel_type"]
             if (dataset_type == comm.placementHintsType) and (header["dimension"]) < 4:
                 voxel_type = "label"
-            add_nrrd_props(nrrd_resource, header, file_config, voxel_type)
+            add_nrrd_props(nrrd_resource, header, file_config, voxel_type, L)
         except nrrd.errors.NRRDError as e:
             L.error(f"NrrdError: {e}")
 
@@ -168,7 +167,7 @@ def create_volumetric_resources(
             # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
             separator = {
                 comm.meTypeDensity: "_INH_densities",
-                comm.gliaDensityType: "_density",}
+                comm.gliaDensityType: "_density"}
             if dataset_type in [comm.gliaDensityType, comm.neuronDensityType]:
                 filename_ann = filename_ann.capitalize()
                 if dataset_type in [comm.gliaDensityType]:
@@ -202,7 +201,7 @@ def create_volumetric_resources(
     return resources
 
 
-def add_nrrd_props(resource, nrrd_header, config, voxel_type):
+def add_nrrd_props(resource, nrrd_header, config, voxel_type, L):
     """
     Add to the resource all the fields expected for a VolumetricDataLayer/NdRaster
     that can be found in the NRRD header.
@@ -215,6 +214,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
         config : Dict containing the file extension and its sampling informations.
         voxel_type : String indicating the type of voxel contained in the volumetric
         dataset.
+        L: log_handler logger
     """
 
     NRRD_TYPES_TO_NUMPY = {
@@ -311,8 +311,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
     passed_spatial_dim = False
     # for each dimension
     for i in range(0, nrrd_header["dimension"]):
-        current_dim = {}
-        current_dim["size"] = nrrd_header["sizes"][i].item()
+        current_dim = {"size": nrrd_header["sizes"][i].item()}
 
         # this is a spatial dim
         if space_directions[i]:
@@ -333,7 +332,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type):
                 current_dim["@type"] = "ComponentDimension"
                 try:
                     current_dim["name"] = comm.get_voxel_type(voxel_type,
-                                                         current_dim["size"])
+                                                              current_dim["size"])
                 except ValueError as e:
                     L.error(f"ValueError: {e}")
                     exit(1)

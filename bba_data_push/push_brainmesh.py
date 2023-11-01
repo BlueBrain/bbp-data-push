@@ -9,9 +9,6 @@ from kgforge.core import Resource
 from kgforge.specializations.resources import Dataset
 
 import bba_data_push.commons as comm
-from bba_data_push.logging import create_log_handler
-
-L = create_log_handler(__name__, "./push_brainmesh.log")
 
 
 def create_mesh_resources(input_paths, dataset_type, flat_tree, atlas_release, forge,

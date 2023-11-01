@@ -5,11 +5,8 @@ import os
 
 from kgforge.core import Resource
 
-from bba_data_push.logging import create_log_handler
 import bba_data_push.commons as comm
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
-
-logger = create_log_handler(__name__, "./create_atlas_release.log")
 
 
 def create_atlas_release(atlas_release_id, brain_location_prop,
@@ -101,6 +98,7 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
    for ph in placementHints_sorted:
        ph.pop("layer")
    return {"placementHints":placementHints_sorted, "voxelDistanceToRegionBottom":voxelDistanceToRegionBottom}
+
 
 def create_base_resource(res_type, brain_location_prop, reference_system_prop, subject_prop,
     contribution, atlas_release_prop=None, name=None, description=None, about=None, res_id=None):
