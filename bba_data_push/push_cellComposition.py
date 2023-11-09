@@ -7,6 +7,7 @@ https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 
 from kgforge.specializations.resources import Dataset
 
+
 def create_cellComposition_prop(
     forge,
     schema,
@@ -21,12 +22,12 @@ def create_cellComposition_prop(
     file_path,
     reference_system_prop=None
 ):
-    res_type = ["Dataset", "Entity", schema]
+    res_type = [schema, "Dataset"]
     # "AtlasDatasetRelease" is kept for backward compatibility
     if schema == "CellCompositionVolume":
         res_type.append("AtlasDatasetRelease")
 
-    expanded_about=[]
+    expanded_about = []
     for a in about:
         expanded_about.append(forge.get_model_context().expand(a))
 
@@ -50,6 +51,7 @@ def create_cellComposition_prop(
         base_res.atlasSpatialReferenceSystem = reference_system_prop
 
     return base_res
+
 
 def get_name(schema, user_contribution):
     username = user_contribution[0].agent['@id'].split("/")[-1]

@@ -27,9 +27,9 @@ volumetricType = ["VolumetricDataLayer", "Dataset"]
 placementHintsDataLayerCatalogType = "PlacementHintsDataLayerCatalog"
 
 all_types = {
-    meTypeDensity: [meTypeDensity, "NeuronDensity", "VolumetricDataLayer", "CellDensityDataLayer"],
-    gliaDensityType: [gliaDensityType, "VolumetricDataLayer", "CellDensityDataLayer"],
-    neuronDensityType: [neuronDensityType, "VolumetricDataLayer", "CellDensityDataLayer"],
+    meTypeDensity: [meTypeDensity, neuronDensityType, "CellDensityDataLayer", "VolumetricDataLayer"],
+    gliaDensityType: [gliaDensityType, "CellDensityDataLayer", "VolumetricDataLayer"],
+    neuronDensityType: [neuronDensityType, "CellDensityDataLayer", "VolumetricDataLayer"],
     parcellationType: [parcellationType] + volumetricType,
     hemisphereType: [hemisphereType] + volumetricType,
     ontologyType: [ontologyType, "Ontology", "Entity"],
