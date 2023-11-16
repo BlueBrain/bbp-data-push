@@ -57,6 +57,8 @@ type_for_schema = {
     placementHintsType: "VolumetricDataLayer",
     placementHintsDataLayerCatalogType: "DataCatalog"}
 
+forge_resolve_cache = {}
+
 
 def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id, tag,
                                  logger, force_registration=False, dryrun=False):
@@ -618,11 +620,15 @@ def get_layer(forge, label, initial="L", regex="(\d){1,}_", split_separator="_",
 
 
 def forge_resolve(forge, label, name=None, target="terms"):
+    if label in forge_resolve_cache:
+        return forge_resolve_cache[label]
+
     res = forge.resolve(label, scope="ontology", target=target, strategy="EXACT_MATCH")
     if not res:
         from_ = "" if not name else f" from '{name}'"
         print("\nlabel '%s'%s not resolved" % (label, from_))
     else:
+        forge_resolve_cache[label] = res
         if isinstance(res.label, str):
             if res.label.upper() != label.upper():
                 print(
