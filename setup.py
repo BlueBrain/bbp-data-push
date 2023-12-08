@@ -22,9 +22,10 @@ setup(
         "PyJWT>=2.0.0",
         "rdflib==6.2.0",
         "urllib3",
+        "blue-brain-atlas-web-exporter==2.1.0"
     ],
     extras_require={
-        "dev": ["pytest>=4.3", "pytest-cov>=2.8.0"],
+        "dev": ["pytest>=7.0.1", "pytest-cov>=2.8.0"],
     },
     packages=find_packages(),
     include_package_data=True,
