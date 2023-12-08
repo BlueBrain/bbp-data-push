@@ -477,26 +477,22 @@ def return_contributor(forge, project_str, contributor_id, contributor_name, con
     return contributor
 
 
-def return_contribution(forge, nexus_env, bucket, token, add_org_contributor=False):
+def return_contribution(forge):
     """
     Return a contribution property based on the information extracted from the token.
-    When organization=True, the returned contribution contains also the Organization contributor.
+    It contains also the Organization contributor.
 
     Parameters
     ----------
     forge: KnowledgeGraphForge
         instance of forge
-    bucket: str
-        "org/project" of the forge instance
-    token: str
-        token of the forge instance
-    add_org_contributor: bool
-        flag to add the "Organization" contributor
 
     Returns
     -------
         tuple of (contribution, log_info)
     """
+
+    nexus_env, bucket, token = forge_to_config(forge)
 
     contribution = []
     try:
@@ -543,9 +539,6 @@ def return_contribution(forge, nexus_env, bucket, token, add_org_contributor=Fal
     contribution_contributor.hadRole = hadRole
 
     contribution.append(contribution_contributor)
-
-    if not add_org_contributor:
-        return contribution, log_info
 
     # Add the Agent Organization
     epfl_id = "https://www.grid.ac/institutes/grid.5333.6"
@@ -638,3 +631,8 @@ def forge_resolve(forge, label, name=None, target="terms"):
             print("\nWARNING: The label of the resolved resource is not a string:\n",
                   res)
     return res
+
+def forge_to_config(forge):
+    """Get nexus configuration from forge instance."""
+    store = forge._store  # pylint: disable=protected-access
+    return store.endpoint, store.bucket, store.token

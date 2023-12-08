@@ -54,9 +54,8 @@ def context(forge, nexus_env, nexus_bucket, nexus_token):
 
 
 @pytest.fixture
-def contribution(forge, nexus_env, nexus_bucket, nexus_token):
-    return comm.return_contribution(forge, nexus_env, nexus_bucket, nexus_token,
-                                    add_org_contributor=False)[0]
+def contribution(forge):
+    return comm.return_contribution(forge)[0]
 
 
 @pytest.fixture

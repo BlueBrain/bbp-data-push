@@ -4,8 +4,17 @@ Create a 'CellCompositionVolume', a 'CellCompositionSummary' and the correspondi
 Link to BBP Atlas pipeline confluence documentation:
 https://bbpteam.epfl.ch/project/spaces/x/rS22Ag
 """
-
+import logging
+import json
 from kgforge.specializations.resources import Dataset
+import bba_data_push.commons as comm
+from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
+
+logger = logging.getLogger(__name__)
+
+part_key = "hasPart"
+path_key = "path"
+id_key = "@id"
 
 
 def create_cellComposition_prop(
@@ -51,6 +60,63 @@ def create_cellComposition_prop(
         base_res.atlasSpatialReferenceSystem = reference_system_prop
 
     return base_res
+
+
+def register_densities(volume_path, atlas_release_prop, forge, subject,
+    brain_location_prop, reference_system_prop, contribution, derivation, resource_tag,
+    dryrun, output_volume_path):
+    # Parse input volume
+    volume_content = json.loads(open(volume_path).read())
+
+    no_key = f"At least one '{part_key}' key is required"
+    len_vc = len(volume_content)
+    if len_vc < 1:
+        raise Exception(f"No key found in {volume_path}! {no_key}")
+    if part_key not in volume_content:
+        raise Exception(f"No {part_key} key found anong the {len_vc} keys in {volume_path}! {no_key}")
+    if len_vc > 1:
+        logger.warning(f"More than one key ({len_vc}) found in {volume_path}, only '{part_key}' will be considered")
+
+    mts = volume_content[part_key]
+    logger.info(f"Parsing {len(mts)} M-types...")
+    for mt in mts:
+        mt_label = mt["label"]
+        ets = mt[part_key]
+        logger.info(f"\nParsing {len(ets)} E-types for M-type '{mt_label}'...")
+        for et in ets:
+            et_label = et["label"]
+            et_part = et[part_key][0]
+
+            if et_part.get(id_key):
+                has_id = f"Density {mt_label}-{et_label} has an '{id_key}' key, hence will not be modified"
+                if et_part.get(path_key):
+                    logger.warning(f"{has_id} and the '{path_key}' key will be ignored")
+                else:
+                    logger.info(has_id)
+                continue
+            elif not et_part.get(path_key):
+                logger.warning(f"Neither '{id_key}' nor '{path_key}' available for m-type {mt_label}, e-type {et_label}. Skipping such density!")
+                continue
+
+            filepath = et_part[path_key]
+            res_type = comm.meTypeDensity
+            # Create Resource payload
+            resources = create_volumetric_resources((filepath,), res_type,
+                atlas_release_prop, forge, subject, brain_location_prop,
+                reference_system_prop, contribution, derivation, logger)
+            # Register Resource
+            comm._integrate_datasets_to_Nexus(forge, resources, res_type,
+                atlas_release_prop.id, resource_tag, logger, dryrun=dryrun)
+            res = resources[0]
+            et_part[id_key] = res.id
+            et_part["_rev"] = res._store_metadata["_rev"]
+            et_part["@type"] = res.type
+            et_part.pop(path_key)
+
+    with open(output_volume_path, "w") as volume_distribution_path:
+        volume_distribution_path.write(json.dumps(volume_content))
+
+    return volume_content
 
 
 def get_name(schema, user_contribution):

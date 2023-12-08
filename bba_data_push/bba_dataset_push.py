@@ -176,7 +176,7 @@ def common_options(opt):
               help="Type to set for registration of Resources from dataset-path")
 def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
     atlas_release_rev, species, hierarchy_path, brain_region, reference_system_id,
-    resource_tag, is_prod_env, dryrun
+    resource_tag, dryrun
 ):
     """Create a VolumetricDataLayer resource payload and push it along with the "
     corresponding volumetric input dataset files into Nexus.
@@ -210,8 +210,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
     else:
         flat_tree = comm.get_flat_tree(hierarchy_path)
     derivation = get_derivation(atlas_release_id)
-    contribution, log_info = comm.return_contribution(forge, ctx.obj["env"], ctx.obj["bucket"],
-        ctx.obj["token"], add_org_contributor=is_prod_env)
+    contribution, log_info = comm.return_contribution(forge)
     L.info("\n".join(log_info))
 
     L.info("Filling the metadata of the volumetric payloads...")
@@ -249,7 +248,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
               help="Type to set for registration of Resources from dataset-path")
 def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     atlas_release_id, atlas_release_rev, species, reference_system_id, resource_tag,
-    is_prod_env, dryrun
+    dryrun
 ):
     """Create a BrainParcellationMesh Resource payload and push it along with the "
     corresponding input dataset files into Nexus.
@@ -270,8 +269,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     subject = get_subject_prop(species_prop)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     derivation = get_derivation(atlas_release_id)
-    contribution, log_info = comm.return_contribution(forge, ctx.obj["env"], ctx.obj["bucket"],
-        ctx.obj["token"], add_org_contributor=is_prod_env)
+    contribution, log_info = comm.return_contribution(forge)
     L.info("\n".join(log_info))
 
     L.info("Filling the metadata of the mesh payloads...")
@@ -322,7 +320,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
 def cli_push_cellcomposition(
     ctx, atlas_release_id, atlas_release_rev, cell_composition_id, species, brain_region,
     hierarchy_path, reference_system_id, volume_path, summary_path,
-    name, description, log_dir, resource_tag, is_prod_env, dryrun) -> Resource:
+    name, description, log_dir, resource_tag, dryrun) -> Resource:
     """Create a CellComposition resource payload and push it along with the "
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
     Tag all these resources with the input tag or, if not provided, with a timestamp\n
@@ -331,9 +329,9 @@ def cli_push_cellcomposition(
     logger = create_log_handler(__name__, os.path.join(log_dir, "push_cellComposition.log"))
     logger.setLevel(ctx.obj["verbose"])
 
-    return push_cellcomposition(ctx, atlas_release_id, atlas_release_rev,
+    return push_cellcomposition(ctx.obj["forge"], atlas_release_id, atlas_release_rev,
         cell_composition_id, brain_region, hierarchy_path, reference_system_id, species,
-        volume_path, summary_path, name, description, resource_tag, logger, is_prod_env,
+        volume_path, summary_path, name, description, resource_tag, logger,
         force_registration=False, dryrun=dryrun)
 
 
@@ -342,12 +340,35 @@ def check_id(resource, resource_type):
         raise Exception(f"The following {resource_type} has no id, probably it has not been pushed in Nexus:\n{resource}")
 
 
-def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composition_id,
+def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_composition_id,
     brain_region, hierarchy_path, reference_system_id, species, volume_path,
-    summary_path, name, description, resource_tag, logger, is_prod_env,
-    force_registration=False, dryrun=False) -> Resource:
+    summary_path, name, description, resource_tag, logger, force_registration=False,
+    dryrun=False) -> Resource:
+    """
+    Create a CellComposition resource payload and push it along with the corresponding
+    CellCompositionVolume and CellCompositionSummary into Nexus.
+    Tag these resources with resource_tag.
 
-    forge = ctx.obj["forge"]
+    :param forge: KnowledgeGraphForge object.
+    :param atlas_release_id: Nexus ID of the atlas release associated with the cell composition.
+    :param atlas_release_rev: None or Nexus revision of the atlas release.
+    :param cell_composition_id: None or Nexus ID of the CellComposition resource.
+    :param brain_region: Nexus ID of the brain region.
+    :param hierarchy_path: path to the json file containing the hierarchy of brain regions.
+    :param reference_system_id: Nexus ID of the reference system Resource.
+    :param species: Nexus ID or label of the species.
+    :param volume_path: path to the json CellCompositionVolume file.
+    :param summary_path: path to the json CellCompositionSummary file.
+    :param name: tuple of None or Resource names to assign (CellComposition, CellCompositionSummary, CellCompositionVolume).
+    :param description: tuple of None or Resource descriptions to assign (CellComposition, CellCompositionSummary, CellCompositionVolume).
+    :param resource_tag: tag value with which to tag the resources.
+    :param logger: logger object for logging messages.
+    :param force_registration: optional boolean flag indicating whether to force
+        Resource registration over update.
+    :param dryrun: optional boolean flag indicating whether to perform a dry run execution.
+
+    :return: CellComposition Resource.
+    """
     rev = get_resource_rev(forge, atlas_release_id, resource_tag, cross_bucket=True)
     atlas_release_rev = rev if rev else atlas_release_rev
 
@@ -358,8 +379,7 @@ def push_cellcomposition(ctx, atlas_release_id, atlas_release_rev, cell_composit
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
     species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject_prop = get_subject_prop(species_prop)
-    contribution, log_info = comm.return_contribution(forge, ctx.obj["env"], ctx.obj["bucket"], ctx.obj["token"],
-                                                      add_org_contributor=is_prod_env)
+    contribution, log_info = comm.return_contribution(forge)
     derivation = get_derivation(atlas_release_id)
     logger.info("\n".join(log_info))
 
@@ -436,7 +456,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     hierarchy_path, hierarchy_ld_path, annotation_path, hemisphere_path,
     placement_hints_path, placement_hints_metadata, direction_vectors_path,
     cell_orientations_path, atlas_release_id, atlas_release_rev, resource_tag,
-    name, description, is_prod_env, dryrun
+    name, description, dryrun
 ):
     forge = ctx.obj["forge"]
     bucket = ctx.obj["bucket"]
@@ -463,7 +483,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
                     properties_id_map[prop] = existing_prop.id
     else:
         atlas_release_schema = forge._model.schema_id(comm.atlasrelaseType)
-        atlas_release_id = "/".join([ctx.obj["env"], "resources", bucket,
+        atlas_release_id = "/".join(["https://bbp.epfl.ch", "data", bucket,
                                      urllib.parse.quote(atlas_release_schema), str(uuid4())])
         atlas_release_rev = 1
         force_registration = True
@@ -475,8 +495,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
     brain_template_prop = comm.get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE)
 
-    contribution, log_info = comm.return_contribution(forge, ctx.obj["env"],
-        ctx.obj["bucket"], ctx.obj["token"], add_org_contributor=is_prod_env)
+    contribution, log_info = comm.return_contribution(forge)
     logger.info("\n".join(log_info))
 
     atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType], rev=atlas_release_rev+1)
