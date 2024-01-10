@@ -170,9 +170,6 @@ def create_volumetric_resources(
                 comm.gliaDensityType: "_density"}
             if dataset_type in [comm.gliaDensityType, comm.neuronDensityType]:
                 filename_ann = filename_ann.capitalize()
-                if dataset_type in [comm.gliaDensityType]:
-                    if "Astrocyte" in filename_ann or "Olia" in filename_ann:
-                        filename_ann = filename_ann.replace(separator[dataset_type], " Type"+separator[dataset_type])
             for generic_filename in generic_types:
                 if generic_filename in filename:
                     filename_ann = me_separator.join([generic_types[generic_filename][0],

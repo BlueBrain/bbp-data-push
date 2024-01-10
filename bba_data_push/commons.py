@@ -47,23 +47,16 @@ file_config = {
     "sampling_period": 30,
     "sampling_time_unit": "ms"}
 
-type_for_schema = {
-    meTypeDensity: "VolumetricDataLayer",
-    gliaDensityType: "VolumetricDataLayer",
-    directionVectorsType: "VolumetricDataLayer",
-    cellOrientationType: "VolumetricDataLayer",
-    brainMaskType: "VolumetricDataLayer",
-    hemisphereType: "VolumetricDataLayer",
-    placementHintsType: "VolumetricDataLayer",
-    placementHintsDataLayerCatalogType: "DataCatalog"}
-
 forge_resolve_cache = {}
 
 
 def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id, tag,
                                  logger, force_registration=False, dryrun=False):
 
-    dataset_schema = forge._model.schema_id(type_for_schema.get(dataset_type, dataset_type))
+    try:
+        dataset_schema = forge._model.schema_id(dataset_type)
+    except ValueError as ve:
+        raise (f"Error while getting the schema for type '{dataset_type}':", ve)
 
     ress_to_update = []
     ress_to_regster = []
@@ -177,19 +170,18 @@ def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, fi
                "subject": {"species": {"id": res.subject.species.get_identifier()}}
                }
 
-    def get_filters_by_type(res, type):
+    def get_filters_by_type(res, res_type):
         filters_by_type = []
-        if type == meTypeDensity:
-            filters_by_type.append(Filter(operator=FilterOperator.EQUAL, path=["annotation", "type"],
-                       value=res.annotation[0].get_type()[1]))
-            filters_by_type.append(Filter(operator=FilterOperator.EQUAL, path=["annotation", "type"],
-                       value=res.annotation[1].get_type()[1]))
-            filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
-                       path=["annotation", "hasBody", "id"],
-                       value=res.annotation[0].hasBody.get_identifier()))
-            filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
-                       path=["annotation", "hasBody", "id"],
-                       value=res.annotation[1].hasBody.get_identifier()))
+        if res_type in [meTypeDensity, gliaDensityType]:
+            for iAnnot in [0, 1]:  # require M, E -Type annotations
+                if iAnnot > 0 and res_type not in [meTypeDensity]:  # do not require E-Type annotation
+                    continue
+                filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
+                        path=["annotation", "type"],
+                        value=res.annotation[iAnnot].get_type()[1]))
+                filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
+                        path=["annotation", "hasBody", "id"],
+                        value=res.annotation[iAnnot].hasBody.get_identifier()))
         return filters_by_type
 
     filter_list = create_filters_from_dict(filters)
@@ -570,12 +562,8 @@ def create_unresolved_payload(forge, unresolved, unresolved_dir, path=None):
 
 def return_base_annotation(t):
     base_annotation = {
-        "@type": [
-            "Annotation",
-            t + "TypeAnnotation"],
-        "hasBody": {"@type": [
-            "AnnotationBody",
-            t + "Type"]},
+        "@type": ["Annotation", t + "TypeAnnotation"],
+        "hasBody": {"@type": ["AnnotationBody", t + "Type"]},
         "name": t + "-type Annotation"
     }
     return base_annotation

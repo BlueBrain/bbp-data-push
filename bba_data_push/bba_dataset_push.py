@@ -234,7 +234,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
         L.info("No resource created, nothing to push into Nexus.")
         return
 
-    L.info(f"{n_resources} resources will be pushed into Nexus.")
+    L.info(f"{n_resources} resources of type {dataset_type} will be pushed into Nexus.")
     comm._integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id,
         resource_tag, L, dryrun=dryrun)
 
