@@ -151,9 +151,6 @@ def common_options(opt):
         help="The json file containing the hierachy of the brain regions", )(opt)
     opt = click.option("--reference-system-id", type=click.STRING, required=True,
         help="Nexus ID of the reference system Resource")(opt)
-    opt = click.option("--is-prod-env", default=False,
-        help="Boolean flag indicating whether the Nexus environment provided with the"
-             " '--nexus-env' argument is the production environment.")(opt)
     opt = click.option("--dryrun", default=False,
         help="Boolean flag indicating whether to perform a dryrun execution that will "
              "run the CLI without pushing data in Nexus.")(opt)
