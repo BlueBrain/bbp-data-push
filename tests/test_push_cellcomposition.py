@@ -82,7 +82,7 @@ def test_register_densities(forge, atlas_release_prop, brain_region_id, hierarch
     volume_path_id_only = volume_path_all_ids.replace(".json", "_id_only.json")
     volume_id_only_content = register_densities(volume_path_all_ids, atlas_release_prop,
         forge, subject_prop, brain_location_prop, reference_system_prop, contribution,
-        base_derivation, resource_tag, True, volume_path_id_only)
+        base_derivation, resource_tag, True, True, volume_path_id_only)
     volume_orig_content = json.loads(open(volume_path_all_ids).read())
     assert volume_orig_content == volume_id_only_content
 
@@ -90,7 +90,7 @@ def test_register_densities(forge, atlas_release_prop, brain_region_id, hierarch
     volume_path_id_only = volume_path_no_id.replace(".json", "_id_only.json")
     volume_id_only_content = register_densities(volume_path_no_id, atlas_release_prop,
         forge, subject_prop, brain_location_prop, reference_system_prop, contribution,
-        base_derivation, resource_tag, True, volume_path_id_only)
+        base_derivation, resource_tag, True, True, volume_path_id_only)
     volume_orig_content = json.loads(open(volume_path_no_id).read())
 
     mts_orig = volume_orig_content[part_key]
@@ -113,4 +113,4 @@ def test_register_densities(forge, atlas_release_prop, brain_region_id, hierarch
                             if et_orig_part.get(id_key):
                                 assert et_orig_part == et_part
                             else:
-                                assert et_part.get(id_key)
+                                assert id_key in et_part

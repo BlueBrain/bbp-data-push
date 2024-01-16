@@ -74,17 +74,18 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
             res_id = res.id
             res_store_metadata = get_res_store_metadata(res_id, forge)
             res_deprecated = res_store_metadata._deprecated
+
         if (res_deprecated is not False) or force_registration:
             res_id = None
             res_store_metadata = None
-            logger.info(f"Searching Nexus for {res_msg}")
-            limit = 100
-            filename = None
-            if hasattr(res, "temp_filepath"):
-                basename = os.path.basename(res.temp_filepath)
-                if basename in ["[PH]y.nrrd", "Isocortex_problematic_voxel_mask.nrrd"]:
-                    filename = basename
             if not force_registration:
+                logger.info(f"Searching Nexus for {res_msg}")
+                limit = 100
+                filename = None
+                if hasattr(res, "temp_filepath"):
+                    basename = os.path.basename(res.temp_filepath)
+                    if basename in ["[PH]y.nrrd", "Isocortex_problematic_voxel_mask.nrrd"]:
+                        filename = basename
                 orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, filename)
                 n_orig_ress = len(orig_ress)
                 if n_orig_ress > 1:
@@ -141,7 +142,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
         for res in ress_to_tag:
             if res in ress_to_regster:
                 res.id = None
-                res._store_metadata = {}
+                res._store_metadata = {"_rev": None}
             if hasattr(res, "distribution"):
                 lazyActions = [res.distribution] if not isinstance(res.distribution, list) else res.distribution
                 for lazyAction in lazyActions:
@@ -607,7 +608,7 @@ def forge_resolve(forge, label, name=None, target="terms"):
     res = forge.resolve(label, scope="ontology", target=target, strategy="EXACT_MATCH")
     if not res:
         from_ = "" if not name else f" from '{name}'"
-        print("\nlabel '%s'%s not resolved" % (label, from_))
+        raise Exception("label '%s'%s not resolved" % (label, from_))
     else:
         forge_resolve_cache[label] = res
         if isinstance(res.label, str):

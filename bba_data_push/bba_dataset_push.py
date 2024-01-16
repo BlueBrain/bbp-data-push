@@ -28,7 +28,6 @@ import bba_data_push.commons as comm
 
 from bba_data_push import __version__
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BRAIN_TEMPLATE_TYPE = "BrainTemplateDataLayer"
@@ -405,9 +404,10 @@ def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_compos
         derivation, name[0], description[0], None, reference_system_prop)
     cell_composition.cellCompositionVolume = {"@id": cell_comp_volume.id, "@type": VOLUME_TYPE}
     cell_composition.cellCompositionSummary = {"@id": cell_comp_summary.id, "@type": SUMMARY_TYPE}
-    cell_composition.id = cell_composition_id
+    if cell_composition_id:
+        cell_composition.id = cell_composition_id
     comm._integrate_datasets_to_Nexus(forge, [cell_composition], COMPOSITION_TYPE,
-        atlas_release_id, resource_tag, logger, dryrun=dryrun)
+        atlas_release_id, resource_tag, logger, force_registration=force_registration, dryrun=dryrun)
     check_id(cell_composition, COMPOSITION_TYPE)
 
     return cell_composition

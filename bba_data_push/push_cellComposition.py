@@ -64,7 +64,7 @@ def create_cellComposition_prop(
 
 def register_densities(volume_path, atlas_release_prop, forge, subject,
     brain_location_prop, reference_system_prop, contribution, derivation, resource_tag,
-    dryrun, output_volume_path):
+    force_registration, dryrun, output_volume_path):
     # Parse input volume
     volume_content = json.loads(open(volume_path).read())
 
@@ -106,7 +106,8 @@ def register_densities(volume_path, atlas_release_prop, forge, subject,
                 reference_system_prop, contribution, derivation, logger)
             # Register Resource
             comm._integrate_datasets_to_Nexus(forge, resources, res_type,
-                atlas_release_prop.id, resource_tag, logger, dryrun=dryrun)
+                atlas_release_prop.id, resource_tag, logger,
+                force_registration=force_registration, dryrun=dryrun)
             res = resources[0]
             et_part[id_key] = res.id
             et_part["_rev"] = res._store_metadata["_rev"]
