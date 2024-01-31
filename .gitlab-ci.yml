@@ -9,7 +9,6 @@ include:
     file:
       - /ci/lib/common.yml
       - /ci/jobs/build-package.yml
-      - /ci/jobs/build-wheels.yml
       - /ci/jobs/publish-package.yml
       #- /ci/jobs/tag.yml
 
