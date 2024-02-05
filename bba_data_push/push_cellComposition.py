@@ -63,8 +63,8 @@ def create_cellComposition_prop(
 
 
 def register_densities(volume_path, atlas_release_prop, forge, subject,
-    brain_location_prop, reference_system_prop, contribution, derivation, resource_tag,
-    force_registration, dryrun, output_volume_path):
+    brain_location_prop, reference_system_prop, contribution, derivation,
+    resource_tag, force_registration, dryrun, output_volume_path):
     # Parse input volume
     volume_content = json.loads(open(volume_path).read())
 
@@ -88,15 +88,14 @@ def register_densities(volume_path, atlas_release_prop, forge, subject,
             et_part = et[part_key][0]
 
             if et_part.get(id_key):
-                has_id = f"Density {mt_label}-{et_label} has an '{id_key}' key, hence will not be modified"
+                me_density = f"Density {mt_label}-{et_label}"
                 if et_part.get(path_key):
-                    logger.warning(f"{has_id} and the '{path_key}' key will be ignored")
-                else:
-                    logger.info(has_id)
+                    raise ValueError(f"{me_density} hss both an '{id_key}' and a '{path_key}', please remove one")
+                logger.info(f"{me_density} has an '{id_key}' key, hence will not be modified")
                 continue
             elif not et_part.get(path_key):
-                logger.warning(f"Neither '{id_key}' nor '{path_key}' available for m-type {mt_label}, e-type {et_label}. Skipping such density!")
-                continue
+                raise ValueError(f"Neither '{id_key}' nor '{path_key}' available for m-type {mt_label}, e-type {et_label}."
+                                 " Please provide one.")
 
             filepath = et_part[path_key]
             res_type = comm.meTypeDensity

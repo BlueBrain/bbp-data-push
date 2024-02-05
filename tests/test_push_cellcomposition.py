@@ -78,7 +78,7 @@ def test_register_densities(forge, atlas_release_prop, brain_region_id, hierarch
     subject_prop = get_subject_prop(species_prop)
     resource_tag = "GitLab-test"
 
-    volume_path_all_ids = os.path.join(folder, "cellCompVolume.json")
+    volume_path_all_ids = os.path.join(folder, "cellCompVolume_small.json")
     volume_path_id_only = volume_path_all_ids.replace(".json", "_id_only.json")
     volume_id_only_content = register_densities(volume_path_all_ids, atlas_release_prop,
         forge, subject_prop, brain_location_prop, reference_system_prop, contribution,

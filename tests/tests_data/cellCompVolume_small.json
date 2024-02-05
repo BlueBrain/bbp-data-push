@@ -22,7 +22,6 @@
                                 "CellDensityDataLayer",
                                 "METypeDensity"
                             ],
-                            "path": "./L1_NGC-SA.nrrd",
                             "_rev": 5
                         }
                     ]
@@ -42,7 +41,6 @@
                                 "CellDensityDataLayer",
                                 "METypeDensity"
                             ],
-                            "path": "./L1_NGC-SA.nrrd",
                             "_rev": 8
                         }
                     ]
