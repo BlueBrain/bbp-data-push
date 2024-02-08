@@ -84,7 +84,7 @@ def test_create_volumetric_mask(forge, nexus_bucket, nexus_token, nexus_env,
     dataset_type = comm.brainMaskType
 
     hierarchy_path = Path(TEST_PATH, "tests/tests_data/mba_hierarchy.json")
-    flat_tree = comm.get_flat_tree(hierarchy_path)
+    region_map = comm.get_region_map(hierarchy_path)
 
     resources = create_volumetric_resources(
         dataset_path,
@@ -98,7 +98,7 @@ def test_create_volumetric_mask(forge, nexus_bucket, nexus_token, nexus_env,
         base_derivation,
         L,
         None,
-        flat_tree
+        region_map
     )
 
     assert type(resources) == list

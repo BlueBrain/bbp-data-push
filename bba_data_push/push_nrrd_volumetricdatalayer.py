@@ -51,7 +51,7 @@ def create_volumetric_resources(
         derivation,
         L,
         res_name=None,
-        flat_tree=None
+        region_map=None
 ) -> list:
     """
     Construct the input volumetric dataset that will be push with the corresponding files into Nexus as a resource.
@@ -80,8 +80,8 @@ def create_volumetric_resources(
         log_handler
     res_name: str
         name to assign to the Resource
-    flat_tree: dict
-        flattened brain regions hierarchy
+    region_map: voxcell.RegionMap
+        region ID <-> attribute mapping
 
     Returns
     -------
@@ -130,7 +130,7 @@ def create_volumetric_resources(
             res_brain_location = deepcopy(brain_location)
         else:
             res_brain_location = comm.create_brain_location_prop(forge, filename,
-                flat_tree, reference_system)
+                region_map, reference_system)
             if dataset_type == comm.brainMaskType:
                 res_name = f"Mask of {res_brain_location.brainRegion.label}"
 

@@ -11,7 +11,7 @@ from kgforge.specializations.resources import Dataset
 import bba_data_push.commons as comm
 
 
-def create_mesh_resources(input_paths, dataset_type, flat_tree, atlas_release, forge,
+def create_mesh_resources(input_paths, dataset_type, region_map, atlas_release, forge,
     subject, reference_system, contribution, derivation, logger,
 ) -> list:
     """
@@ -25,8 +25,8 @@ def create_mesh_resources(input_paths, dataset_type, flat_tree, atlas_release, f
         containing mesh files
     dataset_type: str
         type of the Resources to build
-    flat_tree: dict
-        flatten input hierarchy of the brain regions
+    region_map: voxcell.RegionMap
+        region ID <-> attribute mapping
     atlas_release: Resource
         atlas release info
     forge: KnowledgeGraphForge
@@ -73,7 +73,7 @@ def create_mesh_resources(input_paths, dataset_type, flat_tree, atlas_release, f
         logger.info(f"Creating Mesh payload for file '{region_id}' ({file_count} of {tot_files})")
 
         brain_location = comm.create_brain_location_prop(forge, region_id,
-            flat_tree, reference_system)
+            region_map, reference_system)
         region_label = brain_location.brainRegion.label
 
         name = f"Mesh of {region_label}"

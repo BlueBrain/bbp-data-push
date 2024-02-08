@@ -105,9 +105,9 @@ def _initialize_pusher_cli(
 
 
 def get_region_prop(hierarchy_path, brain_region):
-    flat_tree = comm.get_flat_tree(hierarchy_path)
+    region_map = comm.get_region_map(hierarchy_path)
     brain_region_id = brain_region.split("/")[-1]
-    brain_region_label = comm.get_region_label(flat_tree, int(brain_region_id))
+    brain_region_label = comm.get_region_label(region_map, int(brain_region_id))
 
     return comm.get_property_id_label(brain_region, brain_region_label)
 
@@ -194,7 +194,8 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
     species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject = get_subject_prop(species_prop)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
-    brain_location_prop = flat_tree = None
+    brain_location_prop = None
+    region_map = None
     if brain_region:
         if dataset_type in [comm.brainMaskType]:
             raise Exception(f"The argument --{comm.Args.brain_region} can not be used with "
@@ -204,7 +205,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
         brain_location_prop = comm.get_brain_location_prop(brain_region_prop,
                                                            reference_system_prop)
     else:
-        flat_tree = comm.get_flat_tree(hierarchy_path)
+        region_map = comm.get_region_map(hierarchy_path)
     derivation = get_derivation(atlas_release_id)
     contribution, log_info = comm.return_contribution(forge)
     L.info("\n".join(log_info))
@@ -222,7 +223,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
         derivation,
         L,
         None,
-        flat_tree
+        region_map
     )
 
     n_resources = len(resources)
@@ -252,7 +253,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     L = create_log_handler(__name__, "./push_meshes.log")
     L.setLevel(ctx.obj["verbose"])
 
-    flat_tree = comm.get_flat_tree(hierarchy_path)
+    region_map = comm.get_region_map(hierarchy_path)
 
     forge = ctx.obj["forge"]
     rev = get_resource_rev(forge, atlas_release_id, resource_tag)
@@ -272,7 +273,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     resources = create_mesh_resources(
         [dataset_path],
         dataset_type,
-        flat_tree,
+        region_map,
         atlas_release_prop,
         forge,
         subject,

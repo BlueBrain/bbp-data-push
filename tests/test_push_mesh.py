@@ -23,14 +23,14 @@ def test_create_mesh_resources(forge, nexus_bucket, nexus_token, nexus_env,
     ]
 
     hierarchy_path = Path(TEST_PATH, "tests/tests_data/mba_hierarchy.json")
-    flat_tree = comm.get_flat_tree(hierarchy_path)
+    region_map = comm.get_region_map(hierarchy_path)
 
     dataset_type = comm.brainMeshType
 
     resources = create_mesh_resources(
         dataset_path,
         dataset_type,
-        flat_tree,
+        region_map,
         atlas_release_prop,
         forge,
         subject_prop,
