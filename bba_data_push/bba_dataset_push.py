@@ -316,11 +316,18 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--output-resource-file",
+    type=click.Path(),
+    required=False,
+    default=None,
+    help="Optional output jsonld file to write the registered resource metadata."
+)
 @click.pass_context
 def cli_push_cellcomposition(
     ctx, atlas_release_id, atlas_release_rev, cell_composition_id, species, brain_region,
     hierarchy_path, reference_system_id, volume_path, summary_path,
-    name, description, log_dir, resource_tag, dryrun, force_registration) -> Resource:
+    name, description, log_dir, resource_tag, dryrun, force_registration, output_resource_file) -> Resource:
     """Create a CellComposition resource payload and push it along with the "
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
     Tag all these resources with the input tag or, if not provided, with a timestamp\n
@@ -329,10 +336,16 @@ def cli_push_cellcomposition(
     logger = create_log_handler(__name__, os.path.join(log_dir, "push_cellComposition.log"))
     logger.setLevel(ctx.obj["verbose"])
 
-    return push_cellcomposition(ctx.obj["forge"], atlas_release_id, atlas_release_rev,
+    forge = ctx.obj["forge"]
+
+    cell_composition = push_cellcomposition(forge, atlas_release_id, atlas_release_rev,
         cell_composition_id, brain_region, hierarchy_path, reference_system_id, species,
         volume_path, summary_path, name, description, resource_tag, logger,
         force_registration=force_registration, dryrun=dryrun)
+
+    if output_resource_file:
+        comm.write_json(data=forge.as_jsonld(cell_composition), filepath=output_resource_file, indent=2)
+        logger.info("CellComposition Resource written at %s", output_resource_file)
 
 
 def check_id(resource, resource_type):

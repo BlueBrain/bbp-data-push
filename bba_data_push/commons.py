@@ -4,6 +4,7 @@ import json
 import jwt
 import hashlib
 import re
+from pathlib import Path
 from datetime import datetime
 from kgforge.core import Resource
 from kgforge.core.wrappings.paths import Filter, FilterOperator, create_filters_from_dict
@@ -619,3 +620,8 @@ def forge_to_config(forge):
     """Get nexus configuration from forge instance."""
     store = forge._store  # pylint: disable=protected-access
     return store.endpoint, store.bucket, store.token
+
+
+def write_json(data: dict, filepath: os.PathLike, **kwargs) -> None:
+    """Write json data to a file."""
+    Path(filepath).write_text(json.dumps(data, **kwargs))
