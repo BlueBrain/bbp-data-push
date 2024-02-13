@@ -21,6 +21,7 @@ from kgforge.core import KnowledgeGraphForge, Resource
 from bba_data_push.push_atlas_release import create_base_resource, create_volumetric_property, create_atlas_release, create_ph_catalog_distribution
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources, type_attributes_map
 from bba_data_push.push_brainmesh import create_mesh_resources
+from bba_data_push.push_cellComposition import register_densities
 
 from bba_data_push.push_cellComposition import create_cellComposition_prop
 from bba_data_push.logging import log_args, close_handler, create_log_handler
@@ -62,6 +63,7 @@ def validate_token(ctx, param, value):
               type=click.STRING,
               callback=validate_token,
               required=True,
+              default=os.getenv("NEXUS_TOKEN"),
               help="Value of the Nexus token", )
 @click.pass_context
 @log_args(logger)
@@ -293,7 +295,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
 @initialize_pusher_cli.command(name="push-cellcomposition")
 @common_options
 @click.option("--cell-composition-id",
-    type=click.STRING, required=True, multiple=False,
+    type=click.STRING, required=False, multiple=False, default=None,
     help="Nexus ID of the CellComposition of interest")
 @click.option("--volume-path",
     type=click.Path(exists=True), required=True, multiple=False,
@@ -310,11 +312,15 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
 @click.option("--log-dir",
     type = click.Path(), default = ("."),
     help = "The output dir for log and by-products",)
+@click.option("--force-registration",
+    is_flag=True,
+    default=False,
+)
 @click.pass_context
 def cli_push_cellcomposition(
     ctx, atlas_release_id, atlas_release_rev, cell_composition_id, species, brain_region,
     hierarchy_path, reference_system_id, volume_path, summary_path,
-    name, description, log_dir, resource_tag, dryrun) -> Resource:
+    name, description, log_dir, resource_tag, dryrun, force_registration) -> Resource:
     """Create a CellComposition resource payload and push it along with the "
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
     Tag all these resources with the input tag or, if not provided, with a timestamp\n
@@ -326,7 +332,7 @@ def cli_push_cellcomposition(
     return push_cellcomposition(ctx.obj["forge"], atlas_release_id, atlas_release_rev,
         cell_composition_id, brain_region, hierarchy_path, reference_system_id, species,
         volume_path, summary_path, name, description, resource_tag, logger,
-        force_registration=False, dryrun=dryrun)
+        force_registration=force_registration, dryrun=dryrun)
 
 
 def check_id(resource, resource_type):
@@ -580,6 +586,74 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         hem_prop, ph_catalog_prop, dv_prop, co_prop, contribution, name, description)
     comm._integrate_datasets_to_Nexus(forge, [atlas_release_resource], comm.atlasrelaseType,
         atlas_release_id_orig, resource_tag, logger, force_registration, dryrun=dryrun)
+
+
+@initialize_pusher_cli.command(name="register-cell-composition-volume-distribution")
+@click.pass_context
+@common_options
+@click.option(
+    "--input-distribution-file",
+    type=click.Path(exists=True),
+    required=True,
+    help="Input cell composition volume distribution JSON with either id or local path densities.",
+)
+@click.option(
+    "--output-distribution-file",
+    type=click.Path(exists=False),
+    required=True,
+    help="Output cell composition volume distribution JSOn with only density ids.",
+)
+def cli_register_cell_composition_volume_distribution(
+    ctx,
+    atlas_release_id,
+    atlas_release_rev,
+    resource_tag,
+    species,
+    brain_region,
+    hierarchy_path,
+    reference_system_id,
+    dryrun,
+    input_distribution_file,
+    output_distribution_file,
+):
+    forge = ctx.obj["forge"]
+    subject_prop = get_subject_prop(
+        species_prop=comm.get_property_label(
+            name=comm.Args.species,
+            arg=species,
+            forge=forge,
+        ),
+    )
+    reference_system_prop = comm.get_property_type(
+            arg_id=reference_system_id,
+            arg_type=REFSYSTEM_TYPE,
+    )
+    brain_location_prop = comm.get_brain_location_prop(
+        brain_region=get_region_prop(
+            hierarchy_path=hierarchy_path,
+            brain_region=brain_region,
+        ),
+        reference_system=reference_system_prop,
+    )
+    atlas_release_prop = comm.get_property_type(
+        arg_id=atlas_release_id,
+        arg_type=comm.all_types[comm.atlasrelaseType],
+        rev=atlas_release_rev,
+    )
+    register_densities(
+        volume_path=input_distribution_file,
+        atlas_release_prop=atlas_release_prop,
+        forge=forge,
+        subject=subject_prop,
+        brain_location_prop=brain_location_prop,
+        reference_system_prop=reference_system_prop,
+        contribution=None,
+        derivation=None,
+        resource_tag=resource_tag,
+        force_registration=True,
+        dryrun=dryrun,
+        output_volume_path=output_distribution_file
+    )
 
 
 def start():
