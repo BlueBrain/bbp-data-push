@@ -52,15 +52,12 @@ def validate_token(ctx, param, value):
 @click.group()
 @click.version_option(__version__)
 @click.option("-v", "--verbose", count=True)
-@click.option("--forge-config-file",
-              type=click.Path(),
-              default=("../forge_configuration/forge_config.yml"),
-              help="Path to the configuration file used to instantiate the Forge", )
-@click.option("--nexus-env",
-              default="https://staging.nise.bbp.epfl.ch/nexus/v1",
-              help="Nexus environment to use", )
-@click.option("--nexus-org", default="bbp", help="The Nexus organisation to push into")
-@click.option("--nexus-proj", default="atlas", help="The Nexus project to push into")
+@click.option("--forge-config-file", type=click.STRING,
+              default=("https://raw.githubusercontent.com/BlueBrain/nexus-forge/master/examples/notebooks/use-cases/prod-forge-nexus.yml"),
+              help="Path to the configuration file used to instantiate the Forge")
+@click.option("--nexus-env", required=True, help="The Nexus environment to use")
+@click.option("--nexus-org", required=True, help="The Nexus organisation to push into")
+@click.option("--nexus-proj", required=True, help="The Nexus project to push into")
 @click.option("--nexus-token",
               type=click.STRING,
               callback=validate_token,
@@ -185,8 +182,8 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
                         f"The types supported are: {', '.join(type_attributes_map.keys())}")
 
     forge = ctx.obj["forge"]
-    rev = get_resource_rev(forge, atlas_release_id, resource_tag)
-    atlas_release_rev = rev if rev else atlas_release_rev
+    atlas_release_rev = atlas_release_rev or get_resource_rev(forge, atlas_release_id,
+        resource_tag, cross_bucket=True)
 
     # Validate input arguments
     atlas_release_prop = comm.get_property_type(atlas_release_id,
@@ -256,8 +253,8 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     region_map = comm.get_region_map(hierarchy_path)
 
     forge = ctx.obj["forge"]
-    rev = get_resource_rev(forge, atlas_release_id, resource_tag)
-    atlas_release_rev = rev if rev else atlas_release_rev
+    atlas_release_rev = atlas_release_rev or get_resource_rev(forge, atlas_release_id,
+        resource_tag, cross_bucket=True)
 
     # Validate input arguments
     atlas_release_prop = comm.get_property_type(atlas_release_id,
@@ -366,8 +363,8 @@ def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_compos
 
     :return: CellComposition Resource.
     """
-    rev = get_resource_rev(forge, atlas_release_id, resource_tag, cross_bucket=True)
-    atlas_release_rev = rev if rev else atlas_release_rev
+    atlas_release_rev = atlas_release_rev or get_resource_rev(forge, atlas_release_id,
+        resource_tag, cross_bucket=True)
 
     atlas_release_prop = comm.get_property_type(atlas_release_id,
         comm.all_types[comm.atlasrelaseType], atlas_release_rev)
@@ -483,7 +480,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         atlas_release_schema = forge._model.schema_id(comm.atlasrelaseType)
         atlas_release_id = "/".join(["https://bbp.epfl.ch", "data", bucket,
                                      urllib.parse.quote(atlas_release_schema), str(uuid4())])
-        atlas_release_rev = 1
+        atlas_release_rev = 0
         force_registration = True
 
     species_prop = comm.get_property_label(comm.Args.species, species, forge)
