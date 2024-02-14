@@ -79,6 +79,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
         if (res_deprecated is not False) or force_registration:
             res_id = None
             res_store_metadata = None
+            res_distribution = None
             if not force_registration:
                 logger.info(f"Searching Nexus for {res_msg}")
                 limit = 100
@@ -87,21 +88,37 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_i
                     basename = os.path.basename(res.temp_filepath)
                     if basename in ["[PH]y.nrrd", "Isocortex_problematic_voxel_mask.nrrd"]:
                         filename = basename
-                orig_ress, matching_filters = get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, filename)
+                orig_ress, matching_filters = get_existing_resources(dataset_type,
+                    atlas_release_id, res, forge, limit, filename)
                 n_orig_ress = len(orig_ress)
                 if n_orig_ress > 1:
                     prefix = f"{n_orig_ress}" if n_orig_ress < limit else f"at least {limit}"
                     raise Exception(f"Error: {prefix} matching Resources found using the criteria: {matching_filters}")
                 elif n_orig_ress == 1:
-                    res_id = orig_ress[0].id
+                    orig_res = orig_ress[0]
+                    res_id = orig_res.id
                     res_store_metadata = get_res_store_metadata(res_id, forge)
+                    if hasattr(orig_res, "distribution"):
+                        res_distribution = orig_res.distribution
                 else:
                     logger.info(f"No Resource found using the criteria: {matching_filters}")
 
         if res_id:
             res.id = res_id
             check_tag(forge, res_id, tag, logger)
-            # TODO: consider to skip update if distribution SHA is identical between res and existing_res
+
+            if res_distribution and hasattr(res, "distribution"):
+                logger.info("Checking whether the SHA of the remote Resource "
+                    "distribution is identical to the SHA of the local Resource "
+                    f"distribution ({local_res_distribution_path}).")
+                local_res_distribution_path = res.distribution.args[0]  # LazyAction structure
+                if identical_SHA(local_res_distribution_path,
+                                 res_distribution.digest.value):
+                    logger.info("The SHA of the remote Resource distribution is "
+                        "identical to the SHA of the local Resource, distribution, "
+                        "hence no new file will be registered in Nexus.")
+                    res.distribution = res_distribution
+
             logger.info(f"Scheduling to update {res_msg} with Nexus id: {res_id}\n")
             setattr(res, "_store_metadata", res_store_metadata)
             if hasattr(res, "temp_filepath"):
@@ -228,6 +245,11 @@ def check_tag(forge, res_id, tag, logger):
 def get_res_store_metadata(res_id, forge):
     res = retrieve_resource(res_id, forge)
     return res._store_metadata
+
+
+def identical_SHA(local_res_distribution_path, remote_res_distribution_SHA):
+    local_res_distribution_SHA = return_file_hash(local_res_distribution_path)
+    return local_res_distribution_SHA == remote_res_distribution_SHA
 
 
 def retrieve_resource(res_id, forge):

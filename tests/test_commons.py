@@ -9,6 +9,7 @@ from bba_data_push.deprecated_commons import (
 )
 
 from bba_data_push.bba_dataset_push import get_region_prop
+import bba_data_push.commons as comm
 
 from kgforge.core import Resource
 
@@ -20,6 +21,12 @@ def test_get_region_prop(brain_region_id):
     region_prop = get_region_prop(hierarchy_path, brain_region_id)
 
     assert region_prop == Resource(id=brain_region_id, label="root")
+
+
+def test_identical_SHA():
+    local_file_path = Path(TEST_PATH, "tests/tests_data/hierarchy.json")
+    remote_file_sha = "2df5228c5cb4c84f9a2fc02e4af9d0aa5cfafe4ee0fbfa6a8f254f84081ba09d"
+    assert comm.identical_SHA(local_file_path, remote_file_sha)
 
 def test_get_voxel_type():
 
