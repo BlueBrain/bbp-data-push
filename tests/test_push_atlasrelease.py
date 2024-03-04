@@ -56,7 +56,8 @@ def test_create_ph_catalog_distribution(forge):
     filepath_to_brainregion_json[os.path.basename("./test_data/placement_hints/Isocortex_problematic_voxel_mask.nrrd")] = [brain_region_label]
 
     random.shuffle(ph_resources)
-    ph_catalog_distribution = create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json, ph_res_to_filepath, forge)
+    ph_catalog_distribution = create_ph_catalog_distribution(ph_resources,
+        filepath_to_brainregion_json, ph_res_to_filepath, forge, debug=True)
 
     assert isinstance(ph_catalog_distribution, dict)
     assert len(ph_catalog_distribution) == 2

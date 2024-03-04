@@ -13,14 +13,14 @@ setup(
     license="BBP-internal-confidential",
     python_requires=">=3.7",
     install_requires=[
-        "nexusforge==0.8.1",
+        "nexusforge@git+https://github.com/BlueBrain/nexus-forge.git@faf2833",
         "click>=7.0",
         "numpy>=1.19",
         "h5py>=2.10.0",
         "pynrrd>=0.4.0",
         "PyYAML>=5.3.1",
         "PyJWT>=2.0.0",
-        "rdflib==6.2.0",
+        "rdflib>=6.2.0",
         "urllib3",
         "voxcell"
     ],

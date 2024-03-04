@@ -8,6 +8,8 @@ Model:
 
 Store:
   name: BlueBrainNexus
+  model:
+    name: RdfModel
   searchendpoints:
     sparql:
       endpoint: "https://bbp.epfl.ch/neurosciencegraph/data/views/aggreg-sp/dataset"

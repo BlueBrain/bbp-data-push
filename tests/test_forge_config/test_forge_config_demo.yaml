@@ -11,7 +11,7 @@ Resolvers:
   terms:
   - origin: directory
     resolver: DemoResolver
-    result_resource_mapping: ./tests/test_forge_config/configurations/demo-resolver/term-to-resource-mapping.hjson
+    result_resource_mapping: ./tests/test_forge_config/configuration/demo-resolver/term-to-resource-mapping.hjson
     source: ./tests/test_forge_config/data/demo-resolver/
     targets:
     - bucket: sex.json
@@ -23,8 +23,10 @@ Resolvers:
       targets:
         - identifier: agents
           bucket: agents.json
-      result_resource_mapping: ./tests/test_forge_config/configurations/demo-resolver/entity-to-resource-mapping.hjson
+      result_resource_mapping: ./tests/test_forge_config/configuration/demo-resolver/entity-to-resource-mapping.hjson
 Store:
   name: DemoStore
+  model:
+    name: DemoModel
   token:
   versioned_id_template: '{x.id}?_version={x._store_metadata.version}'
