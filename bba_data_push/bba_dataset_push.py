@@ -150,8 +150,8 @@ def common_options(opt):
     opt = click.option("--reference-system-id", type=click.STRING, required=True,
         help="Nexus ID of the reference system Resource")(opt)
     opt = click.option("--dryrun", default=False,
-        help="Boolean flag indicating whether to perform a dryrun execution that will "
-             "run the CLI without pushing data in Nexus.")(opt)
+        help="Boolean flag indicating whether to perform a dryrun execution "
+             "that will run the CLI without pushing data in Nexus.")(opt)
 
     return opt
 
@@ -206,7 +206,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
     else:
         region_map = comm.get_region_map(hierarchy_path)
     derivation = get_derivation(atlas_release_id)
-    contribution, log_info = comm.return_contribution(forge)
+    contribution, log_info = comm.return_contribution(forge, dryrun=dryrun)
     L.info("\n".join(log_info))
 
     L.info("Filling the metadata of the volumetric payloads...")
@@ -265,7 +265,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     subject = get_subject_prop(species_prop)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     derivation = get_derivation(atlas_release_id)
-    contribution, log_info = comm.return_contribution(forge)
+    contribution, log_info = comm.return_contribution(forge, dryrun=dryrun)
     L.info("\n".join(log_info))
 
     L.info("Filling the metadata of the mesh payloads...")
@@ -392,7 +392,7 @@ def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_compos
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
     species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject_prop = get_subject_prop(species_prop)
-    contribution, log_info = comm.return_contribution(forge)
+    contribution, log_info = comm.return_contribution(forge, dryrun=dryrun)
     derivation = get_derivation(atlas_release_id)
     logger.info("\n".join(log_info))
 
@@ -509,7 +509,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
     brain_template_prop = comm.get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE)
 
-    contribution, log_info = comm.return_contribution(forge)
+    contribution, log_info = comm.return_contribution(forge, dryrun=dryrun)
     logger.info("\n".join(log_info))
 
     atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType], rev=atlas_release_rev+1)

@@ -51,8 +51,8 @@ file_config = {
 forge_resolve_cache = {}
 
 
-def _integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id, tag,
-                                 logger, force_registration=False, dryrun=False):
+def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
+    atlas_release_id, tag, logger, force_registration=False, dryrun=False):
 
     try:
         dataset_schema = forge._model.schema_id(dataset_type)
@@ -415,7 +415,8 @@ def return_file_hash(file_path):
     return sha256_hash.hexdigest()
 
 
-def return_contributor(forge, project_str, contributor_id, contributor_name, contributor_type, extra_attr, log_info):
+def return_contributor(forge, project_str, contributor_id, contributor_name,
+                       contributor_type, extra_attr, log_info, dryrun=False):
     """
     Create and return an Agent Resource based on the information provided as arguments.
 
@@ -433,6 +434,8 @@ def return_contributor(forge, project_str, contributor_id, contributor_name, con
         attributes to set in the new contributor Resource
     log_info: list
         log messages
+    dryrun: bool
+        option to skip the Nexus registration of contribution
 
     Returns
     -------
@@ -478,16 +481,20 @@ def return_contributor(forge, project_str, contributor_id, contributor_name, con
             "name": contributor_name})
         contributor = Resource.from_json(extra_attr)
         try:
-            forge.register(contributor, forge._model.schema_id(agent_type))
+            if not dryrun:
+                forge.register(contributor, forge._model.schema_id(agent_type))
+            else:
+                log_info.warning("This is a Nexus dryrun execution, the "
+                    "contributor Resource will not be registered in Nexus")
         except Exception as e:
             raise Exception(
-                f"Error when registering the Resource of type '{agent_type}' into "
-                f"Nexus: {e}")
+                f"Error when registering the Resource of type '{agent_type}' "
+                f"into Nexus: {e}")
 
     return contributor
 
 
-def return_contribution(forge):
+def return_contribution(forge, dryrun=False):
     """
     Return a contribution property based on the information extracted from the token.
     It contains also the Organization contributor.
@@ -496,6 +503,8 @@ def return_contribution(forge):
     ----------
     forge: KnowledgeGraphForge
         instance of forge
+    dryrun: bool
+        option to skip the Nexus registration of contribution
 
     Returns
     -------
@@ -510,6 +519,7 @@ def return_contribution(forge):
     except Exception as e:
         raise Exception(f"Error when decoding the token: {e}")
 
+    # TODO: account for attributes of service account token
     user_family_name = token_info.get("family_name", token_info.get("groups"))
     user_given_name = token_info.get("given_name", token_info.get("clientId"))
     user_full_name = token_info.get("name")
@@ -538,9 +548,8 @@ def return_contribution(forge):
     if user_email:
         extra_attr_user["user_email"] = user_email
 
-    contributor_user = return_contributor(forge, project_str, user_id, user_full_name,
-                                          contributor_type, extra_attr_user,
-                                          log_info)
+    contributor_user = return_contributor(forge, project_str, user_id,
+        user_full_name, contributor_type, extra_attr_user, log_info, dryrun)
     agent = {"@id": contributor_user.id, "@type": contributor_user.type}
     hadRole = {
         "@id": forge.get_model_context().expand("nsg:BrainAtlasPipelineExecutionRole"),
@@ -556,8 +565,7 @@ def return_contribution(forge):
     extra_attr_org = {
         "alternateName": "EPFL"}
     contributor_org = return_contributor(forge, project_str, epfl_id, epfl_name,
-                                         ["Agent", "Organization"],
-                                         extra_attr_org, log_info)
+        ["Agent", "Organization"], extra_attr_org, log_info, dryrun)
     agent = {"@id": contributor_org.id, "@type": contributor_org.type}
     contribution_org = Resource(type="Contribution", agent=agent)
     contribution.append(contribution_org)
