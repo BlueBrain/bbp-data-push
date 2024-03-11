@@ -60,7 +60,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
         raise (f"Error while getting the schema for type '{dataset_type}':", ve)
 
     ress_to_update = []
-    ress_to_regster = []
+    ress_to_register = []
     filepath_update_list = []  # matching the resource list by list index
     filepath_register_list = []  # matching the resource list by list index
     resource_to_filepath = {}
@@ -71,6 +71,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
         res_msg = f"Resource '{res_name}' ({res_count} of {len(resources)})"
 
         res_deprecated = None
+        res_distribution = None
         if hasattr(res, "id") and not force_registration:
             res_id = res.id
             res_store_metadata = get_res_store_metadata(res_id, forge)
@@ -108,10 +109,10 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
             check_tag(forge, res_id, tag, logger)
 
             if res_distribution and hasattr(res, "distribution"):
+                local_res_distribution_path = res.distribution.args[0]  # LazyAction structure
                 logger.info("Checking whether the SHA of the remote Resource "
                     "distribution is identical to the SHA of the local Resource "
                     f"distribution ({local_res_distribution_path}).")
-                local_res_distribution_path = res.distribution.args[0]  # LazyAction structure
                 if identical_SHA(local_res_distribution_path,
                                  res_distribution.digest.value):
                     logger.info("The SHA of the remote Resource distribution is "
@@ -132,7 +133,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
                 filepath_register_list.append(res.temp_filepath)
             else:
                 filepath_register_list.append(None)
-            ress_to_regster.append(res)
+            ress_to_register.append(res)
 
         if hasattr(res, "temp_filepath"):
             resource_to_filepath[res.get_identifier()] = res.temp_filepath
@@ -145,12 +146,12 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
         forge.update(ress_to_update, dataset_schema)
         check_res_list(ress_to_update, filepath_update_list, "updating", logger)
 
-    logger.info(f"Registering {len(ress_to_regster)} Resources with schema '{dataset_schema}'")
+    logger.info(f"Registering {len(ress_to_register)} Resources with schema '{dataset_schema}'")
     if not dryrun:
-        forge.register(ress_to_regster, dataset_schema)
-        check_res_list(ress_to_regster, filepath_register_list, "registering", logger)
+        forge.register(ress_to_register, dataset_schema)
+        check_res_list(ress_to_register, filepath_register_list, "registering", logger)
 
-    ress_to_tag = ress_to_update + ress_to_regster
+    ress_to_tag = ress_to_update + ress_to_register
     filepath_tag_list = filepath_update_list + filepath_register_list
     logger.info(f"Tagging {len(ress_to_tag)} Resources with tag '{tag}'\n")
     if not dryrun:
@@ -158,7 +159,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
         check_res_list(ress_to_tag, filepath_tag_list, "tagging", logger)
     else:
         for res in ress_to_tag:
-            if res in ress_to_regster:
+            if res in ress_to_register:
                 res.id = None
                 res._store_metadata = {"_rev": None}
             if hasattr(res, "distribution"):
@@ -191,7 +192,7 @@ def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, fi
 
     def get_filters_by_type(res, res_type):
         filters_by_type = []
-        if res_type in [meTypeDensity, gliaDensityType]:
+        if res_type in [meTypeDensity, gliaDensityType, neuronDensityType]:  # require annotation property
             for iAnnot in [0, 1]:  # require M, E -Type annotations
                 if iAnnot > 0 and res_type not in [meTypeDensity]:  # do not require E-Type annotation
                     continue
