@@ -44,8 +44,9 @@ def validate_token(ctx, param, value):
     if len_value < 1:
         raise click.BadParameter("The string provided is empty")
     elif len_value < 100:
-        raise click.BadParameter(f"{value}\nProbably the variable provided is not defined and the next string has been "
-                                 "parsed as token.")
+        raise click.BadParameter(f"'{value}' is too short for a token."
+            "\nProbably the env variable provided is not defined and the next "
+            "string has been parsed as token.")
     else:
         return value
 
@@ -80,7 +81,7 @@ def initialize_pusher_cli(
 
 
 def _initialize_pusher_cli(
-        verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
+    verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
 ):
     """Run the dataset pusher CLI starting by the Initialisation of the Forge python
     framework to communicate with Nexus.\n
@@ -93,8 +94,8 @@ def _initialize_pusher_cli(
     bucket = f"{nexus_org}/{nexus_proj}"
     try:
         logger.info("Initializing the forge...")
-        forge = KnowledgeGraphForge(
-            forge_config_file, endpoint=nexus_env, bucket=bucket, token=nexus_token)
+        forge = KnowledgeGraphForge(forge_config_file, endpoint=nexus_env,
+                                    bucket=bucket, token=nexus_token)
     except Exception as e:
         raise Exception(f"Error when initializing the forge: {e}")
 
@@ -146,7 +147,7 @@ def common_options(opt):
     opt = click.option("--" + comm.Args.brain_region, type=click.STRING, required=False,
         default=None, help="Nexus ID of the brain region")(opt)
     opt = click.option("--hierarchy-path", type=click.Path(exists=True), required=True, multiple=False,
-        help="The json file containing the hierachy of the brain regions", )(opt)
+        help="The json file containing the hierarchy of the brain regions", )(opt)
     opt = click.option("--reference-system-id", type=click.STRING, required=True,
         help="Nexus ID of the reference system Resource")(opt)
     opt = click.option("--dryrun", default=False,
@@ -161,19 +162,19 @@ def common_options(opt):
 @log_args(logger)
 @common_options
 @click.option("--dataset-path",
-              type=click.Path(exists=True),
-              required=True,
-              multiple=True,
-              help="The files or directories of files to push on Nexus", )
+              type=click.Path(exists=True), required=True, multiple=True,
+              help="The files or directories of files to push on Nexus")
+@click.option("--dataset-metadata",
+              type=click.Path(exists=True), required=False, multiple=True,
+              help="The metadata file(s) for dataset-path(s)")
 @click.option("--dataset-type",
-              type=click.STRING,
-              required=True,
+              type=click.STRING, required=True,
               help="Type to set for registration of Resources from dataset-path")
 def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
     atlas_release_rev, species, hierarchy_path, brain_region, reference_system_id,
-    resource_tag, dryrun
+    resource_tag, dryrun, dataset_metadata
 ):
-    """Create a VolumetricDataLayer resource payload and push it along with the "
+    """Create a VolumetricDataLayer resource payload and push it along with the
     corresponding volumetric input dataset files into Nexus.
     """
     L = create_log_handler(__name__, "./push_nrrd_volumetricdatalayer.log")
@@ -182,6 +183,18 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
     if dataset_type not in type_attributes_map:
         raise Exception(f"The dataset type provided ('{dataset_type}') is not supported."
                         f"The types supported are: {', '.join(type_attributes_map.keys())}")
+
+    n_dataset_path = len(dataset_path)
+    n_metadata_path = len(dataset_metadata)
+    if n_dataset_path > n_metadata_path:
+        L.warning(f"The number of dataset-paths provided ({n_dataset_path}) is "
+            f"larger than the dataset-metadata ({n_metadata_path}), the "
+            f"files in the last {n_dataset_path - n_metadata_path} "
+            "dataset-paths will be resolved from their filenames.")
+    elif n_dataset_path < n_metadata_path:
+        L.warning(f"The number of dataset-metadata provided ({n_metadata_path})"
+            f" is larger than the dataset-paths ({n_dataset_path}), the last "
+            f"{n_metadata_path - n_dataset_path} dataset-metadata will be ignored.")
 
     forge = ctx.obj["forge"]
     atlas_release_rev = atlas_release_rev or get_resource_rev(forge, atlas_release_id,
@@ -222,7 +235,8 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
         derivation,
         L,
         None,
-        region_map
+        region_map,
+        dataset_metadata
     )
 
     n_resources = len(resources)
@@ -246,8 +260,8 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     atlas_release_id, atlas_release_rev, species, reference_system_id, resource_tag,
     dryrun
 ):
-    """Create a BrainParcellationMesh Resource payload and push it along with the "
-    corresponding input dataset files into Nexus.
+    """Create a BrainParcellationMesh Resource payload and push it along with
+    the corresponding input dataset files into Nexus.
     """
     L = create_log_handler(__name__, "./push_meshes.log")
     L.setLevel(ctx.obj["verbose"])
@@ -328,9 +342,9 @@ def cli_push_cellcomposition(
     ctx, atlas_release_id, atlas_release_rev, cell_composition_id, species, brain_region,
     hierarchy_path, reference_system_id, volume_path, summary_path,
     name, description, log_dir, resource_tag, dryrun, force_registration, output_resource_file) -> Resource:
-    """Create a CellComposition resource payload and push it along with the "
+    """Create a CellComposition resource payload and push it along with the
     corresponding CellCompositionVolume and CellCompositionSummary into Nexus.
-    Tag all these resources with the input tag or, if not provided, with a timestamp\n
+    Tag all these resources with the input tag or, if not provided, with a timestamp
     """
 
     logger = create_log_handler(__name__, os.path.join(log_dir, "push_cellComposition.log"))
@@ -347,6 +361,7 @@ def cli_push_cellcomposition(
         comm.write_json(data=forge.as_jsonld(cell_composition), filepath=output_resource_file, indent=2)
         logger.info("CellComposition Resource written at %s", output_resource_file)
 
+    return cell_composition
 
 def check_id(resource, resource_type):
     if not hasattr(resource, 'id'):
@@ -439,7 +454,7 @@ def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_compos
     help="Nexus ID of the brain template")
 @click.option("--hierarchy-ld-path",
               type=click.Path(exists=True), required=True, multiple=False,
-              help="The hierachy json-ld file to push in Nexus",)
+              help="The hierarchy json-ld file to push in Nexus",)
 @click.option("--annotation-path",
               type=click.Path(exists=True), required=True, multiple=False,
               help="The annotation volume to push in Nexus",)
@@ -559,7 +574,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         properties_id_map["placementHintsDataCatalog"])
 
     with open(placement_hints_metadata, "r") as f:
-        filepath_to_brainregion_json= json.load(f)
+        filepath_to_brainregion_json = json.load(f)
 
     ph_catalog_distribution = create_ph_catalog_distribution(ph_res,
         filepath_to_brainregion_json, resource_to_filepath, forge, dryrun)
@@ -567,7 +582,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     with open("./ph_catalog_distribution.json", "w") as f:
         json.dump(ph_catalog_distribution, f)
     
-    comm.add_distribution(ph_catalog, forge, [{"path":"./ph_catalog_distribution.json", "content_type":"application/json"}])
+    comm.add_distribution(ph_catalog, forge, [{"path":"./ph_catalog_distribution.json", "content_type": "application/json"}])
     
     comm._integrate_datasets_to_Nexus(forge, [ph_catalog],
         comm.placementHintsDataLayerCatalogType, atlas_release_id, resource_tag, logger,

@@ -43,6 +43,8 @@ all_types = {
     brainMaskType: [brainMaskType] + volumetricType
 }
 
+annotation_types = [meTypeDensity, gliaDensityType, neuronDensityType]
+
 file_config = {
     "sampling_space_unit": "um",
     "sampling_period": 30,
@@ -192,7 +194,7 @@ def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, fi
 
     def get_filters_by_type(res, res_type):
         filters_by_type = []
-        if res_type in [meTypeDensity, gliaDensityType, neuronDensityType]:  # require annotation property
+        if res_type in annotation_types:  # require annotation property
             for iAnnot in [0, 1]:  # require M, E -Type annotations
                 if iAnnot > 0 and res_type not in [meTypeDensity]:  # do not require E-Type annotation
                     continue
@@ -318,10 +320,10 @@ def get_property_label(name, arg, forge):
         arg_res = forge.resolve(arg, scope="ontology", target=Args.name_target_map[name],
                                 strategy="EXACT_MATCH")
     if not arg_res:
-        raise Exception(
-            f"The provided '{name}' argument ({arg}) can not be retrieved/resolved")
+        raise Exception(f"The provided '{name}' argument ({arg}) can not be retrieved/resolved")
 
-    return get_property_id_label(arg_res.id, arg_res.label, notation = arg_res.notation if hasattr(arg_res, "notation") else None)
+    return get_property_id_label(arg_res.id, arg_res.label,
+        notation=arg_res.notation if hasattr(arg_res, "notation") else None)
 
 
 def get_property_id_label(id, label, notation=None):
@@ -639,12 +641,9 @@ def forge_resolve(forge, label, name=None, target="terms"):
         forge_resolve_cache[label] = res
         if isinstance(res.label, str):
             if res.label.upper() != label.upper():
-                print(
-                    f"\nDifferent resolved label: input '{label}', resolved '"
-                    f"{res.label}'")
+                print(f"\nDifferent resolved label: input '{label}', resolved '{res.label}'")
         else:
-            print("\nWARNING: The label of the resolved resource is not a string:\n",
-                  res)
+            print("\nWARNING: The label of the resolved resource is not a string:\n", res)
     return res
 
 def forge_to_config(forge):

@@ -3,6 +3,7 @@ Create a 'VolumetricDataLayer', to push into Nexus.
 """
 
 import os
+import json
 from pathlib import Path
 from copy import deepcopy
 import numpy as np
@@ -51,7 +52,8 @@ def create_volumetric_resources(
         derivation,
         L,
         res_name=None,
-        region_map=None
+        region_map=None,
+        metadata_paths=()
 ) -> list:
     """
     Construct the input volumetric dataset that will be push with the corresponding files into Nexus as a resource.
@@ -60,6 +62,8 @@ def create_volumetric_resources(
     ----------
     input_paths: tuple
         input datasets paths. These datasets are either volumetric files or folder containing volumetric files
+    metadata_paths: tuple
+        input metadata paths. These files contain the metadata (e.g. M ane E types) of files in input_paths
     dataset_type: str
         type of the Resources to build
     atlas_release: Resource
@@ -78,7 +82,7 @@ def create_volumetric_resources(
         derivation Resource
     L: Logger
         log_handler
-    res_name: str
+    res_name: str or None
         name to assign to the Resource
     region_map: voxcell.RegionMap
         region ID <-> attribute mapping
@@ -100,21 +104,32 @@ def create_volumetric_resources(
                                                                             "GEN_etype"]
     }
 
-    resources = []
-    file_paths = []
     if not isinstance(input_paths, tuple):
         raise Exception(f"The 'input_paths' argument provided is not a tuple: {input_paths}")
+
+    resources = []
+    file_paths = []
+    metadata = {}
+    input_counter = 0
     for input_path in input_paths:
+        if len(metadata_paths) >= input_counter + 1:
+            with open(metadata_paths[input_counter]) as metadata_file:
+                metadata_json = json.load(metadata_file)
+            file_annotation_map = {os.path.basename(f): (m, e) for m, mv in metadata_json["density_files"].items() for e, f in mv.items()}
+            metadata[input_counter] = file_annotation_map
+
         if input_path.endswith(extension):
             if os.path.isfile(input_path):
-                file_paths.append(input_path)
+                file_paths.append((input_path, input_counter))
         elif os.path.isdir(input_path):
-            file_paths.extend([str(path) for path in Path(input_path).rglob("*"+extension)])
+            file_paths.extend([(str(path), input_counter) for path in Path(input_path).rglob("*"+extension)])
+        input_counter += 1
 
     tot_files = len(file_paths)
     L.info(f"{tot_files} {extension} files found under '{input_paths}', creating the respective payloads...")
     file_count = 0
-    for filepath in file_paths:
+    for file_metadata_paths in file_paths:
+        filepath = file_metadata_paths[0]
         file_count += 1
 
         filename_split = os.path.splitext(os.path.basename(filepath))
@@ -129,8 +144,8 @@ def create_volumetric_resources(
         if brain_location:
             res_brain_location = deepcopy(brain_location)
         else:
-            res_brain_location = comm.create_brain_location_prop(forge, filename,
-                region_map, reference_system)
+            res_brain_location = comm.create_brain_location_prop(forge,
+                filename, region_map, reference_system)
             if dataset_type == comm.brainMaskType:
                 res_name = f"Mask of {res_brain_location.brainRegion.label}"
 
@@ -160,25 +175,39 @@ def create_volumetric_resources(
         except nrrd.errors.NRRDError as e:
             L.error(f"NrrdError: {e}")
 
-        if dataset_type in [comm.meTypeDensity, comm.gliaDensityType]:
+        if dataset_type in comm.annotation_types:
             L.info("Adding annotation")
-            filename_ann = filename
+            cellTypes = []
 
-            # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
-            separator = {
-                comm.meTypeDensity: "_INH_densities",
-                comm.gliaDensityType: "_density"}
-            if dataset_type in [comm.gliaDensityType, comm.neuronDensityType]:
-                filename_ann = filename_ann.capitalize()
-            for generic_filename in generic_types:
-                if generic_filename in filename:
-                    filename_ann = me_separator.join([generic_types[generic_filename][0],
-                                                      generic_types[generic_filename][1]])
-            if exc_etype in filename_ann:
-                filename_ann = filename_ann.replace(f"_{exc_etype}", f"{me_separator}{exc_etype}")
+            if file_metadata_paths[1] in metadata:
+                L.info(f"Retrieving annotation from metadata file {metadata_paths[file_metadata_paths[1]]}")
+                file_annotation_map = metadata[file_metadata_paths[1]]
+                density_filename = os.path.basename(filepath)
+                if density_filename not in file_annotation_map:
+                    raise Exception(f"'{density_filename}' not present in metadata file")
+                for m_e in file_annotation_map[density_filename]:
+                    cellTypes.append(comm.resolve_cellType(forge, m_e, target="CellType", name=density_filename))
+            else:
+                L.info("No metadata provided, extracting annotation from filename")
+                filename_ann = filename
 
-            cellTypes = get_cellType(forge, filename_ann, separator[dataset_type])
+                # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
+                separator = {
+                    comm.meTypeDensity: "_INH_densities",
+                    comm.gliaDensityType: "_density"}
+                if dataset_type in [comm.gliaDensityType, comm.neuronDensityType]:
+                    filename_ann = filename_ann.capitalize()
+                for generic_filename in generic_types:
+                    if generic_filename in filename:
+                        filename_ann = me_separator.join([generic_types[generic_filename][0],
+                                                          generic_types[generic_filename][1]])
+                if exc_etype in filename_ann:
+                    filename_ann = filename_ann.replace(f"_{exc_etype}", f"{me_separator}{exc_etype}")
+
+                cellTypes = get_cellType(forge, filename_ann, separator[dataset_type])
+
             annotation = get_cellAnnotation(cellTypes)
+            # Add annotation to Resource payload
             nrrd_resource.annotation = Resource.from_json(annotation)
             nrrd_resource.cellType = Resource.from_json(cellTypes)
 
@@ -208,7 +237,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type, L):
         resource : Resource object defined by a properties payload linked to a file.
         nrrd_header : Dict containing the input file header fields  and their
         corresponding value.
-        config : Dict containing the file extension and its sampling informations.
+        config : Dict containing the file extension and its sampling information.
         voxel_type : String indicating the type of voxel contained in the volumetric
         dataset.
         L: log_handler logger
@@ -318,7 +347,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type, L):
 
         # this can be a component or a time dim
         else:
-            # this is a time dim as it is located after space dim)
+            # this is a time dim as it is located after space dim
             if passed_spatial_dim:
                 current_dim["@type"] = "TimeDimension"
                 current_dim["samplingPeriod"] = config["sampling_period"]
@@ -394,8 +423,7 @@ def get_cellAnnotation(cellTypes):
     annotations = []    
     types = ["M", "E"]
     for i in range(len(cellTypes)):
-        itype = types[i]
-        annotation = comm.return_base_annotation(itype)
+        annotation = comm.return_base_annotation(types[i])
         annotation["hasBody"].update(cellTypes[i])
         annotations.append(annotation)
 
