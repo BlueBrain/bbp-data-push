@@ -18,7 +18,10 @@ import urllib.parse
 
 from kgforge.core import KnowledgeGraphForge, Resource
 
-from bba_data_push.push_atlas_release import create_base_resource, create_volumetric_property, create_atlas_release, create_ph_catalog_distribution
+from bba_data_push.push_atlas_release import create_base_resource, \
+    create_volumetric_property, create_atlas_release, \
+    create_ph_catalog_distribution, validate_atlas_release, \
+    atlas_release_properties
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources, type_attributes_map
 from bba_data_push.push_brainmesh import create_mesh_resources
 from bba_data_push.push_cellComposition import register_densities
@@ -83,10 +86,10 @@ def initialize_pusher_cli(
 def _initialize_pusher_cli(
     verbose, forge_config_file, nexus_env, nexus_org, nexus_proj, nexus_token
 ):
-    """Run the dataset pusher CLI starting by the Initialisation of the Forge python
-    framework to communicate with Nexus.\n
-    The Forge will enable to build and push into Nexus the metadata payload along with
-    the input dataset.
+    """Run the dataset pusher CLI starting by the Initialisation of the Forge
+    python framework to communicate with Nexus.\n
+    The Forge will enable to build and push into Nexus the metadata payload
+    along with the input dataset.
     """
     level = (logging.WARNING, logging.INFO, logging.DEBUG)[min(verbose, 2)]
     logging.basicConfig(level=level)
@@ -124,14 +127,6 @@ def get_derivation(atlas_release_id):
 
 def get_subject_prop(species_prop):
     return Resource(type="Subject", species=species_prop)
-
-
-def get_resource_rev(forge, res_id, tag, cross_bucket=False):
-    rev = None
-    res = forge.retrieve(res_id, version=tag, cross_bucket=cross_bucket)
-    if res:
-        rev = res._store_metadata["_rev"]
-    return rev
 
 
 def common_options(opt):
@@ -197,7 +192,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
             f"{n_metadata_path - n_dataset_path} dataset-metadata will be ignored.")
 
     forge = ctx.obj["forge"]
-    atlas_release_rev = atlas_release_rev or get_resource_rev(forge, atlas_release_id,
+    atlas_release_rev = atlas_release_rev or comm.get_resource_rev(forge, atlas_release_id,
         resource_tag, cross_bucket=True)
 
     # Validate input arguments
@@ -269,7 +264,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
     region_map = comm.get_region_map(hierarchy_path)
 
     forge = ctx.obj["forge"]
-    atlas_release_rev = atlas_release_rev or get_resource_rev(forge, atlas_release_id,
+    atlas_release_rev = atlas_release_rev or comm.get_resource_rev(forge, atlas_release_id,
         resource_tag, cross_bucket=True)
 
     # Validate input arguments
@@ -397,7 +392,7 @@ def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_compos
 
     :return: CellComposition Resource.
     """
-    atlas_release_rev = atlas_release_rev or get_resource_rev(forge, atlas_release_id,
+    atlas_release_rev = atlas_release_rev or comm.get_resource_rev(forge, atlas_release_id,
         resource_tag, cross_bucket=True)
 
     atlas_release_prop = comm.get_property_type(atlas_release_id,
@@ -491,12 +486,10 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     bucket = ctx.obj["bucket"]
 
     atlas_release_id_orig = None
-    properties_id_map = {"parcellationOntology": None,
-                         "parcellationVolume": None,
-                         "hemisphereVolume": None,
-                         "placementHintsDataCatalog": None,
-                         "directionVector": None,
-                         "cellOrientationField": None}
+    properties_id_map = {}
+    for prop in atlas_release_properties:
+        properties_id_map[prop] = None
+
     if atlas_release_id:
         force_registration = False
         atlas_release_orig = comm.retrieve_resource(atlas_release_id, forge)
@@ -527,7 +520,8 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     contribution, log_info = comm.return_contribution(forge, dryrun=dryrun)
     logger.info("\n".join(log_info))
 
-    atlas_release_prop = comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType], rev=atlas_release_rev+1)
+    atlas_release_prop = comm.get_property_type(atlas_release_id,
+        comm.all_types[comm.atlasrelaseType], rev=atlas_release_rev + 1) # Anticipating AtlasRelease tagging
     derivation = get_derivation(atlas_release_id)
 
     # Create ParcellationOntology resource
@@ -560,11 +554,10 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     ph_res = create_volumetric_resources((placement_hints_path,), comm.placementHintsType,
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger)
-    
     resource_to_filepath = comm._integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType,
         atlas_release_id_orig, resource_tag, logger, dryrun=dryrun)
 
-    #Create PlacementHints catalog (i.e a collection of PlacementHints)
+    # Create PlacementHints catalog (i.e a collection of PlacementHints)
     ph_catalog_name = "Placement Hints volumes catalog"
     ph_catalog_description = "Placement Hints volumes catalog"
     ph_catalog = create_base_resource(comm.all_types[comm.placementHintsDataLayerCatalogType],
@@ -575,21 +568,16 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
 
     with open(placement_hints_metadata, "r") as f:
         filepath_to_brainregion_json = json.load(f)
-
     ph_catalog_distribution = create_ph_catalog_distribution(ph_res,
         filepath_to_brainregion_json, resource_to_filepath, forge, dryrun)
-
     with open("./ph_catalog_distribution.json", "w") as f:
         json.dump(ph_catalog_distribution, f)
     
     comm.add_distribution(ph_catalog, forge, [{"path":"./ph_catalog_distribution.json", "content_type": "application/json"}])
-    
     comm._integrate_datasets_to_Nexus(forge, [ph_catalog],
-        comm.placementHintsDataLayerCatalogType, atlas_release_id, resource_tag, logger,
-        dryrun=dryrun)
-
+        comm.placementHintsDataLayerCatalogType, atlas_release_id_orig,
+        resource_tag, logger, dryrun=dryrun)
     ph_catalog_prop = comm.get_property_type(ph_catalog.id, comm.placementHintsDataLayerCatalogType)
-
 
     # Create DirectionVectorsField resource
     dv_name = "Direction Vectors volume"
@@ -614,6 +602,12 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         hem_prop, ph_catalog_prop, dv_prop, co_prop, contribution, name, description)
     comm._integrate_datasets_to_Nexus(forge, [atlas_release_resource], comm.atlasrelaseType,
         atlas_release_id_orig, resource_tag, logger, force_registration, dryrun=dryrun)
+
+    # Sanity check
+    validated = validate_atlas_release(atlas_release_id, forge, resource_tag, logger)
+    if not validated:
+        logger.error(f"The properties of AtlasRelease Id {atlas_release_id} at "
+                     f"tag '{resource_tag}' did not pass the validation!")
 
 
 @initialize_pusher_cli.command(name="register-cell-composition-volume-distribution")

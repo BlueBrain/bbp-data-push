@@ -8,6 +8,10 @@ from kgforge.core import Resource
 import bba_data_push.commons as comm
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources
 
+atlas_release_properties = ["parcellationOntology", "parcellationVolume",
+    "hemisphereVolume", "placementHintsDataCatalog", "directionVector",
+    "cellOrientationField"]
+
 
 def create_atlas_release(atlas_release_id, brain_location_prop,
     reference_system_prop, brain_template_prop, subject_prop, ont_prop,
@@ -28,6 +32,43 @@ def create_atlas_release(atlas_release_id, brain_location_prop,
     atlas_release.releaseDate = comm.get_date_prop()
 
     return atlas_release
+
+
+def validate_atlas_release(atlas_release_id, forge, resource_tag, logger):
+    logger.info(f"Validating AtlasRelease id {atlas_release_id} at tag '{resource_tag}'")
+    atlas_release_res = forge.retrieve(atlas_release_id, version=resource_tag)
+    if not atlas_release_res:
+        logger.error(f"No Resource found with Id {atlas_release_id} and tag '{resource_tag}'")
+        return False
+
+    atlas_release_rev = comm.get_resource_rev(forge, atlas_release_id,
+                                              resource_tag, cross_bucket=True)
+    atlas_release_prop_ref = comm.get_property_type(atlas_release_id,
+        comm.all_types[comm.atlasrelaseType], atlas_release_rev)
+
+    for prop in atlas_release_properties:
+        existing_prop = getattr(atlas_release_res, prop, None)
+        if not existing_prop:
+            logger.error(f"No property '{prop}' found in AtlasRelease Id {atlas_release_id}")
+            return False
+        # Retrieving property Resource
+        prop_id = existing_prop.id
+        prop_res = forge.retrieve(prop_id, version=resource_tag)
+        if not prop_res:
+            logger.error(f"No Resource found with Id {prop_id} and tag '{resource_tag}'")
+            return False
+        # Validating Resource property
+        atlas_release_prop = getattr(prop_res, "atlasRelease", None)
+        if atlas_release_prop != atlas_release_prop_ref:
+            logger.error(f"The atlasRelease property of Resource Id {prop_id}:"
+                f"\n{atlas_release_prop}\n\nis different from the reference:"
+                f"\n{atlas_release_prop_ref}")
+            return False
+        logger.info(f"Validated property '{prop}'")
+
+    logger.info(f"The selected properties of AtlasRelease Id {atlas_release_id}"
+        f" contain the correct 'atlasRelease' property:\n{atlas_release_prop_ref}")
+    return True
 
 
 def create_volumetric_property(res_name, res_type, res_id, file_path,
@@ -52,7 +93,7 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
     placementHints = []
     voxelDistanceToRegionBottom = {}
     for ph_resource in ph_resources:
-        a_ph_item = {}
+        a_ph_item = dict()
         a_ph_item["@id"] = ph_resource.get_identifier()
         a_ph_item["_rev"] = ph_resource._store_metadata.get("_rev")
         a_ph_item["distribution"] = {"atLocation": {
@@ -74,11 +115,11 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
             regions = {}
             for brain_region_name in brain_region_names:
                 # resolve brain_region_name and get leaf under layer
-                brai_region_prop = comm.get_property_label(
+                brain_region_prop = comm.get_property_label(
                     comm.Args.brain_region, brain_region_name, forge)
-                brain_region_key = brai_region_prop.notation if hasattr(
-                    brai_region_prop, "notation") else brain_region_name
-                brain_region_id = brai_region_prop.get_identifier()
+                brain_region_key = brain_region_prop.notation if hasattr(
+                    brain_region_prop, "notation") else brain_region_name
+                brain_region_id = brain_region_prop.get_identifier()
                 regions[brain_region_key] = {
                     "@id": brain_region_id,
                     "hasLeafRegionPart": [],

@@ -276,6 +276,14 @@ def retrieve_resource(res_id, forge):
     return res
 
 
+def get_resource_rev(forge, res_id, tag, cross_bucket=False):
+    rev = None
+    res = forge.retrieve(res_id, version=tag, cross_bucket=cross_bucket)
+    if res:
+        rev = res._store_metadata["_rev"]
+    return rev
+
+
 def add_distribution(res, forge, distribution):
     res_dis = list()
     for dis_file in distribution:
