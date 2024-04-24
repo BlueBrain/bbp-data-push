@@ -241,7 +241,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
 
     L.info(f"{n_resources} resources of type {dataset_type} will be pushed into Nexus.")
     comm._integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id,
-        resource_tag, L, dryrun=dryrun)
+        resource_tag, L, force_registration=False, dryrun=dryrun)
 
 @initialize_pusher_cli.command(name="push-meshes")
 @click.pass_context
@@ -298,7 +298,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
 
     L.info(f"{n_resources} resources will be pushed into Nexus.")
     comm._integrate_datasets_to_Nexus(forge, resources, dataset_type, atlas_release_id,
-                                      resource_tag, L, dryrun=dryrun)
+                                      resource_tag, L, force_registration=False, dryrun=dryrun)
 
 
 @initialize_pusher_cli.command(name="push-cellcomposition")
@@ -534,7 +534,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     comm.add_distribution(ont_res, forge, ont_dis)
     ont_res.label = "BBP Mouse Brain region ontology"
     comm._integrate_datasets_to_Nexus(forge, [ont_res], comm.ontologyType,
-        atlas_release_id_orig, resource_tag, logger, dryrun=dryrun)
+        atlas_release_id_orig, resource_tag, logger, force_registration=False, dryrun=dryrun)
 
     # Create ParcellationVolume resource
     par_name = "BBP Mouse Brain Annotation Volume"
@@ -555,7 +555,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         atlas_release_prop, forge, subject_prop, brain_location_prop, reference_system_prop,
         contribution, derivation, logger)
     resource_to_filepath = comm._integrate_datasets_to_Nexus(forge, ph_res, comm.placementHintsType,
-        atlas_release_id_orig, resource_tag, logger, dryrun=dryrun)
+        atlas_release_id_orig, resource_tag, logger, force_registration=False, dryrun=dryrun)
 
     # Create PlacementHints catalog (i.e a collection of PlacementHints)
     ph_catalog_name = "Placement Hints volumes catalog"
@@ -576,7 +576,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     comm.add_distribution(ph_catalog, forge, [{"path":"./ph_catalog_distribution.json", "content_type": "application/json"}])
     comm._integrate_datasets_to_Nexus(forge, [ph_catalog],
         comm.placementHintsDataLayerCatalogType, atlas_release_id_orig,
-        resource_tag, logger, dryrun=dryrun)
+        resource_tag, logger, force_registration=False, dryrun=dryrun)
     ph_catalog_prop = comm.get_property_type(ph_catalog.id, comm.placementHintsDataLayerCatalogType)
 
     # Create DirectionVectorsField resource
@@ -601,13 +601,14 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         reference_system_prop, brain_template_prop, subject_prop, ont_prop, par_prop,
         hem_prop, ph_catalog_prop, dv_prop, co_prop, contribution, name, description)
     comm._integrate_datasets_to_Nexus(forge, [atlas_release_resource], comm.atlasrelaseType,
-        atlas_release_id_orig, resource_tag, logger, force_registration, dryrun=dryrun)
+        atlas_release_id_orig, resource_tag, logger, force_registration=force_registration, dryrun=dryrun)
 
     # Sanity check
-    validated = validate_atlas_release(atlas_release_id, forge, resource_tag, logger)
-    if not validated:
-        logger.error(f"The properties of AtlasRelease Id {atlas_release_id} at "
-                     f"tag '{resource_tag}' did not pass the validation!")
+    if not dryrun:
+        validated = validate_atlas_release(atlas_release_id, forge, resource_tag, logger)
+        if not validated:
+            logger.error(f"The properties of AtlasRelease Id {atlas_release_id} at "
+                         f"tag '{resource_tag}' did not pass the validation!")
 
 
 @initialize_pusher_cli.command(name="register-cell-composition-volume-distribution")

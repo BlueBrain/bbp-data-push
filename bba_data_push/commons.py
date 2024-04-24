@@ -72,17 +72,19 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
         res_name = res.name
         res_msg = f"Resource '{res_name}' ({res_count} of {len(resources)})"
 
+        res_store_metadata = None
         res_deprecated = None
         res_distribution = None
         if hasattr(res, "id") and not force_registration:
             res_id = res.id
-            res_store_metadata = get_res_store_metadata(res_id, forge)
+            orig_res, res_store_metadata = get_res_store_metadata(res_id, forge)
             res_deprecated = res_store_metadata._deprecated
+            if hasattr(orig_res, "distribution"):
+                res_distribution = orig_res.distribution
 
         if (res_deprecated is not False) or force_registration:
             res_id = None
             res_store_metadata = None
-            res_distribution = None
             if not force_registration:
                 logger.info(f"Searching Nexus for {res_msg}")
                 limit = 100
@@ -100,7 +102,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
                 elif n_orig_ress == 1:
                     orig_res = orig_ress[0]
                     res_id = orig_res.id
-                    res_store_metadata = get_res_store_metadata(res_id, forge)
+                    _, res_store_metadata = get_res_store_metadata(res_id, forge)
                     if hasattr(orig_res, "distribution"):
                         res_distribution = orig_res.distribution
                 else:
@@ -109,18 +111,22 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
         if res_id:
             res.id = res_id
             check_tag(forge, res_id, tag, logger)
-
-            if res_distribution and hasattr(res, "distribution"):
-                local_res_distribution_path = res.distribution.args[0]  # LazyAction structure
-                logger.info("Checking whether the SHA of the remote Resource "
-                    "distribution is identical to the SHA of the local Resource "
-                    f"distribution ({local_res_distribution_path}).")
-                if identical_SHA(local_res_distribution_path,
-                                 res_distribution.digest.value):
-                    logger.info("The SHA of the remote Resource distribution is "
-                        "identical to the SHA of the local Resource, distribution, "
-                        "hence no new file will be registered in Nexus.")
-                    res.distribution = res_distribution
+            if res_distribution:
+                local_res_distributions = res.distribution if isinstance(res.distribution, list) else [res.distribution]
+                res_distributions = res_distribution if isinstance(res_distribution, list) else [res_distribution]
+                for i in range(len(local_res_distributions)):
+                    local_res_distribution_path = local_res_distributions[i].args[0]  # LazyAction structure
+                    if i <= len(res_distributions) -1:
+                        logger.info("Checking whether the SHA of the remote Resource "
+                            "distribution is identical to the SHA of the local Resource "
+                            f"distribution ({local_res_distribution_path}).")
+                        if identical_SHA(local_res_distribution_path,
+                                         res_distributions[i].digest.value):
+                            logger.info("The SHA of the remote Resource distribution is "
+                                "identical to the SHA of the local Resource, distribution, "
+                                "hence no new file will be registered in Nexus.")
+                            local_res_distributions[i] = res_distributions[i]
+                res.distribution = local_res_distributions if (len(local_res_distributions) > 1) else local_res_distributions[0]
 
             logger.info(f"Scheduling to update {res_msg} with Nexus id: {res_id}\n")
             setattr(res, "_store_metadata", res_store_metadata)
@@ -167,6 +173,8 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
             if hasattr(res, "distribution"):
                 lazyActions = [res.distribution] if not isinstance(res.distribution, list) else res.distribution
                 for lazyAction in lazyActions:
+                    if hasattr(lazyAction, "atLocation"):
+                        continue
                     location = lazyAction.args[0]  # args[0] corresponds to the LazyAction filepath
                     lazyAction.name = os.path.basename(location)
                     setattr(lazyAction, "atLocation", Resource(location=location))
@@ -247,7 +255,7 @@ def check_tag(forge, res_id, tag, logger):
 
 def get_res_store_metadata(res_id, forge):
     res = retrieve_resource(res_id, forge)
-    return res._store_metadata
+    return res, res._store_metadata
 
 
 def identical_SHA(local_res_distribution_path, remote_res_distribution_SHA):

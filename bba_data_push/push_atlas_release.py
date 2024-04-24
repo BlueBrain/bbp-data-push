@@ -66,8 +66,9 @@ def validate_atlas_release(atlas_release_id, forge, resource_tag, logger):
             return False
         logger.info(f"Validated property '{prop}'")
 
-    logger.info(f"The selected properties of AtlasRelease Id {atlas_release_id}"
-        f" contain the correct 'atlasRelease' property:\n{atlas_release_prop_ref}")
+    logger.info(f"The selected Resource properties of AtlasRelease Id {atlas_release_id}"
+        f" at tag '{resource_tag}' contain the correct 'atlasRelease' property:"
+        f"\n{atlas_release_prop_ref}")
     return True
 
 
@@ -82,7 +83,7 @@ def create_volumetric_property(res_name, res_type, res_id, file_path,
     if res_id:
         vol_res.id = res_id
     comm._integrate_datasets_to_Nexus(forge, [vol_res], res_type,
-        atlas_release_id_orig, resource_tag, logger, dryrun=dryrun)
+        atlas_release_id_orig, resource_tag, logger, force_registration=False, dryrun=dryrun)
     vol_prop = comm.get_property_type(vol_res.id, res_type)
 
     return vol_prop
