@@ -130,3 +130,8 @@ def base_derivation(atlas_release_id):
 @pytest.fixture
 def hierarchy_path():
     return "./tests/tests_data/hierarchy_l23split.json"
+
+
+@pytest.fixture
+def hierarchy_layers_path():
+    return "./tests/tests_data/hierarchy_leaves_only_layers.json"

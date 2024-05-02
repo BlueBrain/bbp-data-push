@@ -188,7 +188,7 @@ def get_placementhintlayer_prop_from_name(forge, filename):
         layer_label = layer_label.split("]")[1]
     else:
         layer_label = filename
-   
+
     layer_prop_resource_list = get_layer(forge, layer_label, initial="layer", regex="_(\d){1,}", split_separator=None, layer_number_offset=1) 
     return layer_prop_resource_list
     
@@ -338,12 +338,11 @@ def get_property_label(name, arg, forge):
     if not arg_res:
         raise Exception(f"The provided '{name}' argument ({arg}) can not be retrieved/resolved")
 
-    return get_property_id_label(arg_res.id, arg_res.label,
-        notation=arg_res.notation if hasattr(arg_res, "notation") else None)
+    return get_property_id_label(arg_res.id, arg_res.label)
 
 
-def get_property_id_label(id, label, notation=None):
-    prop = Resource(id=id, label=label)
+def get_property_id_label(res_id, res_label, notation=None):
+    prop = Resource(id=res_id, label=res_label)
     if notation:
         prop.notation = notation
     return prop
@@ -661,6 +660,7 @@ def forge_resolve(forge, label, name=None, target="terms"):
         else:
             print("\nWARNING: The label of the resolved resource is not a string:\n", res)
     return res
+
 
 def forge_to_config(forge):
     """Get nexus configuration from forge instance."""

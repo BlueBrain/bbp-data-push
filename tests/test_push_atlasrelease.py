@@ -6,7 +6,8 @@ import random
 from kgforge.core import Resource
 from kgforge.core.wrappings.dict import wrap_dict
 
-from bba_data_push.push_atlas_release import create_atlas_release, create_ph_catalog_distribution
+from bba_data_push.push_atlas_release import create_atlas_release, \
+    create_ph_catalog_distribution, get_leaf_regions_by_layer
 from bba_data_push.bba_dataset_push import BRAIN_TEMPLATE_TYPE
 import bba_data_push.commons as comm
 
@@ -37,7 +38,7 @@ def test_create_atlas_release(forge, nexus_bucket, nexus_token, nexus_env,
     forge.validate(atlas_release_resource, execute_actions_before=True)  # check which type_ option can be provided
 
 
-def test_create_ph_catalog_distribution(forge):
+def test_create_ph_catalog_distribution(forge, hierarchy_layers_path):
     brain_region_label = "Isocortex"
     ph_resources, ph_res_to_filepath, filepath_to_brainregion_json = \
         _create_ph_resources(["layer_1", "layer_5", "layer_2", "layer_3", "layer_6", "layer_4"], "file://gpfs/path/%5BPH%5D", brain_region_label)
@@ -63,7 +64,7 @@ def test_create_ph_catalog_distribution(forge):
 
     random.shuffle(ph_resources)
     ph_catalog_distribution = create_ph_catalog_distribution(ph_resources,
-        filepath_to_brainregion_json, ph_res_to_filepath, forge, debug=True)
+        filepath_to_brainregion_json, ph_res_to_filepath, forge, hierarchy_layers_path)
 
     assert isinstance(ph_catalog_distribution, dict)
     assert len(ph_catalog_distribution) == 2
@@ -90,8 +91,7 @@ def test_create_ph_catalog_distribution(forge):
             assert leaf_region_notation in isocortex_leaf_region_notations
         isocortex_leaf_region_notations_layer_only = [n for n, r in isocortex_leaf_region_notations.items() if hasattr(r, "hasLayerLocationPhenotype") and any(item in r.hasLayerLocationPhenotype for item in layers_to_check)]
         assert len(isocortex_leaf_region_notations_layer_only) > 0
-        isocortex_leaf_region_notations_layer_only.sort()
-        hasLeafRegionPart.sort()
+        isocortex_leaf_region_notations_layer_only = set(isocortex_leaf_region_notations_layer_only)
         assert isocortex_leaf_region_notations_layer_only == hasLeafRegionPart
     assert layers == ["L1", "L2", "L3", "L4", "L5", "L6"]
 
@@ -99,7 +99,7 @@ def test_create_ph_catalog_distribution(forge):
     wrong_brain_region_label = "TH"  # "Thalamus" region is not in Isocortex layer 1
     ph_resources, ph_res_to_filepath, filepath_to_brainregion_json = _create_ph_resources(["layer_1"], "file://gpfs/path/%5BPH%5D", wrong_brain_region_label)
     with pytest.raises(Exception):
-        create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json, ph_res_to_filepath, forge)
+        create_ph_catalog_distribution(ph_resources, filepath_to_brainregion_json, ph_res_to_filepath, forge, hierarchy_layers_path)
 
 
 def test_get_resource_rev(forge, atlas_release_id):
@@ -128,3 +128,19 @@ def _create_ph_resources(layers, location_prefix, brain_region_label):
         filepath_to_brainregion_json[os.path.basename(file_path)] = [brain_region_label]
         
     return ph_resources, ph_res_to_filepath, filepath_to_brainregion_json
+
+
+def test_get_leaf_regions_by_layer(hierarchy_layers_path):
+    brain_region_acronym = "Isocortex"
+    layer_id = "http://purl.obolibrary.org/obo/UBERON_0005390"
+    expected_brain_region_layer_leaves = {'GU1', 'FRP1', 'TEa1', 'MO1', 'AIp1', 'PL1',
+        'ORB1', 'VISam1', 'MOp1', 'VISl1', 'RSPd1', 'ORBl1', 'SSp-ul1', 'ORBm1',
+        'AUDd1', 'PTLp1', 'PERI1', 'RSPv1', 'SSp-n1', 'ACA1', 'ACAv1', 'VISp1', 'MOs1',
+        'RSPagl1', 'AUDpo1', 'AIv1', 'SS1', 'ILA1', 'AUDp1', 'VISpl1', 'SSp1', 'VIS1',
+        'VISpm1', 'ECT1', 'SSs1', 'SSp-m1', 'VISC1', 'SSp-un1', 'ACAd1', 'AUDv1',
+        'ORBvl1', 'SSp-bfd1', 'AId1', 'SSp-tr1', 'SSp-ll1', 'VISal1', 'VISrll1',
+        'VISa1', 'VISli1', 'VISlla1', 'VISrl1', 'VISmma1', 'VISpor1', 'VISmmp1', 'VISm1'}
+
+    region_map = comm.get_region_map(hierarchy_layers_path)
+    brain_region_layer_leaves = get_leaf_regions_by_layer(brain_region_acronym, layer_id, region_map)
+    assert set(brain_region_layer_leaves) == expected_brain_region_layer_leaves

@@ -462,6 +462,9 @@ def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_compos
 @click.option("--placement-hints-metadata",
               type=click.Path(exists=True), required=True, multiple=False,
               help="The file path of placement hints metadata",)
+@click.option("--layers-regions-map",
+              type=click.Path(exists=True), required=True, multiple=False,
+              help="The file path to the layers-to-regions map")
 @click.option("--direction-vectors-path",
               type=click.Path(exists=True), required=True, multiple=False,
               help="The direction vectors file to push in Nexus",)
@@ -478,7 +481,7 @@ def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_compos
     help="The description to assign to the AtlasRelease resource.")
 def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_template_id,
     hierarchy_path, hierarchy_ld_path, annotation_path, hemisphere_path,
-    placement_hints_path, placement_hints_metadata, direction_vectors_path,
+    placement_hints_path, layers_regions_map, placement_hints_metadata, direction_vectors_path,
     cell_orientations_path, atlas_release_id, atlas_release_rev, resource_tag,
     name, description, dryrun
 ):
@@ -568,8 +571,11 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
 
     with open(placement_hints_metadata, "r") as f:
         filepath_to_brainregion_json = json.load(f)
+    with open(layers_regions_map, "r") as f:
+        layers_regions_map_json = json.load(f)
     ph_catalog_distribution = create_ph_catalog_distribution(ph_res,
-        filepath_to_brainregion_json, resource_to_filepath, forge, dryrun)
+        filepath_to_brainregion_json, resource_to_filepath, forge, hierarchy_path,
+        layers_regions_map_json)
     with open("./ph_catalog_distribution.json", "w") as f:
         json.dump(ph_catalog_distribution, f)
     
@@ -644,7 +650,7 @@ def cli_register_cell_composition_volume_distribution(
         species_prop=comm.get_property_label(
             name=comm.Args.species,
             arg=species,
-            forge=forge,
+            forge=forge
         ),
     )
     reference_system_prop = comm.get_property_type(
