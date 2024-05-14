@@ -141,15 +141,15 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
                     brain_region_name,
                     "http://purl.obolibrary.org/obo/UBERON_8440003",
                     region_map)
-                brain_region_layer_leaves.extend(brain_region_layer6a_leaves)
-                brain_region_layer_leaves.extend(brain_region_layer6b_leaves)
+                brain_region_layer_leaves.update(brain_region_layer6a_leaves)
+                brain_region_layer_leaves.update(brain_region_layer6b_leaves)
             if not brain_region_layer_leaves:
                 raise Exception(f"No leaf regions found for region id '{brain_region_id}'"
                                 f" and layer id '{layer_id}'")
 
             regions[brain_region_name] = {
                 "@id": brain_region_id,
-                "hasLeafRegionPart": set(brain_region_layer_leaves),
+                "hasLeafRegionPart": list(brain_region_layer_leaves),
                 "layer": {"@id": layer_id, "label": layer_prop.label}
             }
 
@@ -165,13 +165,13 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
 
 
 def get_leaf_regions_by_layer(brain_region_acronym, layer_id, region_map):
-    brain_region_layer_leaves = []
+    brain_region_layer_leaves = set()
 
     descendant_regions = region_map.find(brain_region_acronym, attr="acronym", with_descendants=True)
     for desc_reg_id in descendant_regions:
         if region_map.is_leaf_id(desc_reg_id):
             if layer_id in region_map.get(desc_reg_id, attr="layers"):
-                brain_region_layer_leaves.append(region_map.get(desc_reg_id, attr="acronym"))
+                brain_region_layer_leaves.add(region_map.get(desc_reg_id, attr="acronym"))
 
     return brain_region_layer_leaves
 

@@ -91,7 +91,8 @@ def test_create_ph_catalog_distribution(forge, hierarchy_layers_path):
             assert leaf_region_notation in isocortex_leaf_region_notations
         isocortex_leaf_region_notations_layer_only = [n for n, r in isocortex_leaf_region_notations.items() if hasattr(r, "hasLayerLocationPhenotype") and any(item in r.hasLayerLocationPhenotype for item in layers_to_check)]
         assert len(isocortex_leaf_region_notations_layer_only) > 0
-        isocortex_leaf_region_notations_layer_only = set(isocortex_leaf_region_notations_layer_only)
+        isocortex_leaf_region_notations_layer_only.sort()
+        hasLeafRegionPart.sort()
         assert isocortex_leaf_region_notations_layer_only == hasLeafRegionPart
     assert layers == ["L1", "L2", "L3", "L4", "L5", "L6"]
 
@@ -143,4 +144,4 @@ def test_get_leaf_regions_by_layer(hierarchy_layers_path):
 
     region_map = comm.get_region_map(hierarchy_layers_path)
     brain_region_layer_leaves = get_leaf_regions_by_layer(brain_region_acronym, layer_id, region_map)
-    assert set(brain_region_layer_leaves) == expected_brain_region_layer_leaves
+    assert brain_region_layer_leaves == expected_brain_region_layer_leaves
