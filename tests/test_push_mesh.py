@@ -25,7 +25,7 @@ def test_create_mesh_resources(forge, nexus_bucket, nexus_token, nexus_env,
     hierarchy_path = Path(TEST_PATH, "tests/tests_data/mba_hierarchy.json")
     region_map = comm.get_region_map(hierarchy_path)
 
-    dataset_type = comm.brainMeshType
+    dataset_type = comm.BRAIN_MESH_TYPE
 
     resources = create_mesh_resources(
         dataset_path,

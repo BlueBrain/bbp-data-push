@@ -21,12 +21,12 @@ def test_create_atlas_release(forge, nexus_bucket, nexus_token, nexus_env,
     brain_template_prop = comm.get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE)
 
     test_id = "dummy-id"
-    ont_prop = comm.get_property_type(test_id, comm.ontologyType)
-    par_prop = comm.get_property_type(test_id, comm.parcellationType)
-    hem_prop = comm.get_property_type(test_id, comm.hemisphereType)
-    ph_prop = comm.get_property_type(test_id, comm.placementHintsType)
-    dv_prop = comm.get_property_type(test_id, comm.directionVectorsType)
-    co_prop = comm.get_property_type(test_id, comm.cellOrientationType)
+    ont_prop = comm.get_property_type(test_id, comm.ONTOLOGY_TYPE)
+    par_prop = comm.get_property_type(test_id, comm.PARCELLATION_TYPE)
+    hem_prop = comm.get_property_type(test_id, comm.HEMISPHERE_TYPE)
+    ph_prop = comm.get_property_type(test_id, comm.PLACEMENT_HINTS_TYPE)
+    dv_prop = comm.get_property_type(test_id, comm.DIRECTION_VECTORS_TYPE)
+    co_prop = comm.get_property_type(test_id, comm.CELL_ORIENTATION_TYPE)
     name = "AtlasRelease from unit test"
     description = name
     atlas_release_resource = create_atlas_release(atlas_release_id, brain_location_prop,
@@ -34,7 +34,7 @@ def test_create_atlas_release(forge, nexus_bucket, nexus_token, nexus_env,
         par_prop, hem_prop, ph_prop, dv_prop, co_prop, contribution, name, description)
 
     assert type(atlas_release_resource) == Resource
-    assert comm.atlasrelaseType in atlas_release_resource.type
+    assert comm.ATLAS_RELEASE_TYPE in atlas_release_resource.type
     forge.validate(atlas_release_resource, execute_actions_before=True)  # check which type_ option can be provided
 
 

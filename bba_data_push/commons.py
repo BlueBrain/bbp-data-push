@@ -12,45 +12,47 @@ from kgforge.core.wrappings.paths import Filter, FilterOperator, create_filters_
 from voxcell import RegionMap
 
 # Constants
-atlasrelaseType = "BrainAtlasRelease"
-meTypeDensity = "METypeDensity"
-gliaDensityType = "GliaCellDensity"
-neuronDensityType = "NeuronDensity"
-parcellationType = "BrainParcellationDataLayer"
-hemisphereType = "HemisphereAnnotationDataLayer"
-ontologyType = "ParcellationOntology"
-placementHintsType = "PlacementHintsDataLayer"
-directionVectorsType = "DirectionVectorsField"
-cellOrientationType = "CellOrientationField"
-brainMeshType = "BrainParcellationMesh"
-brainMaskType = "BrainParcellationMask"
-volumetricType = ["VolumetricDataLayer", "Dataset"]
-placementHintsDataLayerCatalogType = "PlacementHintsDataLayerCatalog"
+NEURON_DENSITY_FILE = "neuron_density"
 
-all_types = {
-    meTypeDensity: [meTypeDensity, neuronDensityType, "CellDensityDataLayer", "VolumetricDataLayer"],
-    gliaDensityType: [gliaDensityType, "CellDensityDataLayer", "VolumetricDataLayer"],
-    neuronDensityType: [neuronDensityType, "CellDensityDataLayer", "VolumetricDataLayer"],
-    parcellationType: [parcellationType] + volumetricType,
-    hemisphereType: [hemisphereType] + volumetricType,
-    ontologyType: [ontologyType, "Ontology", "Entity"],
-    atlasrelaseType: [atlasrelaseType, "AtlasRelease", "Entity"],
-    placementHintsType: [placementHintsType] + volumetricType,
-    directionVectorsType: [directionVectorsType] + volumetricType,
-    placementHintsDataLayerCatalogType: [placementHintsDataLayerCatalogType, "DataCatalog"],
-    cellOrientationType: [cellOrientationType] + volumetricType,
-    brainMeshType: [brainMeshType, "Mesh"],
-    brainMaskType: [brainMaskType] + volumetricType
+ATLAS_RELEASE_TYPE = "BrainAtlasRelease"
+ME_DENSITY_TYPE = "METypeDensity"
+GLIA_DENSITY_TYPE = "GliaCellDensity"
+NEURON_DENSITY_TYPE = "NeuronDensity"
+PARCELLATION_TYPE = "BrainParcellationDataLayer"
+HEMISPHERE_TYPE = "HemisphereAnnotationDataLayer"
+ONTOLOGY_TYPE = "ParcellationOntology"
+PLACEMENT_HINTS_TYPE = "PlacementHintsDataLayer"
+DIRECTION_VECTORS_TYPE = "DirectionVectorsField"
+CELL_ORIENTATION_TYPE = "CellOrientationField"
+BRAIN_MESH_TYPE = "BrainParcellationMesh"
+BRAIN_MASK_TYPE = "BrainParcellationMask"
+VOLUMETRIC_TYPE = ["VolumetricDataLayer", "Dataset"]
+PLACEMENT_HINTS_DATA_LAYER_CATALOG_TYPE = "PlacementHintsDataLayerCatalog"
+
+ALL_TYPES = {
+    ME_DENSITY_TYPE: [ME_DENSITY_TYPE, NEURON_DENSITY_TYPE, "CellDensityDataLayer", "VolumetricDataLayer"],
+    GLIA_DENSITY_TYPE: [GLIA_DENSITY_TYPE, "CellDensityDataLayer", "VolumetricDataLayer"],
+    NEURON_DENSITY_TYPE: [NEURON_DENSITY_TYPE, "CellDensityDataLayer", "VolumetricDataLayer"],
+    PARCELLATION_TYPE: [PARCELLATION_TYPE] + VOLUMETRIC_TYPE,
+    HEMISPHERE_TYPE: [HEMISPHERE_TYPE] + VOLUMETRIC_TYPE,
+    ONTOLOGY_TYPE: [ONTOLOGY_TYPE, "Ontology", "Entity"],
+    ATLAS_RELEASE_TYPE: [ATLAS_RELEASE_TYPE, "AtlasRelease", "Entity"],
+    PLACEMENT_HINTS_TYPE: [PLACEMENT_HINTS_TYPE] + VOLUMETRIC_TYPE,
+    DIRECTION_VECTORS_TYPE: [DIRECTION_VECTORS_TYPE] + VOLUMETRIC_TYPE,
+    PLACEMENT_HINTS_DATA_LAYER_CATALOG_TYPE: [PLACEMENT_HINTS_DATA_LAYER_CATALOG_TYPE, "DataCatalog"],
+    CELL_ORIENTATION_TYPE: [CELL_ORIENTATION_TYPE] + VOLUMETRIC_TYPE,
+    BRAIN_MESH_TYPE: [BRAIN_MESH_TYPE, "Mesh"],
+    BRAIN_MASK_TYPE: [BRAIN_MASK_TYPE] + VOLUMETRIC_TYPE
 }
 
-annotation_types = [meTypeDensity, gliaDensityType, neuronDensityType]
+ANNOTATION_TYPES = [ME_DENSITY_TYPE, GLIA_DENSITY_TYPE, NEURON_DENSITY_TYPE]
 
-file_config = {
+FILE_CONFIG = {
     "sampling_space_unit": "um",
     "sampling_period": 30,
     "sampling_time_unit": "ms"}
 
-forge_resolve_cache = {}
+FORGE_RESOLVE_CACHE = {}
 
 
 def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
@@ -89,11 +91,14 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
                 logger.info(f"Searching Nexus for {res_msg}")
                 limit = 100
                 filename = None
+                res_type = dataset_type
                 if hasattr(res, "temp_filepath"):
                     basename = os.path.basename(res.temp_filepath)
                     if basename in ["[PH]y.nrrd", "Isocortex_problematic_voxel_mask.nrrd"]:
                         filename = basename
-                orig_ress, matching_filters = get_existing_resources(dataset_type,
+                    if basename == f"{NEURON_DENSITY_FILE}.nrrd":
+                        res_type = NEURON_DENSITY_TYPE
+                orig_ress, matching_filters = get_existing_resources(res_type,
                     atlas_release_id, res, forge, limit, filename)
                 n_orig_ress = len(orig_ress)
                 if n_orig_ress > 1:
@@ -202,9 +207,9 @@ def get_existing_resources(dataset_type, atlas_release_id, res, forge, limit, fi
 
     def get_filters_by_type(res, res_type):
         filters_by_type = []
-        if res_type in annotation_types:  # require annotation property
+        if res_type in ANNOTATION_TYPES:  # require annotation property
             for iAnnot in [0, 1]:  # require M, E -Type annotations
-                if iAnnot > 0 and res_type not in [meTypeDensity]:  # do not require E-Type annotation
+                if iAnnot > 0 and res_type not in [ME_DENSITY_TYPE]:  # do not require E-Type annotation
                     continue
                 filters_by_type.append(Filter(operator=FilterOperator.EQUAL,
                         path=["annotation", "type"],
@@ -502,7 +507,7 @@ def return_contributor(forge, project_str, contributor_id, contributor_name,
             if not dryrun:
                 forge.register(contributor, forge._model.schema_id(agent_type))
             else:
-                log_info.warning("This is a Nexus dryrun execution, the "
+                log_info.append("This is a Nexus dryrun execution, the "
                     "contributor Resource will not be registered in Nexus")
         except Exception as e:
             raise Exception(
@@ -645,15 +650,15 @@ def get_layer(forge, label, initial="L", regex="(\d){1,}_", split_separator="_",
 
 
 def forge_resolve(forge, label, name=None, target="terms"):
-    if label in forge_resolve_cache:
-        return forge_resolve_cache[label]
+    if label in FORGE_RESOLVE_CACHE:
+        return FORGE_RESOLVE_CACHE[label]
 
     res = forge.resolve(label, scope="ontology", target=target, strategy="EXACT_MATCH")
     if not res:
         from_ = "" if not name else f" from '{name}'"
         raise Exception("label '%s'%s not resolved" % (label, from_))
     else:
-        forge_resolve_cache[label] = res
+        FORGE_RESOLVE_CACHE[label] = res
         if isinstance(res.label, str):
             if res.label.upper() != label.upper():
                 print(f"\nDifferent resolved label: input '{label}', resolved '{res.label}'")

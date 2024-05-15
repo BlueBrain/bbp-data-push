@@ -14,26 +14,26 @@ from kgforge.core import Resource
 from kgforge.specializations.resources import Dataset
 
 type_attributes_map = {
-    comm.meTypeDensity: {"dsm": "quantity", "voxel_type": "intensity",
+    comm.ME_DENSITY_TYPE: {"dsm": "quantity", "voxel_type": "intensity",
         "desc": "density volume for the original Allen ccfv3 annotation at 25 um with "
             "the isocortex layer 2 and 3 split. It has been generated from a "
             "probability mapping, using the corrected nissl volume and transplanted."},
-    comm.gliaDensityType: {"dsm": "quantity", "voxel_type": "intensity",
+    comm.GLIA_DENSITY_TYPE: {"dsm": "quantity", "voxel_type": "intensity",
         "desc": "volume"},
-    comm.neuronDensityType: {"dsm": "quantity", "voxel_type": "intensity",
+    comm.NEURON_DENSITY_TYPE: {"dsm": "quantity", "voxel_type": "intensity",
         "desc": "neuron density volume"},
-    comm.parcellationType: {"dsm": "parcellationId", "voxel_type": "label",
+    comm.PARCELLATION_TYPE: {"dsm": "parcellationId", "voxel_type": "label",
         "desc": "raster volume for brain region annotation as IDs, including the "
             "separation of cortical layers 2 and 3."},
-    comm.hemisphereType: {"dsm": "parcellationId", "voxel_type": "label",
+    comm.HEMISPHERE_TYPE: {"dsm": "parcellationId", "voxel_type": "label",
         "desc": "hemisphere annotation from Allen ccfv3 volume."},
-    comm.placementHintsType: {"dsm": "distance", "voxel_type": "vector",
+    comm.PLACEMENT_HINTS_TYPE: {"dsm": "distance", "voxel_type": "vector",
         "desc": "placement hints volume"},
-    comm.directionVectorsType: {"dsm": "vector3D", "voxel_type": "vector",
+    comm.DIRECTION_VECTORS_TYPE: {"dsm": "vector3D", "voxel_type": "vector",
         "desc": "direction vectors field volume"},
-    comm.cellOrientationType: {"dsm": "quaternion", "voxel_type": "vector",
+    comm.CELL_ORIENTATION_TYPE: {"dsm": "quaternion", "voxel_type": "vector",
         "desc": "cell orientation field volume"},
-    comm.brainMaskType: {"dsm": "parcellationId", "voxel_type": "label",
+    comm.BRAIN_MASK_TYPE: {"dsm": "parcellationId", "voxel_type": "label",
         "desc": "binary mask volume"}
 }
 
@@ -93,8 +93,6 @@ def create_volumetric_resources(
         Resources to be pushed in Nexus.
     """
 
-    attr = type_attributes_map[dataset_type]
-
     extension = ".nrrd"
     exc_etype = "cADpyr"
     generic_types = {
@@ -127,16 +125,18 @@ def create_volumetric_resources(
 
     tot_files = len(file_paths)
     L.info(f"{tot_files} {extension} files found under '{input_paths}', creating the respective payloads...")
-    file_count = 0
-    for file_metadata_paths in file_paths:
+    for file_count, file_metadata_paths in enumerate(file_paths):
         filepath = file_metadata_paths[0]
-        file_count += 1
-
         filename_split = os.path.splitext(os.path.basename(filepath))
         filename = filename_split[0]
 
         L.info(f"Creating payload for '{filename}' ({file_count} of {tot_files})")
-        file_config = deepcopy(comm.file_config)
+        if filename == comm.NEURON_DENSITY_FILE:
+            res_type = comm.NEURON_DENSITY_TYPE
+        else:
+            res_type = dataset_type
+        attr = type_attributes_map[res_type]
+        file_config = deepcopy(comm.FILE_CONFIG)
         file_config["file_extension"] = filename_split[1][1:]
 
         description = f"{filename} {attr['desc']}."
@@ -146,11 +146,11 @@ def create_volumetric_resources(
         else:
             res_brain_location = comm.create_brain_location_prop(forge,
                 filename, region_map, reference_system)
-            if dataset_type == comm.brainMaskType:
+            if res_type == comm.BRAIN_MASK_TYPE:
                 res_name = f"Mask of {res_brain_location.brainRegion.label}"
 
         nrrd_resource = Dataset(forge,
-            type=comm.all_types[dataset_type],
+            type=comm.ALL_TYPES[res_type],
             name=res_name if res_name else filename,
             distribution=forge.attach(filepath, f"application/{extension[1:]}"),
             temp_filepath=filepath,
@@ -169,13 +169,13 @@ def create_volumetric_resources(
         try:
             header = nrrd.read_header(filepath)
             voxel_type = attr["voxel_type"]
-            if (dataset_type == comm.placementHintsType) and (header["dimension"]) < 4:
+            if (res_type == comm.PLACEMENT_HINTS_TYPE) and (header["dimension"]) < 4:
                 voxel_type = "label"
             add_nrrd_props(nrrd_resource, header, file_config, voxel_type, L)
         except nrrd.errors.NRRDError as e:
             L.error(f"NrrdError: {e}")
 
-        if dataset_type in comm.annotation_types:
+        if res_type in comm.ANNOTATION_TYPES:
             L.info("Adding annotation")
             cellTypes = []
 
@@ -193,9 +193,9 @@ def create_volumetric_resources(
 
                 # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
                 separator = {
-                    comm.meTypeDensity: "_INH_densities",
-                    comm.gliaDensityType: "_density"}
-                if dataset_type in [comm.gliaDensityType, comm.neuronDensityType]:
+                    comm.ME_DENSITY_TYPE: "_INH_densities",
+                    comm.GLIA_DENSITY_TYPE: "_density"}
+                if dataset_type in [comm.GLIA_DENSITY_TYPE, comm.NEURON_DENSITY_TYPE]:
                     filename_ann = filename_ann.capitalize()
                 for generic_filename in generic_types:
                     if generic_filename in filename:
@@ -215,7 +215,7 @@ def create_volumetric_resources(
             if layer:
                 nrrd_resource.brainLocation.layer = Resource.from_json(layer)
         
-        if dataset_type == comm.placementHintsType:
+        if res_type == comm.PLACEMENT_HINTS_TYPE:
             layer = comm.get_placementhintlayer_prop_from_name(forge, filename)
             if layer:
                 nrrd_resource.brainLocation.layer = Resource.from_json(layer)
@@ -434,7 +434,7 @@ def get_cellType(forge, name, separator):
     # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
     metype_separator_excitatory = "_v3"
     target = "CellType"
-    if separator == "_density":  # comm.gliaDensityType
+    if separator == "_density":  # comm.GLIA_DENSITY_TYPE
         target = None
 
     label = name.split(separator)[0].split(metype_separator_excitatory)[0]

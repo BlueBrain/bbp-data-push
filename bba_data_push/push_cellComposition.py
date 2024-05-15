@@ -98,7 +98,7 @@ def register_densities(volume_path, atlas_release_prop, forge, subject,
                                  " Please provide one.")
 
             filepath = et_part[path_key]
-            res_type = comm.meTypeDensity
+            res_type = comm.ME_DENSITY_TYPE
             # Create Resource payload
             resources = create_volumetric_resources((filepath,), res_type,
                 atlas_release_prop, forge, subject, brain_location_prop,

@@ -65,7 +65,7 @@ def atlas_release_id():
 
 @pytest.fixture
 def atlas_release_prop(atlas_release_id):
-    return comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType])
+    return comm.get_property_type(atlas_release_id, comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE])
 
 
 @pytest.fixture

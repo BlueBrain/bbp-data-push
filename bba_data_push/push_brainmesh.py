@@ -80,9 +80,9 @@ def create_mesh_resources(input_paths, dataset_type, region_map, atlas_release, 
         description = f"Mesh of the region {region_label}."
 
         mesh_resource = Dataset(forge,
-            type=comm.all_types[dataset_type],
+            type=comm.ALL_TYPES[dataset_type],
             name=name,
-            filepath=filepath,
+            temp_filepath=filepath,
             distribution=forge.attach(filepath, f"application/{extension[1:]}"),
             description=description,
             isRegisteredIn=reference_system,

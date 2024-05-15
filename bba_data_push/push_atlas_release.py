@@ -18,7 +18,7 @@ def create_atlas_release(atlas_release_id, brain_location_prop,
     par_prop, hem_prop, ph_catalog_prop, dv_prop, co_prop, contribution, name,
     description
 ):
-    atlas_release = create_base_resource(comm.all_types[comm.atlasrelaseType],
+    atlas_release = create_base_resource(comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE],
         brain_location_prop, reference_system_prop, subject_prop, contribution,
         None, name, description, None, atlas_release_id)
     atlas_release.spatialReferenceSystem = reference_system_prop
@@ -44,7 +44,7 @@ def validate_atlas_release(atlas_release_id, forge, resource_tag, logger):
     atlas_release_rev = comm.get_resource_rev(forge, atlas_release_id,
                                               resource_tag, cross_bucket=True)
     atlas_release_prop_ref = comm.get_property_type(atlas_release_id,
-        comm.all_types[comm.atlasrelaseType], atlas_release_rev)
+        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev)
 
     for prop in atlas_release_properties:
         existing_prop = getattr(atlas_release_res, prop, None)

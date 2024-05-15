@@ -22,7 +22,7 @@ def test_create_volumetric_resources(forge, nexus_bucket, nexus_token, nexus_env
     dataset_path = (
         str(Path(TEST_PATH, "tests/tests_data/L1_NGC-SA|cNAC.nrrd")),
     )
-    dataset_type = comm.meTypeDensity
+    dataset_type = comm.ME_DENSITY_TYPE
 
     resources = create_volumetric_resources(
         dataset_path,
@@ -52,7 +52,7 @@ def test_create_volumetric_ph(forge, nexus_bucket, nexus_token, nexus_env,
     dataset_path = (
         str(Path(TEST_PATH, "tests/tests_data/placement_hints")),
     )
-    dataset_type = comm.placementHintsType
+    dataset_type = comm.PLACEMENT_HINTS_TYPE
 
     resources = create_volumetric_resources(
         dataset_path,
@@ -81,7 +81,7 @@ def test_create_volumetric_mask(forge, nexus_bucket, nexus_token, nexus_env,
     dataset_path = (
         str(Path(TEST_PATH, "tests/tests_data/brain_region_mask")),
     )
-    dataset_type = comm.brainMaskType
+    dataset_type = comm.BRAIN_MASK_TYPE
 
     hierarchy_path = Path(TEST_PATH, "tests/tests_data/mba_hierarchy.json")
     region_map = comm.get_region_map(hierarchy_path)
@@ -112,7 +112,7 @@ def test_get_existing_resources(forge, atlas_release_id):
     with open(Path(TEST_PATH, "tests/tests_data/local_ME_density.json")) as local_res_file:
         local_res = json.loads(local_res_file.read())
 
-    res_type = comm.meTypeDensity
+    res_type = comm.ME_DENSITY_TYPE
 
     orig_ress, _ = comm.get_existing_resources(res_type, atlas_release_id, Resource.from_json(local_res), forge, 100)
     assert isinstance(orig_ress, list)

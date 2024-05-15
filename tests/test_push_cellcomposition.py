@@ -57,7 +57,7 @@ def test_push_cellcomposition(forge, atlas_release_id, cell_composition_id,
 
     assert isinstance(cell_composition, Resource)
     assert COMPOSITION_TYPE in cell_composition.type
-    assert comm.get_property_type(atlas_release_id, comm.all_types[comm.atlasrelaseType], atlas_release_rev) == \
+    assert comm.get_property_type(atlas_release_id, comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev) == \
            cell_composition.atlasRelease
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     assert reference_system_prop == cell_composition.atlasSpatialReferenceSystem
