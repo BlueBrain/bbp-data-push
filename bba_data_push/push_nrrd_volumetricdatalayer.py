@@ -38,6 +38,11 @@ type_attributes_map = {
 }
 
 me_separator = "|"
+separator = {
+    comm.ME_DENSITY_TYPE: "_INH_densities",
+    comm.GLIA_DENSITY_TYPE: "_density",
+    comm.NEURON_DENSITY_TYPE: "_density"
+}
 
 
 def create_volumetric_resources(
@@ -177,7 +182,7 @@ def create_volumetric_resources(
 
         if res_type in comm.ANNOTATION_TYPES:
             L.info("Adding annotation")
-            cellTypes = []
+            cell_types_resolved = []
 
             if file_metadata_paths[1] in metadata:
                 L.info(f"Retrieving annotation from metadata file {metadata_paths[file_metadata_paths[1]]}")
@@ -186,15 +191,13 @@ def create_volumetric_resources(
                 if density_filename not in file_annotation_map:
                     raise Exception(f"'{density_filename}' not present in metadata file")
                 for m_e in file_annotation_map[density_filename]:
-                    cellTypes.append(comm.resolve_cellType(forge, m_e, target="CellType", name=density_filename))
+                    cell_types_resolved.append(comm.resolve_cellType(forge, m_e,
+                        target="CellType", name=density_filename))
             else:
                 L.info("No metadata provided, extracting annotation from filename")
                 filename_ann = filename
 
                 # This label extraction from filename will be dropped with https://github.com/BlueBrain/atlas-densities/pull/44
-                separator = {
-                    comm.ME_DENSITY_TYPE: "_INH_densities",
-                    comm.GLIA_DENSITY_TYPE: "_density"}
                 if dataset_type in [comm.GLIA_DENSITY_TYPE, comm.NEURON_DENSITY_TYPE]:
                     filename_ann = filename_ann.capitalize()
                 for generic_filename in generic_types:
@@ -204,12 +207,12 @@ def create_volumetric_resources(
                 if exc_etype in filename_ann:
                     filename_ann = filename_ann.replace(f"_{exc_etype}", f"{me_separator}{exc_etype}")
 
-                cellTypes = get_cellType(forge, filename_ann, separator[dataset_type])
+                cell_types_resolved = get_cellType(forge, filename_ann, separator[dataset_type])
 
-            annotation = get_cellAnnotation(cellTypes)
+            annotation = get_cellAnnotation(cell_types_resolved)
             # Add annotation to Resource payload
             nrrd_resource.annotation = Resource.from_json(annotation)
-            nrrd_resource.cellType = Resource.from_json(cellTypes)
+            nrrd_resource.cellType = Resource.from_json(cell_types_resolved)
 
             layer = comm.get_layer(forge, nrrd_resource.cellType[0].label)
             if layer:
@@ -305,7 +308,7 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type, L):
             else:
                 space_directions.append(col)
 
-    # Here, 'space directions' being missing in the file, we hardcode an identity matrix
+    # Here, 'space directions' being missing in the file, we hard-code an identity matrix
     # If we have 4 dimensions, we say
     else:
         if nrrd_header["dimension"] == 2:
@@ -419,12 +422,12 @@ def add_nrrd_props(resource, nrrd_header, config, voxel_type, L):
     resource.resolution = {"value": r[0][0], "unitCode": config["sampling_space_unit"]}
 
 
-def get_cellAnnotation(cellTypes):
+def get_cellAnnotation(cell_types):
     annotations = []    
     types = ["M", "E"]
-    for i in range(len(cellTypes)):
+    for i in range(len(cell_types)):
         annotation = comm.return_base_annotation(types[i])
-        annotation["hasBody"].update(cellTypes[i])
+        annotation["hasBody"].update(cell_types[i])
         annotations.append(annotation)
 
     return annotations
@@ -447,13 +450,12 @@ def get_cellType(forge, name, separator):
     if n_parts == 2:
         mtype = parts[0]
         etype = parts[1]
-        me_types = [mtype, etype]
+        cell_types = [mtype, etype]
     else:
-        me_types = parts
+        cell_types = parts
 
-    cellTypes = []
-    for t in me_types:
-        cellType = comm.resolve_cellType(forge, t, target, name)
-        cellTypes.append(cellType)
+    cell_types_resolved = []
+    for cell_type in cell_types:
+        cell_types_resolved.append(comm.resolve_cellType(forge, cell_type, target, name))
 
-    return cellTypes
+    return cell_types_resolved
