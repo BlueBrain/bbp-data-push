@@ -13,7 +13,7 @@ setup(
     license="BBP-internal-confidential",
     python_requires=">=3.7",
     install_requires=[
-        "nexusforge@git+https://github.com/BlueBrain/nexus-forge.git@faf2833",
+        "nexusforge>=0.8.2",
         "click>=7.0",
         "numpy>=1.19",
         "h5py>=2.10.0",
