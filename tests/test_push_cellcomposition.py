@@ -57,16 +57,16 @@ def test_push_cellcomposition(forge, atlas_release_id, cell_composition_id,
 
     assert isinstance(cell_composition, Resource)
     assert COMPOSITION_TYPE in cell_composition.type
-    assert comm.get_property_type(atlas_release_id, comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev) == \
+    assert comm.get_property_type(atlas_release_id, comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev, atlas_release_tag) == \
            cell_composition.atlasRelease
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     assert reference_system_prop == cell_composition.atlasSpatialReferenceSystem
     brain_region_prop = get_region_prop(hierarchy_path, brain_region_id)
     assert comm.get_brain_location_prop(brain_region_prop, reference_system_prop) == cell_composition.brainLocation
     for cell_comp_prop in [cell_composition.cellCompositionVolume, cell_composition.cellCompositionSummary]:
-        assert isinstance(cell_comp_prop, dict)
-        assert "@id" in cell_comp_prop
-        assert "@type" in cell_comp_prop
+        assert isinstance(cell_comp_prop, Resource)
+        for attribute in ["id", "type", "tag"]:
+            assert hasattr(cell_comp_prop, attribute)
 
 
 def test_register_densities(forge, atlas_release_prop, brain_region_id, hierarchy_path,

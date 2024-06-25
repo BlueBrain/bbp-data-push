@@ -84,7 +84,7 @@ def create_volumetric_property(res_name, res_type, res_id, file_path,
         vol_res.id = res_id
     comm._integrate_datasets_to_Nexus(forge, [vol_res], res_type,
         atlas_release_id_orig, resource_tag, logger, force_registration=False, dryrun=dryrun)
-    vol_prop = comm.get_property_type(vol_res.id, res_type)
+    vol_prop = comm.get_property_type(vol_res.id, res_type, rev=None, tag=resource_tag)
 
     return vol_prop
 

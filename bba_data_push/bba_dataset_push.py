@@ -197,7 +197,7 @@ def push_volumetric(ctx, dataset_path, dataset_type, atlas_release_id,
 
     # Validate input arguments
     atlas_release_prop = comm.get_property_type(atlas_release_id,
-        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev)
+        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev, resource_tag)
     species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject = get_subject_prop(species_prop)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
@@ -269,7 +269,7 @@ def push_meshes(ctx, dataset_path, dataset_type, brain_region, hierarchy_path,
 
     # Validate input arguments
     atlas_release_prop = comm.get_property_type(atlas_release_id,
-        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev)
+        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev, resource_tag)
     species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject = get_subject_prop(species_prop)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
@@ -396,7 +396,7 @@ def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_compos
         resource_tag, cross_bucket=True)
 
     atlas_release_prop = comm.get_property_type(atlas_release_id,
-        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev)
+        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev, resource_tag)
     brain_region_prop = get_region_prop(hierarchy_path, brain_region)
     reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
@@ -429,8 +429,10 @@ def push_cellcomposition(forge, atlas_release_id, atlas_release_rev, cell_compos
     cell_composition = create_cellComposition_prop(
         forge, COMPOSITION_TYPE, COMPOSITION_ABOUT, atlas_release_prop, brain_location_prop, subject_prop, contribution,
         derivation, name[0], description[0], None, reference_system_prop)
-    cell_composition.cellCompositionVolume = {"@id": cell_comp_volume.id, "@type": VOLUME_TYPE}
-    cell_composition.cellCompositionSummary = {"@id": cell_comp_summary.id, "@type": SUMMARY_TYPE}
+    cell_composition.cellCompositionVolume = comm.get_property_type(
+        arg_id=cell_comp_volume.id, arg_type=VOLUME_TYPE, rev=None, tag=resource_tag)
+    cell_composition.cellCompositionSummary = comm.get_property_type(
+        arg_id=cell_comp_summary.id, arg_type=SUMMARY_TYPE, rev=None, tag=resource_tag)
     if cell_composition_id:
         cell_composition.id = cell_composition_id
     comm._integrate_datasets_to_Nexus(forge, [cell_composition], COMPOSITION_TYPE,
@@ -516,15 +518,18 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     species_prop = comm.get_property_label(comm.Args.species, species, forge)
     subject_prop = get_subject_prop(species_prop)
     brain_region_prop = get_region_prop(hierarchy_path, brain_region)
-    reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE)
+    reference_system_prop = comm.get_property_type(reference_system_id, REFSYSTEM_TYPE,
+                                                   rev=None, tag=resource_tag)
     brain_location_prop = comm.get_brain_location_prop(brain_region_prop, reference_system_prop)
-    brain_template_prop = comm.get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE)
+    brain_template_prop = comm.get_property_type(brain_template_id, BRAIN_TEMPLATE_TYPE,
+                                                 rev=None, tag=resource_tag)
 
     contribution, log_info = comm.return_contribution(forge, dryrun=dryrun)
     logger.info("\n".join(log_info))
 
     atlas_release_prop = comm.get_property_type(atlas_release_id,
-        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], rev=atlas_release_rev + 1) # Anticipating AtlasRelease tagging
+        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], rev=atlas_release_rev + 1, # Anticipating AtlasRelease tagging
+        tag=resource_tag)
     derivation = get_derivation(atlas_release_id)
 
     # Create ParcellationOntology resource
@@ -583,7 +588,8 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
     comm._integrate_datasets_to_Nexus(forge, [ph_catalog],
         comm.PLACEMENT_HINTS_DATA_LAYER_CATALOG_TYPE, atlas_release_id_orig,
         resource_tag, logger, force_registration=False, dryrun=dryrun)
-    ph_catalog_prop = comm.get_property_type(ph_catalog.id, comm.PLACEMENT_HINTS_DATA_LAYER_CATALOG_TYPE)
+    ph_catalog_prop = comm.get_property_type(ph_catalog.id,
+        comm.PLACEMENT_HINTS_DATA_LAYER_CATALOG_TYPE, rev=None, tag=resource_tag)
 
     # Create DirectionVectorsField resource
     dv_name = "Direction Vectors volume"
@@ -602,7 +608,8 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         resource_tag, logger, dryrun)
 
     # Create AtlasRelease resource
-    ont_prop = comm.get_property_type(ont_res.id, comm.ONTOLOGY_TYPE)
+    ont_prop = comm.get_property_type(ont_res.id, comm.ONTOLOGY_TYPE, rev=None,
+        tag=resource_tag)
     atlas_release_resource = create_atlas_release(atlas_release_id_orig, brain_location_prop,
         reference_system_prop, brain_template_prop, subject_prop, ont_prop, par_prop,
         hem_prop, ph_catalog_prop, dv_prop, co_prop, contribution, name, description)
@@ -668,6 +675,7 @@ def cli_register_cell_composition_volume_distribution(
         arg_id=atlas_release_id,
         arg_type=comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE],
         rev=atlas_release_rev,
+        tag=resource_tag
     )
     register_densities(
         volume_path=input_distribution_file,

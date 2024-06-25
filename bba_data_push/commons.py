@@ -353,10 +353,12 @@ def get_property_id_label(res_id, res_label, notation=None):
     return prop
 
 
-def get_property_type(arg_id, arg_type, rev=None):
+def get_property_type(arg_id, arg_type, rev=None, tag=None):
     prop = Resource(id=arg_id, type=arg_type)
     if rev:
         prop._rev = rev
+    if tag:
+        prop.tag = tag
     return prop
 
 def get_date_prop():
