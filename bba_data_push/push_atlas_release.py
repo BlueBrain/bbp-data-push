@@ -34,6 +34,12 @@ def create_atlas_release(atlas_release_id, brain_location_prop,
     return atlas_release
 
 
+def align_input_resources_tag(resource_list, tag, forge):
+    for res_id in resource_list:
+        res = comm.retrieve_resource(res_id, forge)
+        forge.tag(res, tag)
+
+
 def validate_atlas_release(atlas_release_id, forge, resource_tag, logger):
     logger.info(f"Validating AtlasRelease id {atlas_release_id} at tag '{resource_tag}'")
     atlas_release_res = forge.retrieve(atlas_release_id, version=resource_tag)
@@ -44,7 +50,7 @@ def validate_atlas_release(atlas_release_id, forge, resource_tag, logger):
     atlas_release_rev = comm.get_resource_rev(forge, atlas_release_id,
                                               resource_tag, cross_bucket=True)
     atlas_release_prop_ref = comm.get_property_type(atlas_release_id,
-        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev)
+        comm.ALL_TYPES[comm.ATLAS_RELEASE_TYPE], atlas_release_rev, resource_tag)
 
     for prop in atlas_release_properties:
         existing_prop = getattr(atlas_release_res, prop, None)

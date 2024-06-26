@@ -21,7 +21,7 @@ from kgforge.core import KnowledgeGraphForge, Resource
 from bba_data_push.push_atlas_release import create_base_resource, \
     create_volumetric_property, create_atlas_release, \
     create_ph_catalog_distribution, validate_atlas_release, \
-    atlas_release_properties
+    atlas_release_properties, align_input_resources_tag
 from bba_data_push.push_nrrd_volumetricdatalayer import create_volumetric_resources, type_attributes_map
 from bba_data_push.push_brainmesh import create_mesh_resources
 from bba_data_push.push_cellComposition import register_densities
@@ -618,6 +618,8 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
 
     # Sanity check
     if not dryrun:
+        align_input_resources_tag([reference_system_id, brain_template_id],
+                                  resource_tag, forge)
         validated = validate_atlas_release(atlas_release_id, forge, resource_tag, logger)
         if not validated:
             logger.error(f"The properties of AtlasRelease Id {atlas_release_id} at "
