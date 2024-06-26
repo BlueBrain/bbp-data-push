@@ -187,6 +187,7 @@ def _integrate_datasets_to_Nexus(forge, resources, dataset_type,
 
     return resource_to_filepath
 
+
 def get_placementhintlayer_prop_from_name(forge, filename):
     if "]" in filename:
         layer_label = str(filename).split(".nrrd")[0]
@@ -326,6 +327,7 @@ def get_region_map(hierarchy_path):
 def get_region_label(region_map, region_id):
     return region_map.get(region_id, 'name', with_ascendants=False)
 
+
 class Args:
     species = "species"
     brain_region = "brain-region"
@@ -361,10 +363,12 @@ def get_property_type(arg_id, arg_type, rev=None, tag=None):
         prop.tag = tag
     return prop
 
+
 def get_date_prop():
     res_dict = {"type": 'xsd:date',
                 "@value": datetime.today().strftime('%Y-%m-%d')}
     return Resource.from_json(res_dict)
+
 
 def get_voxel_type(voxel_type, component_size: int):
     """
@@ -544,8 +548,8 @@ def return_contribution(forge, dryrun=False):
     except Exception as e:
         raise Exception(f"Error when decoding the token: {e}")
 
-    # TODO: account for attributes of service account token
-    user_family_name = token_info.get("family_name", token_info.get("groups"))
+    username = token_info.get('preferred_username')
+    user_family_name = token_info.get("family_name", token_info.get("groups", username))
     user_given_name = token_info.get("given_name", token_info.get("clientId"))
     user_full_name = token_info.get("name")
     if not user_full_name:
@@ -556,7 +560,6 @@ def return_contribution(forge, dryrun=False):
     project_str = f"project '{bucket}'"
 
     user_id = None
-    username = token_info.get('preferred_username')
     contributor_type = ["Agent"]
     if username:
         if "groups" in token_info:
