@@ -316,6 +316,7 @@ def create_brain_location_prop(forge, region_id, region_map, reference_system):
 
 def get_brain_location_prop(brain_region, reference_system):
     return Resource(
+        type="BrainLocation",
         brainRegion=brain_region,
         atlasSpatialReferenceSystem=reference_system)
 
