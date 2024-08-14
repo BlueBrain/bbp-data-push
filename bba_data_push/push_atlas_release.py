@@ -96,15 +96,16 @@ def create_volumetric_property(res_name, res_type, res_id, file_path,
 
 
 def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
-    ph_res_to_filepath, forge, hierarchy_path, layers_regions_map_json=None):
+    ph_res_to_filepath, forge, hierarchy_path, layers_regions_map_json=None, res_tag=None):
     region_map = comm.get_region_map(hierarchy_path)
 
     placementHints = []
     voxelDistanceToRegionBottom = {}
     for ph_resource in ph_resources:
         a_ph_item = dict()
-        a_ph_item["@id"] = ph_resource.get_identifier()
-        a_ph_item["_rev"] = ph_resource._store_metadata.get("_rev")
+        ph_res_id = ph_resource.get_identifier()
+        a_ph_item["@id"] = ph_res_id
+        a_ph_item["_rev"] = comm.get_resource_rev(forge, ph_res_id, res_tag)
         a_ph_item["distribution"] = {"atLocation": {
             "location": ph_resource.distribution.atLocation.location},
             "name": ph_resource.distribution.name}
@@ -114,7 +115,7 @@ def create_ph_catalog_distribution(ph_resources, filepath_to_brainregion,
         if ph_resource.distribution.name == "Isocortex_problematic_voxel_mask.nrrd":
             continue
 
-        ph_resource_filename = os.path.basename(ph_res_to_filepath[ph_resource.get_identifier()])
+        ph_resource_filename = os.path.basename(ph_res_to_filepath[ph_res_id])
         if layers_regions_map_json:
             ph_regions = layers_regions_map_json[ph_resource_filename]
         else:

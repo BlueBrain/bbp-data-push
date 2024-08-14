@@ -580,7 +580,7 @@ def push_atlasrelease(ctx, species, brain_region, reference_system_id, brain_tem
         layers_regions_map_json = json.load(f)
     ph_catalog_distribution = create_ph_catalog_distribution(ph_res,
         filepath_to_brainregion_json, resource_to_filepath, forge, hierarchy_path,
-        layers_regions_map_json)
+        layers_regions_map_json, resource_tag)
     with open("./ph_catalog_distribution.json", "w") as f:
         json.dump(ph_catalog_distribution, f)
     
