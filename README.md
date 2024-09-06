@@ -1,17 +1,4 @@
-This documentation is also available on [Confluence](https://bbpteam.epfl.ch/project/spaces/display/BBKG/bba-data-push).
-
-# Summary:
-
-Description
-Source
-Arguments for initialize-pusher-cli
-Arguments for push_volumetric
-Arguments for push_meshes
-Arguments for push_regionsummary
-Arguments for push_cellrecords
-Installation
-
-## Description
+# Description
 
 This module contains command-line executables aka CLIs that take in input atlas pipeline datasets and push them into Nexus along with a resource properties payload, including:
 
@@ -46,9 +33,9 @@ The input datasets must be one of the datasets listed in the input configuration
     	      metadata_parcellations_ccfv3_l23split: metadata_parcellations_ccfv3_l23split.json
 
 
-The resource property payload include, in addition to various information on the dataset pushed and its content, some provenance informations:
+The Resource property payload includes, in addition to various information on the dataset pushed and its content, some provenance informations:
 
-- The contributor :  @id of the user and organisation associated with the input Nexus token.
+- The contributor:  @id of the user and organisation associated with the input Nexus token.
 - From which datasets it derivates.
 - Informations on the run stocked in the linked Activity resource: the run duration, the software used ...
 
@@ -59,9 +46,11 @@ This means that before calling one of the three CLIs, initialize-pusher-cli must
 Note: the --verbosity argument allows you to print in the console the last resource payload from the list of resource payloads that has been constructed from input datasets that will be pushed into Nexus. If only one dataset has been given as input then its corresponding resource payload will be printed.
 
 
-## Source
-You can find the source of this module here: https://bbpgitlab.epfl.ch/dke/apps/blue_brain_nexus_push
+# Install
+`pip install "bba-data-push>=4.3.0"`
 
+
+# Examples
 
 ## Arguments for initialize-pusher-cli
 
@@ -140,15 +129,14 @@ This script has been designed to function with sonata h5 files storing 3D brain 
 --provenance-metadata-path : [path] Path to the Json file containing metadata for the derivation properties as well as the Activity and SoftwareAgent resources.  
 --resource-tag : [string] Optional tag value with which to tag the resources. (Optional). 
 
-## Installation
-Clone the repository:
 
-```git clone https://bbpgitlab.epfl.ch/dke/apps/blue_brain_nexus_push.git```
 
-and install it with pip:
+# Acknowledgements
 
-```cd blue_brain_atlas_nexus_push```
+The development of this software was supported by funding to the Blue Brain Project, a 
+research center of the École polytechnique fédérale de Lausanne (EPFL), from the Swiss 
+government’s ETH Board of the Swiss Federal Institutes of Technology.
 
-```pip install .```
+For license and authors, see LICENSE.txt and AUTHORS.txt respectively.
 
-The dependencies (nexusforge...) are all available on Pypi and will be automatically installed by Pip.
+Copyright (c) 2020-2024 Blue Brain Project/EPFL

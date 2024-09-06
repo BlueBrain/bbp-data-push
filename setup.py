@@ -10,7 +10,7 @@ setup(
         "Package creating resource payloads from atlas datasets and push them along "
         "with the corresponding dataset files into Nexus."
     ),
-    license="BBP-internal-confidential",
+    license="Apache-2",
     python_requires=">=3.7",
     install_requires=[
         "nexusforge>=0.8.2",
