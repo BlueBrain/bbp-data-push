@@ -47,7 +47,7 @@ Note: the --verbosity argument allows you to print in the console the last resou
 
 
 # Install
-`pip install "bba-data-push>=4.3.0"`
+`pip install "bba-data-push"`
 
 
 # Examples
