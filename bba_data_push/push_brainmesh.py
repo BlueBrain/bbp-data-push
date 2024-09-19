@@ -7,9 +7,43 @@ from pathlib import Path
 
 from kgforge.core import Resource
 from kgforge.specializations.resources import Dataset
+from multiprocessing import Pool, cpu_count
 
 import bba_data_push.commons as comm
 
+def do(filepath, file_count, tot_files, logger, forge, region_map,
+       reference_system, dataset_type, extension, atlas_release, subject,
+       contribution, derivation):
+    filename_split = os.path.splitext(os.path.basename(filepath))
+    region_id = filename_split[0]
+
+    logger.info(f"Creating Mesh payload for file '{region_id}' ({file_count} of {tot_files})")
+
+    brain_location = comm.create_brain_location_prop(forge, region_id,
+        region_map, reference_system)
+    region_label = brain_location.brainRegion.label
+
+    name = f"Mesh of {region_label}"
+    description = f"Mesh of the region {region_label}."
+
+    mesh_resource = Dataset(forge,
+        type=comm.ALL_TYPES[dataset_type],
+        name=name,
+        temp_filepath=filepath,
+        distribution=forge.attach(filepath, f"application/{extension[1:]}"),
+        description=description,
+        isRegisteredIn=reference_system,
+        brainLocation=brain_location,
+        atlasRelease=atlas_release,
+        subject=subject,
+        spatialUnit="µm",
+        contribution=contribution,
+        derivation=[derivation]
+    )
+
+    logger.info("Payload creation completed\n")
+
+    return mesh_resource
 
 def create_mesh_resources(input_paths, dataset_type, region_map, atlas_release, forge,
     subject, reference_system, contribution, derivation, logger,
@@ -50,8 +84,6 @@ def create_mesh_resources(input_paths, dataset_type, region_map, atlas_release, 
 
     extension = ".obj"
 
-    resources = []
-
     file_paths = []
     for input_path in input_paths:
         if input_path.endswith(extension):
@@ -63,39 +95,23 @@ def create_mesh_resources(input_paths, dataset_type, region_map, atlas_release, 
     tot_files = len(file_paths)
     logger.info(f"{tot_files} {extension} files found under '{input_paths}', creating the respective payloads...")
 
+    n_cores = int(0.8*cpu_count())
+    resources = []
     file_count = 0
-    for filepath in file_paths:
-        file_count += 1
-
-        filename_split = os.path.splitext(os.path.basename(filepath))
-        region_id = filename_split[0]
-
-        logger.info(f"Creating Mesh payload for file '{region_id}' ({file_count} of {tot_files})")
-
-        brain_location = comm.create_brain_location_prop(forge, region_id,
-            region_map, reference_system)
-        region_label = brain_location.brainRegion.label
-
-        name = f"Mesh of {region_label}"
-        description = f"Mesh of the region {region_label}."
-
-        mesh_resource = Dataset(forge,
-            type=comm.ALL_TYPES[dataset_type],
-            name=name,
-            temp_filepath=filepath,
-            distribution=forge.attach(filepath, f"application/{extension[1:]}"),
-            description=description,
-            isRegisteredIn=reference_system,
-            brainLocation=brain_location,
-            atlasRelease=atlas_release,
-            subject=subject,
-            spatialUnit="µm",
-            contribution=contribution,
-            derivation=[derivation]
-        )
-
-        logger.info("Payload creation completed\n")
-
-        resources.append(mesh_resource)
+    if n_cores:
+        with Pool(processes=n_cores) as pool:
+            for filepath in file_paths:
+                file_count += 1
+                args = (filepath, file_count, tot_files, logger, forge, region_map,
+                       reference_system, dataset_type, extension, atlas_release, subject,
+                       contribution, derivation)
+                resources.append(pool.apply_async(do,  args=args).get())
+    else:
+        for filepath in file_paths:
+            file_count += 1
+            args = (filepath, file_count, tot_files, logger, forge, region_map,
+                   reference_system, dataset_type, extension, atlas_release, subject,
+                   contribution, derivation)
+            resources.append(do(*args)) 
 
     return resources
