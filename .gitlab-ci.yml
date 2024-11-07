@@ -32,7 +32,8 @@ unit_test:
   stage: unit-test
   extends: .unit-tests
   before_script:
-    - pip install -i https://bbpteam.epfl.ch/repository/devpi/simple/ .[dev]
+    - pip install .[dev]
+    - pip install git+https://github.com/BlueBrain/nexus-forge.git@master
   script:
     - !reference [.unit-tests, script]
   variables:
