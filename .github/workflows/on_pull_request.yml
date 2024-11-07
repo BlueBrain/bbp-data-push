@@ -1,0 +1,28 @@
+name: On pull request push
+
+on:
+  pull_request:
+    branches:
+        - "*"
+
+jobs:
+  tests:
+    name: Run test suites
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install Python dependencies
+        run: pip install .[dev]
+
+      - name: Run unit tests
+        env:
+          TEST_FOLDER: tests
+        run: pytest $TEST_FOLDER/test_c*  --color yes
