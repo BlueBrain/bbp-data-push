@@ -9,7 +9,7 @@ import bba_data_push.commons as comm
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
-TEST_PATH = Path(Path(__file__).parent.parent)
+DATA_DIR = Path(__file__).parent.parent / "tests_data"
 
 
 def test_create_mesh_resources(forge, nexus_bucket, nexus_token, nexus_env,
@@ -18,11 +18,11 @@ def test_create_mesh_resources(forge, nexus_bucket, nexus_token, nexus_env,
 
     # Arguments
     dataset_path = [
-        str(Path(TEST_PATH, "tests/tests_data/brain_region_mesh/997.obj")),
-        str(Path(TEST_PATH, "tests/tests_data/brain_region_mesh/614454384.obj")),
+        str(Path(DATA_DIR, "brain_region_mesh/997.obj")),
+        str(Path(DATA_DIR, "brain_region_mesh/614454384.obj")),
     ]
 
-    hierarchy_path = Path(TEST_PATH, "tests/tests_data/mba_hierarchy.json")
+    hierarchy_path = Path(DATA_DIR, "mba_hierarchy.json")
     region_map = comm.get_region_map(hierarchy_path)
 
     dataset_type = comm.BRAIN_MESH_TYPE

@@ -2,6 +2,7 @@ import os
 import pytest
 import logging
 import random
+from pathlib import Path
 
 from kgforge.core import Resource
 from kgforge.core.wrappings.dict import wrap_dict
@@ -14,6 +15,7 @@ import bba_data_push.commons as comm
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
+DATA_DIR = Path(__file__).parent / "tests_data"
 
 def test_create_atlas_release(forge, nexus_bucket, nexus_token, nexus_env,
     atlas_release_id, brain_location_prop, reference_system_prop, subject_prop,
@@ -56,11 +58,11 @@ def test_create_ph_catalog_distribution(forge, hierarchy_layers_path):
     ph_resources.append(ph_y)
     ph_resources.append(ph_mask)
 
-    ph_res_to_filepath[ph_y.get_identifier()] = "./test_data/placement_hints/[PH]y.nrrd"
-    ph_res_to_filepath[ph_mask.get_identifier()] = "./test_data/placement_hints/Isocortex_problematic_voxel_mask.nrrd"
+    ph_res_to_filepath[ph_y.get_identifier()] = f"{DATA_DIR}/placement_hints/[PH]y.nrrd"
+    ph_res_to_filepath[ph_mask.get_identifier()] = f"{DATA_DIR}/placement_hints/Isocortex_problematic_voxel_mask.nrrd"
 
-    filepath_to_brainregion_json[os.path.basename("./test_data/placement_hints/[PH]y.nrrd")] = [brain_region_label]
-    filepath_to_brainregion_json[os.path.basename("./test_data/placement_hints/Isocortex_problematic_voxel_mask.nrrd")] = [brain_region_label]
+    filepath_to_brainregion_json[os.path.basename(f"{DATA_DIR}/placement_hints/[PH]y.nrrd")] = [brain_region_label]
+    filepath_to_brainregion_json[os.path.basename(f"{DATA_DIR}/placement_hints/Isocortex_problematic_voxel_mask.nrrd")] = [brain_region_label]
 
     random.shuffle(ph_resources)
     ph_catalog_distribution = create_ph_catalog_distribution(ph_resources,
@@ -123,7 +125,7 @@ def _create_ph_resources(layers, location_prefix, brain_region_label):
         ph_layer._store_metadata = wrap_dict({"_rev": 1})
         ph_resources.append(ph_layer)
 
-        file_path = f"./test_data/placement_hints/[PH]{layer}.nrrd"
+        file_path = f"{DATA_DIR}/placement_hints/[PH]{layer}.nrrd"
         ph_res_to_filepath[ph_layer.get_identifier()] = file_path
         
         filepath_to_brainregion_json[os.path.basename(file_path)] = [brain_region_label]

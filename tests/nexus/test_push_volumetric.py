@@ -11,7 +11,7 @@ import bba_data_push.commons as comm
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
-TEST_PATH = Path(Path(__file__).parent.parent)
+DATA_DIR = Path(__file__).parent.parent / "tests_data"
 
 
 def test_create_volumetric_resources(forge, nexus_bucket, nexus_token, nexus_env,
@@ -20,7 +20,7 @@ def test_create_volumetric_resources(forge, nexus_bucket, nexus_token, nexus_env
 
     # Arguments
     dataset_path = (
-        str(Path(TEST_PATH, "tests/tests_data/L1_NGC-SA|cNAC.nrrd")),
+        str(Path(DATA_DIR, "L1_NGC-SA|cNAC.nrrd")),
     )
     dataset_type = comm.ME_DENSITY_TYPE
 
@@ -50,7 +50,7 @@ def test_create_volumetric_ph(forge, nexus_bucket, nexus_token, nexus_env,
     contribution, base_derivation):
     # Arguments
     dataset_path = (
-        str(Path(TEST_PATH, "tests/tests_data/placement_hints")),
+        str(Path(DATA_DIR, "placement_hints")),
     )
     dataset_type = comm.PLACEMENT_HINTS_TYPE
 
@@ -79,11 +79,11 @@ def test_create_volumetric_mask(forge, nexus_bucket, nexus_token, nexus_env,
 
     # Arguments
     dataset_path = (
-        str(Path(TEST_PATH, "tests/tests_data/brain_region_mask")),
+        str(Path(DATA_DIR, "brain_region_mask")),
     )
     dataset_type = comm.BRAIN_MASK_TYPE
 
-    hierarchy_path = Path(TEST_PATH, "tests/tests_data/mba_hierarchy.json")
+    hierarchy_path = Path(DATA_DIR, "mba_hierarchy.json")
     region_map = comm.get_region_map(hierarchy_path)
 
     resources = create_volumetric_resources(
@@ -109,7 +109,7 @@ def test_create_volumetric_mask(forge, nexus_bucket, nexus_token, nexus_env,
 
 
 def test_get_existing_resources(forge, atlas_release_id):
-    with open(Path(TEST_PATH, "tests/tests_data/local_ME_density.json")) as local_res_file:
+    with open(Path(DATA_DIR, "local_ME_density.json")) as local_res_file:
         local_res = json.loads(local_res_file.read())
 
     res_type = comm.ME_DENSITY_TYPE
