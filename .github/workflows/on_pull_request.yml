@@ -25,4 +25,4 @@ jobs:
       - name: Run unit tests
         env:
           TEST_FOLDER: tests
-        run: pytest $TEST_FOLDER/test_c*  --color yes
+        run: pytest $TEST_FOLDER  --ignore=$TEST_FOLDER/nexus  --color yes
