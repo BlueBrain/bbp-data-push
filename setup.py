@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
 setup(
-    name="bba_data_push",
+    name="blue_brain_data_push",
     author="Blue Brain Project, EPFL",
     use_scm_version=True,
     setup_requires=["setuptools_scm"],
@@ -10,10 +13,13 @@ setup(
         "Package creating resource payloads from atlas datasets and push them along "
         "with the corresponding dataset files into Nexus."
     ),
-    license="Apache-2",
-    python_requires=">=3.7",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/BlueBrain/bbp-data-push",
+    license="Apache-2.0",
+    python_requires=">=3.9",
     install_requires=[
-        "nexusforge@git+https://github.com/BlueBrain/nexus-forge.git@master",
+        "nexusforge>=0.8.2",
         "click>=7.0",
         "numpy>=1.19",
         "h5py>=2.10.0",
